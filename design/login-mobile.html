@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Iniciar Sesión — Chifa Imperial</title>
+<!-- Google Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS with custom configuration -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container-high": "#232a3a",
+            "tertiary": "#ffb95f",
+            "on-tertiary-fixed": "#2a1700",
+            "surface": "#0c1322",
+            "primary-fixed-dim": "#ffb4ac",
+            "on-surface-variant": "#e1bfbb",
+            "secondary-container": "#d97707",
+            "on-tertiary-fixed-variant": "#653e00",
+            "on-secondary-container": "#432100",
+            "surface-container-low": "#141b2b",
+            "on-primary-fixed-variant": "#8e1214",
+            "surface-variant": "#2e3545",
+            "inverse-surface": "#dce2f7",
+            "inverse-on-surface": "#293040",
+            "on-background": "#dce2f7",
+            "on-primary": "#690007",
+            "on-error": "#690005",
+            "error-container": "#93000a",
+            "primary-container": "#991b1b",
+            "on-tertiary": "#472a00",
+            "surface-bright": "#323949",
+            "surface-container-highest": "#2e3545",
+            "surface-container-lowest": "#070e1d",
+            "background": "#0c1322",
+            "secondary": "#ffb77d",
+            "secondary-fixed-dim": "#ffb77d",
+            "outline-variant": "#59413e",
+            "inverse-primary": "#b02d29",
+            "tertiary-fixed-dim": "#ffb95f",
+            "on-primary-fixed": "#410002",
+            "surface-dim": "#0c1322",
+            "primary-fixed": "#ffdad6",
+            "on-tertiary-container": "#ffb043",
+            "on-error-container": "#ffdad6",
+            "surface-container": "#191f2f",
+            "on-secondary-fixed-variant": "#6e3900",
+            "tertiary-fixed": "#ffddb8",
+            "outline": "#a88a86",
+            "error": "#ffb4ab",
+            "on-surface": "#dce2f7",
+            "secondary-fixed": "#ffdcc3",
+            "surface-tint": "#ffb4ac",
+            "primary": "#ffb4ac",
+            "tertiary-container": "#6f4500",
+            "on-secondary-fixed": "#2f1500",
+            "on-primary-container": "#ffaaa1",
+            "on-secondary": "#4d2600"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "margin-mobile": "1.25rem",
+            "gutter-mobile": "1rem",
+            "gutter": "1.5rem",
+            "space-lg": "1.75rem",
+            "space-md": "1rem",
+            "space-xl": "3rem",
+            "margin": "3rem",
+            "space-xs": "0.25rem",
+            "space-sm": "0.5rem"
+          },
+          "fontFamily": {
+            "label-caps": ["Plus Jakarta Sans"],
+            "headline-md": ["Playfair Display"],
+            "headline-lg-mobile": ["Playfair Display"],
+            "body-md": ["Plus Jakarta Sans"],
+            "display-hero": ["Playfair Display"],
+            "caption": ["Plus Jakarta Sans"],
+            "subheading": ["Plus Jakarta Sans"],
+            "headline-sm": ["Playfair Display"],
+            "headline-lg": ["Playfair Display"],
+            "body-lg": ["Plus Jakarta Sans"],
+            "display-hero-mobile": ["Playfair Display"],
+            "price-tag": ["Playfair Display"]
+          },
+          "fontSize": {
+            "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.14em", "fontWeight": "700" }],
+            "headline-md": ["28px", { "lineHeight": "36px", "fontWeight": "500" }],
+            "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "600" }],
+            "body-md": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+            "display-hero": ["56px", { "lineHeight": "64px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "caption": ["12px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "subheading": ["18px", { "lineHeight": "26px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+            "headline-sm": ["22px", { "lineHeight": "30px", "fontWeight": "500" }],
+            "headline-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }],
+            "display-hero-mobile": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "price-tag": ["18px", { "lineHeight": "24px", "fontWeight": "700" }]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    /* Subtle custom styles for specialized Chinese fretwork and glowing halo */
+    .fretwork-corner {
+      background-image: radial-gradient(circle at 100% 100%, transparent 6px, rgba(217, 119, 6, 0.18) 7px, transparent 8px);
+    }
+    .halo-gold {
+      box-shadow: 0 10px 25px -8px rgba(0, 0, 0, 0.9), 0 0 20px 2px rgba(217, 119, 6, 0.12);
+    }
+    .button-crimson-glow:hover {
+      box-shadow: 0 0 16px rgba(217, 119, 6, 0.45);
+    }
+  </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface min-h-screen flex justify-center items-start antialiased selection:bg-primary-container selection:text-tertiary">
+<!-- Mobile Screen Container (390px - 430px centered viewport) -->
+<div class="w-full max-w-[420px] min-h-screen bg-surface flex flex-col relative overflow-x-hidden shadow-2xl border-x border-outline-variant/20">
+<!-- TopAppBar (from Shared Components JSON) -->
+<header class="fixed top-0 left-0 right-0 max-w-[420px] mx-auto z-50 flex items-center justify-between px-margin-mobile py-space-sm h-16 bg-surface/90 dark:bg-surface/90 backdrop-blur-md shadow-md border-b border-outline-variant/30">
+<!-- Leading Icon: Close Action -->
+<button aria-label="Cerrar" class="w-10 h-10 flex items-center justify-center rounded text-on-surface-variant hover:text-secondary hover:bg-surface-container-high transition-colors duration-200 active:scale-95" type="button">
+<span class="material-symbols-outlined text-headline-sm" data-icon="close">close</span>
+</button>
+<!-- Headline: Brand Logo -->
+<div class="flex flex-col items-center">
+<span class="font-headline-sm text-headline-sm font-semibold tracking-wider text-secondary dark:text-secondary">CHIFA IMPERIAL</span>
+<span class="font-label-caps text-label-caps text-tertiary/75 -mt-1 tracking-widest text-[9px]">LIMA • 1928</span>
+</div>
+<!-- Trailing Icon: Help & Concierge -->
+<button aria-label="Ayuda" class="w-10 h-10 flex items-center justify-center rounded text-on-surface-variant hover:text-secondary hover:bg-surface-container-high transition-colors duration-200 active:scale-95" type="button">
+<span class="material-symbols-outlined text-headline-sm" data-icon="help_outline">help_outline</span>
+</button>
+</header>
+<!-- Main Content Canvas (Pushed down for fixed TopAppBar) -->
+<main class="flex-1 flex flex-col pt-16 pb-10">
+<!-- Hero Visual Section -->
+<section class="relative w-full h-64 overflow-hidden bg-surface-container-lowest">
+<!-- Hero Photography using the prompt image token -->
+<img alt="Banquete de Chifa Imperial con arroz chaufa al wok humeante, lomo saltado jugoso y wantanes crocantes en mesa de caoba bajo faroles chinos" class="w-full h-full object-cover object-center transform scale-105 transition-transform duration-700 ease-out brightness-90 hover:scale-100" src="https://lh3.googleusercontent.com/aida/AEtjO1UWmKlj3TpHMLwGxghbxg4t8gc0xUNep8lL_W86hXmvhMb_6C8ElgxKQv_hVHi16_p-SzE6633kL56zGehZzKIOUkqBWlY2jvjGmWuRNm-aMT5FvYeoGq8JHCs3DG6RPJqX6HJupX-xWjcSjbJ2meoirMRDk85cCnuyZ7eipPtwKUWkCUnEzL5W0PF3-WQ7-xIq2JGYXh_pEnxGjAcydjGxa1CAutn1vZPS8WGr_VgbwB-1obX8QC_d_qc"/>
+<!-- Multi-layer Atmospheric Gradients (Lacquered Dark Finish) -->
+<div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/60 to-transparent"></div>
+<div class="absolute inset-0 bg-gradient-to-b from-surface/80 via-transparent to-transparent"></div>
+<!-- Imperial Traditional Seal / Crest Overlay -->
+<div class="absolute bottom-4 left-margin-mobile right-margin-mobile flex items-center gap-3">
+<!-- Traditional Seal / Lantern Pip -->
+<div class="w-11 h-11 rounded-lg bg-surface-container-low border border-secondary/40 flex items-center justify-center shadow-lg p-1.5 halo-gold">
+<div class="w-full h-full border border-secondary/60 rounded flex items-center justify-center bg-primary-container/20">
+<span class="text-tertiary font-headline-sm text-subheading leading-none font-bold">帝</span>
+</div>
+</div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="font-label-caps text-label-caps text-tertiary">ALTA GASTRONOMÍA SINO-PERUANA</span>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant/90">Tradición Milenaria &amp; Fuego Wok</p>
+</div>
+</div>
+<!-- Fine Brass Lattice Divider -->
+<div class="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-secondary/40 to-transparent"></div>
+</section>
+<!-- Section Title & Intro Header -->
+<section class="px-margin-mobile pt-5 pb-3">
+<div class="flex items-baseline justify-between">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface font-semibold tracking-tight">
+            Iniciar Sesión
+          </h1>
+<span class="font-label-caps text-label-caps text-secondary/90 px-2 py-0.5 rounded bg-surface-container-high border border-secondary/20">
+            PORTAL VIP
+          </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+          Acceda a sus reservas de salón imperial, degustaciones y beneficios exclusivos.
+        </p>
+</section>
+<!-- State Simulator & Debugger Bar (Compact Interactive Selector) -->
+<section class="px-margin-mobile mb-4">
+<div class="bg-surface-container-low p-2 rounded-lg border border-outline-variant/30">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-caps text-label-caps text-tertiary flex items-center gap-1">
+<span class="material-symbols-outlined text-caption" data-icon="tune">tune</span>
+              SIMULADOR DE ESTADOS
+            </span>
+<span class="font-caption text-caption text-on-surface-variant/60">Demo interactiva</span>
+</div>
+<div class="grid grid-cols-4 gap-1.5">
+<button class="state-btn py-1 px-1 rounded text-center font-label-caps text-[10px] uppercase transition-all bg-secondary/20 text-secondary border border-secondary/50 font-bold" id="btn-state-normal" onclick="setAlertState('normal')">
+              Normal
+            </button>
+<button class="state-btn py-1 px-1 rounded text-center font-label-caps text-[10px] uppercase transition-all bg-surface-container-high text-on-surface-variant border border-transparent hover:border-outline-variant" id="btn-state-invalid" onclick="setAlertState('invalid')">
+              Error
+            </button>
+<button class="state-btn py-1 px-1 rounded text-center font-label-caps text-[10px] uppercase transition-all bg-surface-container-high text-on-surface-variant border border-transparent hover:border-outline-variant" id="btn-state-locked" onclick="setAlertState('locked')">
+              Bloqueo
+            </button>
+<button class="state-btn py-1 px-1 rounded text-center font-label-caps text-[10px] uppercase transition-all bg-surface-container-high text-on-surface-variant border border-transparent hover:border-outline-variant" id="btn-state-inactive" onclick="setAlertState('inactive')">
+              Inactivo
+            </button>
+</div>
+</div>
+</section>
+<!-- Alert Banners Area -->
+<section class="px-margin-mobile mb-4">
+<!-- State 1: Credenciales Inválidas -->
+<div class="hidden p-3.5 rounded-lg bg-surface-container-high/90 border border-primary-container shadow-lg flex items-start gap-3 relative overflow-hidden" id="alert-invalid">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-primary-container"></div>
+<div class="w-8 h-8 rounded bg-primary-container/30 border border-primary/40 flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-subheading" data-icon="error_outline">error_outline</span>
+</div>
+<div class="flex-1">
+<h4 class="font-subheading text-body-md font-semibold text-primary">Credenciales Inválidas</h4>
+<p class="font-body-md text-caption text-on-surface-variant mt-0.5">
+              Usuario o contraseña incorrectos. Por favor revise sus datos.
+            </p>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface" onclick="setAlertState('normal')">
+<span class="material-symbols-outlined text-body-md" data-icon="close">close</span>
+</button>
+</div>
+<!-- State 2: Cuenta Bloqueada -->
+<div class="hidden p-3.5 rounded-lg bg-surface-container-high/90 border border-primary-container/90 shadow-lg flex items-start gap-3 relative overflow-hidden" id="alert-locked">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-primary-container"></div>
+<div class="w-8 h-8 rounded bg-primary-container/40 border border-primary flex items-center justify-center shrink-0 text-secondary">
+<span class="material-symbols-outlined text-subheading" data-icon="lock_clock">lock_clock</span>
+</div>
+<div class="flex-1">
+<h4 class="font-subheading text-body-md font-semibold text-tertiary">Acceso Temporalmente Bloqueado</h4>
+<p class="font-body-md text-caption text-on-surface-variant mt-0.5">
+              Acceso bloqueado por múltiples intentos fallidos. Contacte a soporte o a concierge del salón.
+            </p>
+<div class="mt-2 flex items-center gap-3">
+<a class="font-label-caps text-label-caps text-secondary underline" href="tel:+5112345678">LLAMAR AL CONCIERGE</a>
+<span class="text-outline-variant">•</span>
+<button class="font-label-caps text-label-caps text-on-surface-variant underline" onclick="setAlertState('normal')">REINTENTAR</button>
+</div>
+</div>
+</div>
+<!-- State 3: Usuario Inactivo -->
+<div class="hidden p-3.5 rounded-lg bg-surface-container-high/90 border border-secondary-container/60 shadow-lg flex items-start gap-3 relative overflow-hidden" id="alert-inactive">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-secondary-container"></div>
+<div class="w-8 h-8 rounded bg-secondary-container/20 border border-secondary/50 flex items-center justify-center shrink-0 text-secondary">
+<span class="material-symbols-outlined text-subheading" data-icon="mark_email_unread">mark_email_unread</span>
+</div>
+<div class="flex-1">
+<h4 class="font-subheading text-body-md font-semibold text-secondary">Cuenta Inactiva</h4>
+<p class="font-body-md text-caption text-on-surface-variant mt-0.5">
+              Su cuenta se encuentra inactiva. Revise su correo de confirmación o comuníquese con el anfitrión.
+            </p>
+<button class="mt-2 font-label-caps text-label-caps text-tertiary flex items-center gap-1 hover:underline">
+              REENVIAR CORREO DE ACTIVACIÓN <span class="material-symbols-outlined text-caption" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Main Form Section -->
+<form class="px-margin-mobile flex flex-col gap-space-md" id="login-form" onsubmit="event.preventDefault(); handleFormSubmit();">
+<!-- Field 1: Usuario o Correo -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-caps text-label-caps text-secondary flex items-center justify-between" for="username-input">
+<span>USUARIO O CORREO ELECTRÓNICO</span>
+<span class="text-on-surface-variant/50 font-caption text-[10px]">OBLIGATORIO</span>
+</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3.5 text-secondary/60 text-headline-sm pointer-events-none" data-icon="mail">mail</span>
+<input class="w-full bg-surface-container-low border border-secondary/25 rounded-lg py-3 pl-11 pr-4 text-on-surface placeholder:text-on-surface-variant/40 font-body-md text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary/50 transition-all duration-200" id="username-input" placeholder="ejemplo@alta-gastronomia.pe" required="" type="text" value="huésped.imperial@chifa.pe"/>
+</div>
+</div>
+<!-- Field 2: Contraseña -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<label class="font-label-caps text-label-caps text-secondary" for="password-input">
+              CONTRASEÑA IMPERIAL
+            </label>
+<a class="font-caption text-caption text-tertiary hover:text-secondary transition-colors underline decoration-secondary/40 underline-offset-4" href="#recuperar">
+              ¿Olvidaste tu contraseña?
+            </a>
+</div>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3.5 text-secondary/60 text-headline-sm pointer-events-none" data-icon="lock">lock</span>
+<input class="w-full bg-surface-container-low border border-secondary/25 rounded-lg py-3 pl-11 pr-11 text-on-surface placeholder:text-on-surface-variant/40 font-body-md text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary/50 transition-all duration-200 tracking-wider" id="password-input" placeholder="Ingrese su clave secreta" required="" type="password" value="••••••••••••"/>
+<button aria-label="Mostrar u ocultar contraseña" class="absolute right-3 text-on-surface-variant/60 hover:text-secondary p-1 flex items-center justify-center" id="toggle-password" onclick="togglePasswordVisibility()" type="button">
+<span class="material-symbols-outlined text-headline-sm" data-icon="visibility" id="password-icon">visibility</span>
+</button>
+</div>
+</div>
+<!-- Field 3: Remember Me Checkbox -->
+<div class="flex items-center justify-between pt-1">
+<label class="flex items-center gap-3 cursor-pointer select-none">
+<input checked="" class="w-4 h-4 rounded bg-surface-container-low border-secondary/50 text-primary-container focus:ring-0 focus:ring-offset-0 cursor-pointer accent-primary-container" id="remember-me" type="checkbox"/>
+<span class="font-body-md text-caption text-on-surface-variant">Recordar sesión en este dispositivo</span>
+</label>
+<span class="text-tertiary/75 flex items-center gap-1 font-caption text-[11px]">
+<span class="material-symbols-outlined text-caption" data-icon="verified_user">verified_user</span>
+            SSL 256-bit
+          </span>
+</div>
+<!-- CTA Button: Lacquered Crimson with Golden Glow -->
+<button class="w-full mt-2 py-3.5 px-4 rounded bg-gradient-to-r from-primary-container to-[#7f1d1d] text-on-surface font-label-caps text-label-caps tracking-widest uppercase border border-secondary/40 shadow-lg button-crimson-glow active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 group" type="submit">
+<span>INGRESAR A LA MESA</span>
+<span class="material-symbols-outlined text-subheading group-hover:translate-x-1 transition-transform" data-icon="restaurant">restaurant</span>
+</button>
+</form>
+<!-- Alternativas de Acceso (SSO) -->
+<section class="px-margin-mobile mt-space-lg">
+<div class="relative flex items-center justify-center">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-outline-variant/30"></div>
+</div>
+<span class="relative bg-surface px-3 font-label-caps text-[10px] uppercase text-on-surface-variant/70 tracking-widest">
+            O CONTINUAR CON
+          </span>
+</div>
+<div class="grid grid-cols-2 gap-3 mt-4">
+<!-- Google Button -->
+<button class="py-2.5 px-3 rounded-lg bg-surface-container border border-outline-variant/30 hover:border-secondary/50 flex items-center justify-center gap-2.5 text-on-surface transition-all duration-150 active:scale-95" type="button">
+<svg class="w-4 h-4 shrink-0" viewbox="0 0 24 24">
+<path d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z" fill="#EA4335"></path>
+<path d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z" fill="#4285F4"></path>
+<path d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8s.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z" fill="#FBBC05"></path>
+<path d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z" fill="#34A853"></path>
+</svg>
+<span class="font-label-caps text-[10px] tracking-wider uppercase text-on-surface">GOOGLE</span>
+</button>
+<!-- Apple ID Button -->
+<button class="py-2.5 px-3 rounded-lg bg-surface-container border border-outline-variant/30 hover:border-secondary/50 flex items-center justify-center gap-2.5 text-on-surface transition-all duration-150 active:scale-95" type="button">
+<svg class="w-4 h-4 fill-current shrink-0" viewbox="0 0 24 24">
+<path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.84c.66-.8 1.11-1.92.99-3.04-1 .04-2.14.66-2.82 1.46-.59.69-1.11 1.83-.97 2.91 1.11.09 2.18-.56 2.8-1.33z"></path>
+</svg>
+<span class="font-label-caps text-[10px] tracking-wider uppercase text-on-surface">APPLE ID</span>
+</button>
+</div>
+</section>
+<!-- Exclusive Courtesy / Registration Perk Card -->
+<section class="px-margin-mobile mt-6">
+<div class="p-3.5 rounded-lg bg-gradient-to-r from-surface-container to-surface-container-high border border-secondary/30 relative overflow-hidden shadow-md flex items-center gap-3">
+<!-- Lantern Icon Stamp -->
+<div class="w-10 h-10 rounded-full bg-primary-container/30 border border-secondary/40 flex items-center justify-center shrink-0 text-secondary">
+<span class="material-symbols-outlined text-headline-sm" data-icon="redeem">redeem</span>
+</div>
+<div class="flex-1 pr-2">
+<p class="font-subheading text-caption font-semibold text-secondary">¿Aún no eres miembro de la mesa?</p>
+<p class="font-body-md text-[11px] text-on-surface-variant leading-snug mt-0.5">
+              Regístrate hoy y recibe wantán especial de cortesía en tu próxima cena.
+            </p>
+</div>
+<a class="shrink-0 p-2 rounded bg-surface-container-highest border border-secondary/30 text-tertiary hover:bg-secondary hover:text-on-secondary transition-colors" href="#registro">
+<span class="material-symbols-outlined text-body-md block" data-icon="arrow_forward">arrow_forward</span>
+</a>
+</div>
+</section>
+<!-- Concierge & Reservation Fast Contact -->
+<section class="px-margin-mobile mt-6 mb-2">
+<div class="flex items-center justify-between text-on-surface-variant/80 border-t border-outline-variant/20 pt-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-body-md" data-icon="room_service">room_service</span>
+<span class="font-caption text-caption">Asistencia Concierge VIP:</span>
+</div>
+<a class="font-label-caps text-label-caps text-secondary tracking-wider hover:underline" href="tel:+51987654321">
+            +51 (1) 445-8890
+          </a>
+</div>
+</section>
+</main>
+<!-- Footer Component (Transcribed directly from Shared Components JSON) -->
+<footer class="w-full py-space-lg px-margin-mobile flex flex-col items-center justify-center gap-space-sm text-center bg-surface-container-lowest dark:bg-surface-container-lowest border-t border-outline-variant/20">
+<!-- Brand Logo / Wordmark from JSON -->
+<div class="text-headline-sm font-headline-sm text-secondary tracking-widest">
+        CHIFA IMPERIAL
+      </div>
+<!-- Links from JSON -->
+<div class="flex items-center justify-center flex-wrap gap-x-4 gap-y-1">
+<a class="text-label-caps font-label-caps text-on-surface-variant/70 dark:text-on-surface-variant/70 hover:text-secondary hover:underline transition-colors duration-200" href="#privacidad">
+          Privacidad
+        </a>
+<span class="text-outline-variant/50 text-[10px]">•</span>
+<a class="text-label-caps font-label-caps text-on-surface-variant/70 dark:text-on-surface-variant/70 hover:text-secondary hover:underline transition-colors duration-200" href="#terminos">
+          Términos y Condiciones
+        </a>
+<span class="text-outline-variant/50 text-[10px]">•</span>
+<a class="text-label-caps font-label-caps text-on-surface-variant/70 dark:text-on-surface-variant/70 hover:text-secondary hover:underline transition-colors duration-200" href="#reclamaciones">
+          Libro de Reclamaciones
+        </a>
+</div>
+<!-- Copyright Text from JSON -->
+<p class="text-caption font-caption text-on-surface-variant/60 max-w-[320px] leading-relaxed mt-1">
+        © 2024 CHIFA IMPERIAL. ALTA COCINA PERUANO-CANTONESA. TODOS LOS DERECHOS RESERVADOS.
+      </p>
+</footer>
+</div>
+<!-- Interactive JavaScript for micro-interactions & State Simulation -->
+<script>
+    // State Switcher for demonstration
+    function setAlertState(state) {
+      const alertInvalid = document.getElementById('alert-invalid');
+      const alertLocked = document.getElementById('alert-locked');
+      const alertInactive = document.getElementById('alert-inactive');
+
+      // Reset alert visibility
+      alertInvalid.classList.add('hidden');
+      alertLocked.classList.add('hidden');
+      alertInactive.classList.add('hidden');
+
+      // Reset simulator buttons
+      const buttons = document.querySelectorAll('.state-btn');
+      buttons.forEach(btn => {
+        btn.classList.remove('bg-secondary/20', 'text-secondary', 'border-secondary/50', 'font-bold');
+        btn.classList.add('bg-surface-container-high', 'text-on-surface-variant', 'border-transparent');
+      });
+
+      const activeBtn = document.getElementById(`btn-state-${state}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('bg-surface-container-high', 'text-on-surface-variant', 'border-transparent');
+        activeBtn.classList.add('bg-secondary/20', 'text-secondary', 'border-secondary/50', 'font-bold');
+      }
+
+      // Activate appropriate alert
+      if (state === 'invalid') {
+        alertInvalid.classList.remove('hidden');
+      } else if (state === 'locked') {
+        alertLocked.classList.remove('hidden');
+      } else if (state === 'inactive') {
+        alertInactive.classList.remove('hidden');
+      }
+    }
+
+    // Toggle Password Visibility
+    function togglePasswordVisibility() {
+      const passInput = document.getElementById('password-input');
+      const passIcon = document.getElementById('password-icon');
+      
+      if (passInput.type === 'password') {
+        passInput.type = 'text';
+        passIcon.textContent = 'visibility_off';
+      } else {
+        passInput.type = 'password';
+        passIcon.textContent = 'visibility';
+      }
+    }
+
+    // Form submit feedback
+    function handleFormSubmit() {
+      const btn = document.querySelector('button[type="submit"]');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-subheading" data-icon="progress_activity">progress_activity</span><span>ACCEDIENDO AL SALÓN...</span>`;
+      btn.disabled = true;
+
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        // Trigger invalid state as a demonstration feedback
+        setAlertState('invalid');
+      }, 1000);
+    }
+  </script>
+</body></html>

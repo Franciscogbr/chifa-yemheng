@@ -1,0 +1,11 @@
+- [ ] Crear AuthController
+- [ ] Crear AuthService
+- [ ] Crear AuthRepository
+- [ ] Crear endpoint login
+- [ ] Crear endpoint permisos
+- [ ] Implementar JWT
+- [ ] Implementar AuthGuard
+- [ ] Implementar RoleGuard
+- [ ] Implementar PermissionGuard
+- [ ] Crear LoginPage React
+- [ ] Crear Auditoría

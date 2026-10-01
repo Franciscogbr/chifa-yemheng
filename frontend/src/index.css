@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Paleta oficial Chifa Yemheng */
+  --color-primary: #a61e22;
+  --color-primary-dark: #7f1518;
+  --color-gold: #d4a017;
+  --color-gold-light: #f2c94c;
+  --color-surface: #ffffff;
+  --color-background: #f5f5f5;
+  --color-border: #d9d9d9;
+  --color-ink: #333333;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-error: #dc2626;
+  --color-info: #2563eb;
+
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Playfair Display", ui-serif, Georgia, serif;
+  --font-epilogue: "Epilogue", ui-sans-serif, system-ui, sans-serif;
+  --font-newsreader: "Newsreader", ui-serif, Georgia, serif;
+
+  --color-crimson: #b91c1c;
+  --color-cream: #ffdf9a;
+  --color-cocoa: #1b1200;
+  --color-latte: #ffdcc3;
+  --color-amber-soft: #ffb77d;
+  --color-rose-soft: #ffb4ab;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<!-- REFERENCIA Stitch — Productos (CHIFA YEMHENG). Versión íntegra en el historial del chat.
+     Cambios aprobados al portar a React (ver openspec/changes/add-crud-productos/design.md):
+     1. Sin botón Eliminar (solo desactivar). 2. Sin Exportar (diferido). 3. Sin tarjeta
+     Plan/Licencia, sin "Carlos Rojas" (usuario real), sin role-switcher. 4. REF→Codigo
+     opcional (UQ_PRODUCTO_COD). 5. Tipo con 3 opciones P/B/I. 6. Selector Unidad
+     obligatorio. 7. Controla_Stock + Stock_Minimo. 8. Imágenes con fallback.
+     Estructura: AdminShell(sidebar+navbar) + header/migas + 4 KPIs + filtros
+     (buscar, categoría*, estado, disponibilidad, limpiar, ordenar) + tabla ABM
+     (Foto, Nombre&Código, Categoría, Precio, Stock, Cocción, En Carta, Estado,
+     Acciones ver/editar/toggle) + paginación 20/50/100 + modal 2 columnas
+     (nombre*, categoría*, tipo P/B/I, precio*, unidad*, stock, stock mín,
+     controla stock, tiempo, disponible switch, imagen drag&drop, detalle,
+     costo, marca, afecto IGV) + skeletons/vacío/error + cards móvil.
+     *Selector de categoría carga de /api/v1/categorias (CRUD 1).
+     Productos ejemplo del diseño: Chaufa Mariscos 38.50, Lomo Saltado 42.00,
+     Kam Lu Wantán 36.00, Siu Mai 24.00, Chi Jau Kay 34.00 (agotado/inactivo),
+     Té Jazmín 18.00. KPIs ejemplo: 64 total, 58 disponibles, 6 insumos, 2 fuera. -->
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>Productos — CHIFA YEMHENG (referencia)</title></head>
+<body>
+<!-- Fila ejemplo 1: Arroz Chaufa Especial de Mariscos | REF PRD-0012 | Arroces Chaufa | S/. 38.50 | 45 raciones | 12 min | Disponible | Activo | ver/editar/toggle -->
+<!-- Fila ejemplo 5 (agotado/inactivo): Pollo Chi Jau Kay Imperial | REF PRD-0025 | Especialidades | S/. 34.00 | 0 raciones | 14 min | Agotado | Inactivo -->
+</body></html>

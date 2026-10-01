@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="web_blank" name="shell-type"/>
+<title>Yemheng Chifa Tradicional — Portal de Gestión</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Epilogue:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&amp;family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    @layer base {
+      html, body { margin: 0; padding: 0; }
+      body { overscroll-behavior: none; }
+      main > :first-child { margin-top: 0 !important; }
+      main > :last-child { margin-bottom: 0 !important; }
+    }
+    ::-webkit-scrollbar { display: none; }
+  </style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-variant": "#443200",
+            "surface-container-high": "#372800",
+            "on-primary-fixed-variant": "#93000b",
+            "surface-container-lowest": "#150d00",
+            "tertiary-fixed": "#ffdad6",
+            "on-secondary": "#4d2600",
+            "tertiary": "#ffb4ac",
+            "on-secondary-fixed-variant": "#6e3900",
+            "surface-dim": "#1b1200",
+            "on-error": "#690005",
+            "surface": "#1b1200",
+            "on-primary-fixed": "#410002",
+            "on-error-container": "#ffdad6",
+            "on-tertiary-fixed": "#410002",
+            "outline-variant": "#5b403d",
+            "error": "#ffb4ab",
+            "primary-container": "#b91c1c",
+            "primary": "#ffb4ab",
+            "primary-fixed-dim": "#ffb4ab",
+            "inverse-primary": "#b91c1c",
+            "on-primary-container": "#ffcdc7",
+            "surface-container-low": "#251a00",
+            "secondary": "#ffb77d",
+            "tertiary-fixed-dim": "#ffb4ac",
+            "secondary-container": "#d97707",
+            "background": "#1b1200",
+            "inverse-surface": "#ffdf9a",
+            "on-secondary-container": "#432100",
+            "secondary-fixed": "#ffdcc3",
+            "surface-container-highest": "#443200",
+            "outline": "#ab8985",
+            "surface-container": "#2a1e00",
+            "surface-bright": "#4a3600",
+            "tertiary-container": "#b02d29",
+            "primary-fixed": "#ffdad6",
+            "on-background": "#ffdf9a",
+            "on-tertiary-container": "#ffcdc7",
+            "inverse-on-surface": "#3f2e00",
+            "on-surface": "#ffdf9a",
+            "on-tertiary": "#690007",
+            "on-tertiary-fixed-variant": "#8e1214",
+            "surface-tint": "#ffb4ab",
+            "secondary-fixed-dim": "#ffb77d",
+            "error-container": "#93000a",
+            "on-surface-variant": "#e4beb9",
+            "on-secondary-fixed": "#2f1500",
+            "on-primary": "#690005"
+          },
+          fontFamily: {
+            "epilogue": ["Epilogue", "sans-serif"],
+            "newsreader": ["Newsreader", "serif"],
+            "body": ["Plus Jakarta Sans", "sans-serif"]
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-[#0e0705] font-body text-[#ffdf9a] antialiased min-h-screen relative selection:bg-[#b91c1c] selection:text-white overflow-x-hidden">
+<!-- Full-Bleed Culinary Hero Background -->
+<div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+<img alt="Auténtica cocina Chifa Yemheng - Wok humeante y platos gourmet tradicionales" class="w-full h-full object-cover object-center lg:object-[45%_35%] scale-105 filter brightness-[0.78] contrast-[1.08] saturate-[1.12]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdpvRbBfy9QhGlE5hQWpJITIEoFiEVY6whR9KXIepyL3PstSuC1J8sN7_wzB-SjBUMt80himR-Cg7zNCpWUt59HFL_SDh214mySl_pokZNwUNCJ2dsgjBteFWuC_R2YIEPzKRGkV5J9aaz-xcwZONMmLtmk7z75sYRY-sTqZC8wKPV72LBlATQGwKiJSTqTzrxJJS6_JfUPHQOAq6TnIHYajt6XZqfdNGeKXFjNWcf8lJ3QTymJxfccw"/>
+<!-- Deep Lacquer Crimson & Charcoal Gradient Scrims for Drama and Text Legibility -->
+<div class="absolute inset-0 bg-gradient-to-r from-[#120806]/95 via-[#1b0808]/85 to-[#0b0504]/90 lg:from-[#0d0504]/95 lg:via-[#190606]/65 lg:to-[#090302]/95"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-[#0e0604] via-transparent to-[#1a0707]/75"></div>
+<div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(185,28,28,0.22)_0%,_transparent_70%)]"></div>
+</div>
+<main class="relative z-10 w-full min-h-screen flex flex-col justify-between px-4 sm:px-8 lg:px-14 py-6 lg:py-8 max-w-7xl mx-auto">
+<!-- Top Navigation Bar / Brand Crest Header -->
+<header class="w-full flex items-center justify-between pb-4">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden p-0.5 ring-2 ring-[#d97707]/60 shadow-[0_0_20px_rgba(217,119,7,0.3)] bg-[#1e0a08]/80 backdrop-blur-md flex items-center justify-center">
+<img alt="Yemheng Chifa Tradicional Sello Oficial" class="w-full h-full object-cover rounded-full" src="https://lh3.googleusercontent.com/aida/AEtjO1UKW-SY5iTEh8p2cC-lmjLOjFuJSnyor04TpIHEXd4kWpZ_gEHu_PTQrqsIj9h4tA39G2eNDMcQvyikpa2VpxRgwFjRZqpO2u8wmJPloRhg_ZKzqJ9KMHDtTaSiGLVd900JfVmE5UNUPvYCq2EvsNrQup1lPUD4O7BUh_l7vZ1ZDOivtPHxO2ka9SfhfgJtqv8NvL88MwrthWsyOicl4W94QlGjiUy-UTTtTvbZBVnmeQdrfPLbOBpVmp_Z"/>
+</div>
+<div class="flex flex-col">
+<span class="font-epilogue font-bold tracking-widest text-[#ffdcc3] text-sm uppercase flex items-center gap-2">
+            YEMHENG
+            <span class="text-xs text-[#d97707] font-normal tracking-normal font-newsreader italic">益恒</span>
+</span>
+<span class="text-[10px] tracking-[0.2em] text-[#e4beb9]/70 uppercase font-semibold">Chifa Tradicional · Lima</span>
+</div>
+</div>
+<!-- Operational Status Pill -->
+<div class="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#1b0e0a]/75 backdrop-blur-md border border-[#d97707]/30 shadow-lg text-xs text-[#ffdcc3]">
+<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"></span>
+<span class="font-semibold text-[#ffb77d] tracking-wider uppercase text-[11px]">Portal Operativo v2.4</span>
+<span class="text-[#e4beb9]/40">•</span>
+<span class="text-[#e4beb9]/80 text-[11px]">San Isidro Central</span>
+</div>
+</header>
+<!-- Center Stage: Hero Narrative (Left) + Glassmorphism Authentication Suite (Right) -->
+<div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center my-auto py-4 lg:py-6">
+<!-- Left Column: Hero Narrative & Brand Romance -->
+<div class="lg:col-span-6 xl:col-span-7 flex flex-col justify-center text-left space-y-6 lg:pr-6">
+<!-- Oriental Accent Pill -->
+<div class="inline-flex items-center gap-2 self-start px-3.5 py-1 rounded-full bg-[#3d1210]/60 border border-[#b91c1c]/40 backdrop-blur-md">
+<span class="text-[#ffdcc3] font-newsreader text-base">益 恒</span>
+<span class="w-1 h-1 rounded-full bg-[#d97707]"></span>
+<span class="text-xs uppercase tracking-widest text-[#ffb77d] font-semibold">CHIFA TRADICIONAL</span>
+</div>
+<!-- Grand Dramatic Culinary Headline -->
+<div class="space-y-3">
+<h1 class="font-epilogue text-3xl sm:text-4xl xl:text-5xl font-bold text-[#fff2e0] tracking-tight leading-[1.15]">
+            Maestría Culinaria &amp; <br/>
+<span class="font-newsreader italic font-normal text-[#ffb77d] drop-shadow-[0_2px_12px_rgba(217,119,7,0.35)]">
+              Tradición Cantonesa
+            </span>
+</h1>
+<p class="font-body text-[#e4beb9]/90 text-sm sm:text-base leading-relaxed max-w-lg">
+            La alta cocina chifa cobra vida en cada wok. Accede a la plataforma de gestión gastronómica centralizada: control de salón en tiempo real, pases de cocina viva y auditoría de despacho.
+          </p>
+</div>
+<!-- Operational Live Feature Badges -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 max-w-lg">
+<div class="flex items-center gap-3 p-3 rounded-lg bg-[#25100d]/70 backdrop-blur-md border border-[#5b403d]/40 shadow-md">
+<span class="material-symbols-outlined text-[#ffb77d] text-2xl p-1.5 rounded bg-[#b91c1c]/30">soup_kitchen</span>
+<div>
+<div class="text-xs font-semibold text-[#ffdcc3] uppercase tracking-wide">Cocina Wok en Vivo</div>
+<div class="text-[11px] text-[#e4beb9]/70">Terminal KDS &amp; Auditoría de Fuego</div>
+</div>
+</div>
+<div class="flex items-center gap-3 p-3 rounded-lg bg-[#25100d]/70 backdrop-blur-md border border-[#5b403d]/40 shadow-md">
+<span class="material-symbols-outlined text-[#ffb77d] text-2xl p-1.5 rounded bg-[#b91c1c]/30">table_restaurant</span>
+<div>
+<div class="text-xs font-semibold text-[#ffdcc3] uppercase tracking-wide">Salón &amp; Mesas</div>
+<div class="text-[11px] text-[#e4beb9]/70">Control de Secuencia &amp; Tiempos</div>
+</div>
+</div>
+</div>
+<!-- Subtext Quote -->
+<div class="border-l-2 border-[#d97707]/60 pl-3.5 italic font-newsreader text-sm text-[#ffdcc3]/80">
+          "El wok hei es el aliento del dragón; la disciplina es el secreto del sabor."
+        </div>
+</div>
+<!-- Right Column: Floating Glassmorphism Authentication Card -->
+<div class="lg:col-span-6 xl:col-span-5 w-full flex justify-center lg:justify-end">
+<div class="w-full max-w-md bg-[#180907]/85 backdrop-blur-xl border border-[#d97707]/30 rounded-2xl p-6 sm:p-8 shadow-[0_12px_45px_rgba(0,0,0,0.65)] relative overflow-hidden">
+<!-- Subtle Top Golden & Crimson Accent Bar -->
+<div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#b91c1c] via-[#d97707] to-[#b91c1c]"></div>
+<!-- Card Header -->
+<div class="space-y-1 mb-5">
+<div class="flex items-center justify-between">
+<span class="text-xs font-semibold uppercase tracking-widest text-[#ffb77d] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm text-[#d97707]">lock</span>
+                Portal de Gestión
+              </span>
+<span class="text-[10px] text-emerald-400 bg-emerald-950/70 border border-emerald-800/60 px-2 py-0.5 rounded-full font-mono">
+                SSL 256-BIT
+              </span>
+</div>
+<h2 class="font-epilogue text-2xl font-bold text-[#fff4e8] tracking-tight">Iniciar Sesión</h2>
+<p class="text-xs text-[#e4beb9]/75 font-body">Acceso seguro al sistema de servicio y cocina</p>
+</div>
+<!-- Dismissible Error Notification Alert -->
+<div class="mb-4 flex items-center justify-between p-3 rounded-lg bg-[#551010]/85 border border-[#ff8f8f]/30 text-[#ffdad6] shadow-md transition-all duration-300" id="error-alert">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-base text-[#ffb4ab]">error</span>
+<span class="text-xs font-medium leading-snug">
+                Credenciales incorrectas. Verifica tu usuario y contraseña.
+              </span>
+</div>
+<button aria-label="Cerrar notificación" class="text-[#ffdad6]/70 hover:text-white p-1 rounded transition-colors ml-2" onclick="document.getElementById('error-alert').style.display='none'" type="button">
+<span class="material-symbols-outlined text-sm">close</span>
+</button>
+</div>
+<!-- Form Element -->
+<form class="space-y-4" onsubmit="event.preventDefault(); handleLoginSubmit();">
+<!-- Input 1: Usuario (Logeo) -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-[#ffdcc3]" for="username">
+                Usuario (Logeo) <span class="text-[#ffb4ab]">*</span>
+</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3.5 text-[#ffb77d]/70 text-lg pointer-events-none">
+                  person
+                </span>
+<input class="w-full h-11 pl-10 pr-3.5 bg-[#250d09]/90 border border-[#5b403d] text-[#fff4e8] placeholder-[#ab8985]/60 text-sm rounded-lg shadow-inner focus:outline-none focus:border-[#d97707] focus:ring-1 focus:ring-[#d97707] transition-all" id="username" placeholder="fran" required="" type="text"/>
+</div>
+</div>
+<!-- Input 2: Contraseña con Toggle Reveal -->
+<div class="space-y-1.5">
+<div class="flex items-center justify-between">
+<label class="block text-xs font-medium text-[#ffdcc3]" for="password">
+                  Contraseña <span class="text-[#ffb4ab]">*</span>
+</label>
+</div>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3.5 text-[#ffb77d]/70 text-lg pointer-events-none">
+                  key
+                </span>
+<input class="w-full h-11 pl-10 pr-10 bg-[#250d09]/90 border border-[#5b403d] text-[#fff4e8] placeholder-[#ab8985]/60 text-sm rounded-lg shadow-inner focus:outline-none focus:border-[#d97707] focus:ring-1 focus:ring-[#d97707] transition-all" id="password" placeholder="Ingresa tu clave secreta" required="" type="password"/>
+<button aria-label="Mostrar u ocultar contraseña" class="absolute right-3 text-[#ffb77d]/70 hover:text-[#ffdcc3] p-1 rounded flex items-center justify-center transition-colors" id="toggle-password" onclick="togglePasswordVisibility()" type="button">
+<span class="material-symbols-outlined text-lg" id="pwd-icon">visibility</span>
+</button>
+</div>
+</div>
+<!-- Options Row: Checkbox & Nota recuperación -->
+<div class="flex items-center justify-between pt-1">
+<label class="flex items-center gap-2 cursor-pointer select-none">
+<input checked="" class="w-4 h-4 rounded bg-[#250d09] border-[#5b403d] text-[#b91c1c] focus:ring-[#b91c1c] accent-[#b91c1c] cursor-pointer" id="remember" type="checkbox"/>
+<span class="text-xs text-[#ffdcc3]/90">Recordar sesión</span>
+</label>
+<span class="text-xs text-[#e4beb9]/70">
+                ¿Olvidaste tu contraseña? La gestiona tu administrador.
+              </span>
+</div>
+<!-- Main CTA Submit Button -->
+<div class="pt-2">
+<button class="w-full h-11 bg-[#b91c1c] hover:bg-[#a01818] active:scale-[0.99] text-white font-epilogue font-semibold text-xs tracking-wider rounded-lg shadow-[0_4px_16px_rgba(185,28,28,0.5)] flex items-center justify-center gap-2 transition-all duration-200 border border-[#ff8f8f]/30" type="submit">
+<span>INICIAR SESIÓN</span>
+<span class="text-sm font-bold">→</span>
+</button>
+</div>
+</form>
+<!-- Need account contact -->
+<div class="text-center pt-4">
+<p class="text-xs text-[#e4beb9]/70">
+              ¿No tienes una cuenta asignada?
+              <span class="text-[#ffb77d] font-medium ml-1">
+                Contactar al Administrador
+              </span>
+</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Bar -->
+<footer class="w-full pt-4 pb-2 border-t border-[#5b403d]/30 flex flex-col sm:flex-row items-center justify-between text-xs text-[#e4beb9]/60 gap-2">
+<p>© 2025 Chifa Yemheng. Todos los derechos reservados.</p>
+<div class="flex items-center gap-4">
+<span class="inline-flex items-center gap-1.5 text-[#ffb77d]/90">
+<span class="material-symbols-outlined text-sm text-[#d97707]">verified_user</span>
+          Cifrado SSL 256-bit Activo
+        </span>
+<span>•</span>
+<span class="hover:text-[#ffdcc3] transition-colors">Privacidad</span>
+<span>•</span>
+<span class="hover:text-[#ffdcc3] transition-colors">Soporte TI</span>
+</div>
+</footer>
+</main>
+</body></html>

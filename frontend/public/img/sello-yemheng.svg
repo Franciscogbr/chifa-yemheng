@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background & lacquer radial gradients -->
+    <radialGradient id="darkBg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1c1212" />
+      <stop offset="100%" stop-color="#0a0606" />
+    </radialGradient>
+    <radialGradient id="lacquerRed" cx="38%" cy="32%" r="65%">
+      <stop offset="0%" stop-color="#c92a2f" />
+      <stop offset="45%" stop-color="#a61e22" />
+      <stop offset="85%" stop-color="#731114" />
+      <stop offset="100%" stop-color="#4d080a" />
+    </radialGradient>
+    <radialGradient id="innerSeal" cx="42%" cy="38%" r="60%">
+      <stop offset="0%" stop-color="#b82226" />
+      <stop offset="70%" stop-color="#8c1519" />
+      <stop offset="100%" stop-color="#5a0b0d" />
+    </radialGradient>
+
+    <!-- Metallic Gold linear gradients -->
+    <linearGradient id="goldLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fae19c" />
+      <stop offset="25%" stop-color="#e5b84c" />
+      <stop offset="50%" stop-color="#fdf3cb" />
+      <stop offset="75%" stop-color="#c59226" />
+      <stop offset="100%" stop-color="#9a6e13" />
+    </linearGradient>
+    <linearGradient id="goldBorder" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f7da8b" />
+      <stop offset="50%" stop-color="#d4a017" />
+      <stop offset="100%" stop-color="#805b0b" />
+    </linearGradient>
+
+    <!-- Filters for subtle luxury lighting -->
+    <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+    <filter id="sealShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#000000" flood-opacity="0.7"/>
+    </filter>
+  </defs>
+
+  <!-- Clean dark luxury backdrop -->
+  <rect width="512" height="512" rx="64" fill="url(#darkBg)" />
+
+  <!-- Main Medallion / Seal Group -->
+  <g filter="url(#sealShadow)">
+    <!-- Outer Gold Rim -->
+    <circle cx="256" cy="256" r="214" fill="none" stroke="url(#goldBorder)" stroke-width="4.5" />
+    <circle cx="256" cy="256" r="206" fill="none" stroke="url(#goldLight)" stroke-width="1.5" opacity="0.6" />
+
+    <!-- Lacquer Crimson Body -->
+    <circle cx="256" cy="256" r="200" fill="url(#lacquerRed)" />
+
+    <!-- Meander / Greek Key / Chinese Cloud Outer Ring Pattern -->
+    <!-- Ring border gold tracks -->
+    <circle cx="256" cy="256" r="198" fill="none" stroke="url(#goldLight)" stroke-width="3" />
+    <circle cx="256" cy="256" r="162" fill="none" stroke="url(#goldLight)" stroke-width="2.5" />
+
+    <!-- Subtle decorative dot ring between tracks -->
+    <circle cx="256" cy="256" r="180" fill="none" stroke="url(#goldLight)" stroke-width="1.5" stroke-dasharray="2, 10" opacity="0.75" />
+
+    <!-- Traditional Auspicious Cloud Arcs in Outer Ring (8 symmetry stations) -->
+    <g stroke="url(#goldLight)" stroke-width="2" fill="none" opacity="0.9" stroke-linecap="round">
+      <!-- 0 deg (Top) -->
+      <path d="M 242 66 Q 256 59 270 66 Q 279 80 268 89 Q 256 93 244 87" />
+      <circle cx="256" cy="76" r="3.5" fill="url(#goldLight)" />
+
+      <!-- 45 deg -->
+      <path d="M 374 121 Q 388 128 393 143 Q 390 159 375 160 Q 363 158 365 144" />
+      <circle cx="379" cy="144" r="3.5" fill="url(#goldLight)" />
+
+      <!-- 90 deg (Right) -->
+      <path d="M 446 242 Q 453 256 446 270 Q 432 279 423 268 Q 419 256 425 244" />
+      <circle cx="436" cy="256" r="3.5" fill="url(#goldLight)" />
+
+      <!-- 135 deg -->
+      <path d="M 391 369 Q 384 384 369 389 Q 353 386 352 371 Q 354 359 368 361" />
+      <circle cx="368" cy="377" r="3.5" fill="url(#goldLight)" />
+
+      <!-- 180 deg (Bottom) -->
+      <path d="M 270 446 Q 256 453 242 446 Q 233 432 244 423 Q 256 419 268 425" />
+      <circle cx="256" cy="436" r="3.5" fill="url(#goldLight)" />
+
+      <!-- 225 deg -->
+      <path d="M 138 391 Q 124 384 119 369 Q 122 353 137 352 Q 149 354 147 368" />
+      <circle cx="133" cy="368" r="3.5" fill="url(#goldLight)" />
+
+      <!-- 270 deg (Left) -->
+      <path d="M 66 270 Q 59 256 66 242 Q 80 233 89 244 Q 93 256 87 268" />
+      <circle cx="76" cy="256" r="3.5" fill="url(#goldLight)" />
+
+      <!-- 315 deg -->
+      <path d="M 121 138 Q 128 124 143 119 Q 159 122 160 137 Q 158 149 144 147" />
+      <circle cx="144" cy="133" r="3.5" fill="url(#goldLight)" />
+    </g>
+
+    <!-- Inner Core Medallion Disc -->
+    <circle cx="256" cy="256" r="154" fill="url(#innerSeal)" />
+    <circle cx="256" cy="256" r="150" fill="none" stroke="url(#goldLight)" stroke-width="3.5" />
+    <circle cx="256" cy="256" r="142" fill="none" stroke="url(#goldBorder)" stroke-width="1.5" stroke-dasharray="5, 5" opacity="0.8" />
+    <circle cx="256" cy="256" r="134" fill="none" stroke="url(#goldLight)" stroke-width="2" />
+
+    <!-- Corner auspicious cloud brackets inside inner disc -->
+    <g stroke="url(#goldLight)" stroke-width="2.5" fill="none" opacity="0.85">
+      <!-- Top Left -->
+      <path d="M 174 212 C 170 188 188 170 212 174 C 200 184 184 200 174 212 Z" />
+      <path d="M 166 195 Q 195 166 220 170" />
+
+      <!-- Top Right -->
+      <path d="M 338 212 C 342 188 324 170 300 174 C 312 184 328 200 338 212 Z" />
+      <path d="M 346 195 Q 317 166 292 170" />
+
+      <!-- Bottom Left -->
+      <path d="M 174 300 C 170 324 188 342 212 338 C 200 328 184 312 174 300 Z" />
+      <path d="M 166 317 Q 195 346 220 342" />
+
+      <!-- Bottom Right -->
+      <path d="M 338 300 C 342 324 324 342 300 338 C 312 328 328 312 338 300 Z" />
+      <path d="M 346 317 Q 317 346 292 342" />
+    </g>
+
+    <!-- Traditional Imperial Monogram / Seal Glyph (益恒 - Yemheng Seal Character) -->
+    <!-- Stylized architectural archaic Chinese seal script rendered with exquisite gold ribbon geometry -->
+    <g filter="url(#goldGlow)" fill="url(#goldLight)" stroke="url(#goldBorder)" stroke-width="1.2">
+      <!-- Top Crown Horizontal Bar -->
+      <rect x="206" y="184" width="100" height="9" rx="4.5" />
+      <circle cx="206" cy="188.5" r="4.5" />
+      <circle cx="306" cy="188.5" r="4.5" />
+
+      <!-- Upper Trident / Vertical Crest Columns -->
+      <path d="M 224 189 L 224 238 C 224 242 228 245 233 245 L 235 245 C 240 245 243 241 243 236 L 243 189 Z" />
+      <path d="M 251 168 L 261 168 L 261 248 L 251 248 Z" />
+      <path d="M 269 189 L 269 236 C 269 241 272 245 277 245 L 279 245 C 284 245 288 242 288 238 L 288 189 Z" />
+
+      <!-- Upper Gate Arch / Flank Wings -->
+      <path d="M 188 206 C 188 201 193 197 199 197 L 205 197 L 205 242 C 196 242 188 235 188 226 Z" />
+      <path d="M 324 206 C 324 201 319 197 313 197 L 307 197 L 307 242 C 316 242 324 235 324 226 Z" />
+
+      <!-- Middle Waist Seal Divider -->
+      <rect x="182" y="249" width="148" height="9" rx="4.5" />
+      <circle cx="182" cy="253.5" r="4" />
+      <circle cx="330" cy="253.5" r="4" />
+
+      <!-- Center Altar / Crucible (Sun & Hearth Emblem) -->
+      <!-- Center vertical spine -->
+      <rect x="251" y="258" width="10" height="66" rx="3" />
+
+      <!-- Symmetric Pedestal Legs (Stylized Heng / Longevity & Prosperity Pillars) -->
+      <path d="M 214 258 L 224 258 L 224 306 L 210 316 L 202 305 L 214 296 Z" />
+      <path d="M 298 258 L 288 258 L 288 306 L 302 316 L 310 305 L 298 296 Z" />
+
+      <!-- Lower Interior Stepped Platform -->
+      <rect x="226" y="282" width="60" height="7.5" rx="3" />
+      <rect x="216" y="306" width="80" height="8" rx="4" />
+
+      <!-- Imperial Base Anchor Bar -->
+      <path d="M 194 324 L 318 324 C 323 324 327 328 327 333 C 327 338 323 342 318 342 L 194 342 C 189 342 185 338 185 333 C 185 328 189 324 194 324 Z" />
+
+      <!-- Traditional Base Feet / Supports -->
+      <polygon points="210,342 224,342 216,356 200,356" />
+      <polygon points="302,342 288,342 296,356 312,356" />
+      <rect x="251" y="342" width="10" height="15" rx="2" />
+    </g>
+
+    <!-- Subtle Auspicious Pearl at Apex & Base -->
+    <circle cx="256" cy="154" r="5" fill="url(#goldLight)" filter="url(#goldGlow)" />
+    <circle cx="256" cy="372" r="4.5" fill="url(#goldLight)" filter="url(#goldGlow)" />
+  </g>
+</svg>

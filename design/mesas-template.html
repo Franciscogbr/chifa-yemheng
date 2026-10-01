@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<!-- REFERENCIA Stitch — Mesas y Ambientes (CHIFA YEMHENG). HTML íntegro en el historial del chat.
+     Cambios aprobados al portar a React (ver openspec/changes/add-crud-mesas/design.md):
+     1. Sin tarjeta Plan/Licencia/Administrar Plan, sin "Carlos Rojas" (usuario real),
+        sin role-switcher. 2. Esquema de números ≤5 chars (M-01/T-01/B-01/V-01; "VIP-01"
+        no cabe en Numero varchar(5)). 3. "Nuevo Ambiente" con alert() → mini-CRUD real.
+     4. Guardado con alert() → API real. 5. Mapa SOLO LECTURA (estados operativos los
+        mueven comandas/reservas vía USPs, no el admin).
+     Estructura: header/migas + badge roles + botón +Nueva Mesa + tabs Mapa/Mesas/Ambientes
+     + MAPA: leyenda 5 estados oficiales (LIBRE #28A745, OCUPADA #DC3545, RESERVADA #FFC107,
+     POR COBRAR #17A2B8, FUERA DE SERVICIO #6C757D) con conteos + grillas por ambiente
+     (Salón 4col, Terraza 6col, Barra+VIP 2col) con tarjetas (número, tipo, capacidad,
+     badge estado, contexto mozo/comanda/tiempo — contexto en vivo diferido a mapa-mesas)
+     + MESAS: tabla (Número, Ambiente, Capacidad, Tipo, Estado Operativo, Código QR
+     yemheng.pe/m/*, Estado Admin, Editar+toggle) + filtro + AMBIENTES: 4 tarjetas con
+     conteo + Nuevo Ambiente + MODAL (Ambiente*, Número*, Capacidad*, Tipo, Detalle,
+     QR preview en vivo yemheng.pe/m/{NUMERO}) + responsive (grids 1/2/3/4/6, tabla scroll,
+     modal full-screen móvil). -->
+<html lang="es"><head><meta charset="utf-8"/><title>Mesas y Ambientes — CHIFA YEMHENG (referencia)</title></head>
+<body><!-- Ver HTML completo pegado por el usuario en el chat el 2026-09-28. --></body></html>
