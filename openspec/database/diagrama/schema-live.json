@@ -1,0 +1,119 @@
+{
+  "tablas": 46,
+  "columnas": 670,
+  "fks": 66,
+  "modulos": [
+    {
+      "id": "M01",
+      "nombre": "UBIGEO",
+      "tablas": [
+        "departamento",
+        "provincia",
+        "distrito"
+      ]
+    },
+    {
+      "id": "M02",
+      "nombre": "PERSONAS Y CLIENTES",
+      "tablas": [
+        "tipo_identidad",
+        "persona",
+        "empresa",
+        "cliente"
+      ]
+    },
+    {
+      "id": "M03",
+      "nombre": "RECURSOS HUMANOS",
+      "tablas": [
+        "cargo",
+        "contrato",
+        "empleado"
+      ]
+    },
+    {
+      "id": "M04",
+      "nombre": "SEGURIDAD Y AUDITORÍA",
+      "tablas": [
+        "tipo_usuario",
+        "usuario",
+        "modulo",
+        "rol",
+        "permiso",
+        "rol_permiso",
+        "usuario_rol",
+        "auditoria"
+      ]
+    },
+    {
+      "id": "M05",
+      "nombre": "SALÓN Y MESAS",
+      "tablas": [
+        "ambiente",
+        "estado_mesa",
+        "tipo_mesa",
+        "mesa"
+      ]
+    },
+    {
+      "id": "M06",
+      "nombre": "CARTA",
+      "tablas": [
+        "unidad_medida",
+        "categoria_producto",
+        "producto"
+      ]
+    },
+    {
+      "id": "M07",
+      "nombre": "PEDIDOS Y COMANDAS",
+      "tablas": [
+        "tipo_pedido",
+        "estado_pedido",
+        "pedido",
+        "detalle_pedido",
+        "reserva"
+      ]
+    },
+    {
+      "id": "M08",
+      "nombre": "DELIVERY",
+      "tablas": [
+        "pedido_delivery"
+      ]
+    },
+    {
+      "id": "M09",
+      "nombre": "CAJA",
+      "tablas": [
+        "metodo_pago",
+        "caja",
+        "apertura_caja",
+        "tipo_movimiento_caja",
+        "concepto_caja",
+        "movimiento_caja",
+        "serie_documento"
+      ]
+    },
+    {
+      "id": "M10",
+      "nombre": "FACTURACIÓN Y VENTAS",
+      "tablas": [
+        "venta",
+        "detalle_venta",
+        "boleta",
+        "factura",
+        "nota_credito",
+        "pago_venta"
+      ]
+    },
+    {
+      "id": "M11",
+      "nombre": "INVENTARIO",
+      "tablas": [
+        "receta",
+        "movimiento_inventario"
+      ]
+    }
+  ]
+}

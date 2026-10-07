@@ -19,6 +19,7 @@
     "express-rate-limit": "^7.4.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "object-assign": "^4.1.1",
     "pg": "^8.23.0",
     "ws": "^8.22.0",
     "zod": "^4.1.0"
