@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AuthGuard, PublicGuard, RoleGuard, AreaGuard, ClienteAuthGuard, ClientePublicGuard } from './guards';
 import { ADMIN_ROLES } from './admin-access';
+import { useAuth } from '../features/auth/login/auth-context';
 import { RouteError } from '../shared/ui/route-error';
 import { AdminShell } from '../layouts/admin-shell';
 import ClientLayout from '../layouts/client-layout';
@@ -59,6 +60,13 @@ import { ClienteMiConsumoPage } from '../features/cliente/consumo/mi-consumo-pag
 import { ClienteResetClavePage } from '../features/cliente/reset/reset-clave-page';
 import MesaQrPage from '../features/cliente/mesa/mesa-qr-page';
 
+function AdminHomeRoute() {
+  const { usuario } = useAuth();
+  if (usuario?.tipo.toUpperCase() === 'CAJERO') {
+    return <Navigate to="/admin/caja" replace />;
+  }
+  return <RoleGuard roles={ADMIN_ROLES.adminSupervisor}><DashboardPage /></RoleGuard>;
+}
 
 
 export const router = createBrowserRouter([
@@ -158,7 +166,7 @@ export const router = createBrowserRouter([
     element: <AuthGuard><AdminShell /></AuthGuard>,
     errorElement: <RouteError />,
     children: [
-      { index: true, element: <RoleGuard roles={ADMIN_ROLES.adminSupervisor}><DashboardPage /></RoleGuard> },
+      { index: true, element: <AdminHomeRoute /> },
       {
         path: 'categorias',
         element: <RoleGuard roles={ADMIN_ROLES.adminSupervisor}><CategoriasPage /></RoleGuard>,

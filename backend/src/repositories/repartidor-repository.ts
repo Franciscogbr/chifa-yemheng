@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js';
 import { DeliveryError, type Delivery, type DeliveryLista } from '../models/delivery.js';
+import type { RepartidorEntregasQuery } from '../schemas/repartidor.js';
 import { updateAudit } from '../utils/auditoria.js';
 import { listarPendientesRendicion, type PendienteRendicionItem } from './rendicion-repository.js';
 
@@ -83,7 +84,12 @@ function mapRow(row: DeliveryRow): Delivery {
   };
 }
 
-export async function listarMisEntregas(empleadoId: number, estado?: 'P' | 'R' | 'E' | 'C', page = 1, limit = 20): Promise<DeliveryLista> {
+export async function listarMisEntregas(
+  empleadoId: number,
+  estado: RepartidorEntregasQuery['estado'],
+  page: number,
+  limit: number,
+): Promise<DeliveryLista> {
   const desde = (page - 1) * limit;
   const hasta = desde + limit - 1;
 
@@ -95,7 +101,7 @@ export async function listarMisEntregas(empleadoId: number, estado?: 'P' | 'R' |
     .order('feccre', { ascending: false })
     .range(desde, hasta);
 
-  if (estado) query = query.eq('situacion', estado);
+  if (estado) query = query.in('situacion', estado);
 
   const { data, error, count } = await query;
   if (error) throw new Error(`DB_LIST_FAIL: ${error.message}`);

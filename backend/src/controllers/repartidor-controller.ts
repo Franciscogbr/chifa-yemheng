@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from '../middlewares/auth-guard.js';
 import { z } from 'zod';
 import { DeliveryError } from '../models/delivery.js';
 import { listarMisEntregasService, getMiEntregaDetalleService, iniciarRutaRepartidorService, confirmarEntregaRepartidorService, actualizarUbicacionRepartidorService, getPorRendirService } from '../services/repartidor-service.js';
+import { repartidorEntregasQuerySchema } from '../schemas/repartidor.js';
 import { getPc } from '../utils/auditoria.js';
 
 const ubicacionSchema = z.object({
@@ -17,10 +18,13 @@ function sesion(req: Request): { usuarioId: number; empleadoId: number; logeo: s
 }
 
 export async function getMisEntregas(req: Request, res: Response): Promise<void> {
+  const parsed = repartidorEntregasQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.flatten() });
+    return;
+  }
   const s = sesion(req);
-  const estado = req.query.estado as 'P' | 'R' | 'E' | 'C' | undefined;
-  const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 20;
+  const { estado, page, limit } = parsed.data;
   res.json(await listarMisEntregasService(s.empleadoId, estado, page, limit));
 }
 

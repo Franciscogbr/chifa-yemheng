@@ -20,12 +20,28 @@ function validateToken(token: string | null): { exp?: number; tipo?: string } | 
   }
 }
 
+function rutaInicialStaff(tipo: string | undefined): string {
+  switch (tipo?.toUpperCase()) {
+    case 'CAJERO':
+      return '/admin/caja';
+    case 'MOZO':
+      return '/admin/mozo';
+    case 'COCINA':
+      return '/admin/cocina';
+    case 'DELIVERY':
+    case 'REPARTIDOR':
+      return '/repartidor/mis-entregas';
+    default:
+      return '/admin';
+  }
+}
+
 /** PublicGuard: si ya hay sesión staff VÁLIDA, fuera del login (sincrónico). */
 export function PublicGuard({ children }: { children: ReactNode }) {
   const { token, usuario } = useAuth();
   const payload = validateToken(token);
   if (payload && usuario) {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to={rutaInicialStaff(usuario.tipo)} replace />;
   }
   return <>{children}</>;
 }

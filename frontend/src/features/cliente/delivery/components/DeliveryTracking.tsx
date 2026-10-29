@@ -61,25 +61,25 @@ export function DeliveryTracking({ deliveryId }: { deliveryId: number }) {
       </div>
 
       <div className="y-panel" style={{ padding: 22 }}>
-        <div className="y-track">
-          {PASOS.map((p, i) => {
-            const done = idx >= 0 && i < idx;
-            const now = i === idx;
-            return (
-              <div key={p.id} className={`y-tstep ${done ? 'done' : ''} ${now ? 'now' : ''}`}>
-                <div className="dot"><p.icon size={16} /></div>
-                <div>
-                  <b>{p.label}</b>
-                  <small>{done ? 'Completado' : now ? 'En curso' : 'Pendiente'}</small>
+        {ubicacion.situacion === 'C' ? (
+          <div className="y-banner" role="status" style={{ marginTop: 14, borderTop: '1px solid var(--line2)', paddingTop: 14 }}>
+            Este delivery fue cancelado. Contacta al restaurante si necesitas más información.
+          </div>
+        ) : (
+          <div className="y-track">
+            {PASOS.map((p, i) => {
+              const done = idx >= 0 && i < idx;
+              const now = i === idx;
+              return (
+                <div key={p.id} className={`y-tstep ${done ? 'done' : ''} ${now ? 'now' : ''}`}>
+                  <div className="dot"><p.icon size={16} /></div>
+                  <div>
+                    <b>{p.label}</b>
+                    <small>{done ? 'Completado' : now ? 'En curso' : 'Pendiente'}</small>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {ubicacion.situacion === 'C' && (
-          <div className="y-banner" style={{ marginTop: 14, borderTop: '1px solid var(--line2)', paddingTop: 14 }}>
-            Este delivery fue cancelado.
+              );
+            })}
           </div>
         )}
 
@@ -100,17 +100,17 @@ export function DeliveryTracking({ deliveryId }: { deliveryId: number }) {
           )}
         </div>
 
-        {pins.length > 0 ? (
+        {ubicacion.situacion !== 'C' && pins.length > 0 ? (
           <div className="mt-4">
             <MapLeaflet pins={pins} readonly center={center} zoom={14} height="280px" />
           </div>
-        ) : (
+        ) : ubicacion.situacion !== 'C' ? (
           <div className="mt-4 p-3 rounded-lg bg-gray-50 border border-gray-300">
             <p className="text-sm text-gray-600" style={{ margin: 0 }}>
               Aún no hay ubicación del repartidor disponible.
             </p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

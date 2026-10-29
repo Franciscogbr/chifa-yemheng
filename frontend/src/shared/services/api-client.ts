@@ -109,9 +109,13 @@ class ApiClient {
   }
 
   // Repartidor
-  getMisEntregas(params?: { estado?: string; page?: number; limit?: number }) {
-    const query = buildQuery(params);
-    return this.request<DeliveryListaShared>(`/repartidor/entregas${query ? `?${query}` : ''}`);
+  getMisEntregas(params?: { estado?: Array<'P' | 'R' | 'E' | 'C'>; page?: number; limit?: number }) {
+    const query = new URLSearchParams();
+    if (params?.estado) query.set('estado', params.estado.join(','));
+    if (params?.page !== undefined) query.set('page', String(params.page));
+    if (params?.limit !== undefined) query.set('limit', String(params.limit));
+    const queryString = query.toString();
+    return this.request<DeliveryListaShared>(`/repartidor/entregas${queryString ? `?${queryString}` : ''}`);
   }
 
   getMiEntrega(id: number) {

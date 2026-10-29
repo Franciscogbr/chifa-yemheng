@@ -1,6 +1,7 @@
 import type { Delivery, DeliveryLista } from '../models/delivery.js';
 import { listarMisEntregas, getMiEntregaDetalle, iniciarRutaRepartidor, confirmarEntregaRepartidor, actualizarUbicacionRepartidor, getPorRendir, type PorRendirItem } from '../repositories/repartidor-repository.js';
 import { DeliveryError } from '../models/delivery.js';
+import type { RepartidorEntregasQuery } from '../schemas/repartidor.js';
 import { pushService } from './push-service.js';
 import { supabase } from '../config/supabase.js';
 
@@ -18,7 +19,12 @@ async function getDeliveryInfoForPush(id: number) {
   return data;
 }
 
-export async function listarMisEntregasService(empleadoId: number, estado?: 'P' | 'R' | 'E' | 'C', page = 1, limit = 20): Promise<DeliveryLista> {
+export async function listarMisEntregasService(
+  empleadoId: number,
+  estado: RepartidorEntregasQuery['estado'],
+  page: number,
+  limit: number,
+): Promise<DeliveryLista> {
   return listarMisEntregas(empleadoId, estado, page, limit);
 }
 

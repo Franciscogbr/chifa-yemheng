@@ -111,6 +111,9 @@ Fuente:
 PEDIDO_DELIVERY (ID_Empleado = yo) + PEDIDO + CLIENTE
 ```
 
+Las listas se consultan paginadas (20 por página). "Historial" incluye entregas
+finalizadas y canceladas; el servidor valida estado, página y límite.
+
 Filtro default:
 
 ```text
@@ -239,7 +242,7 @@ SUPERVISOR consulta global en seguimiento-entregas.md.
 # APIs
 
 ```http
-GET /api/v1/repartidor/entregas?estado=P,R
+GET /api/v1/repartidor/entregas?estado=P,R&page=1&limit=20
 GET /api/v1/repartidor/entregas/{id}
 PATCH /api/v1/repartidor/entregas/{id}/ruta
 PATCH /api/v1/repartidor/entregas/{id}/entregar
