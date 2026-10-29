@@ -34,10 +34,10 @@ const selectClase =
   'w-full cursor-pointer appearance-none rounded-lg bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none transition-colors hover:bg-[#EFEFEF] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-[#A61E22]';
 
 /**
- * Tres selects en cadena: Departamento → Provincia → Distrito.
+ * Tres selects en cadena: Departamento → Provincia → Distrito
  * Dep/prov se derivan del `value` (distrito); en manual, un override local
  * sostiene la selección parcial hasta elegir distrito. Cambiar un nivel
- * superior resetea los inferiores a 0. Valor `0` = Otro (= NULL en BD).
+ * superior resetea los inferiores a 0. Valor `0` = Otro (= NULL en BD)
  */
 export function UbicacionPicker({
   value,
@@ -63,7 +63,7 @@ export function UbicacionPicker({
     }
   }, [value]);
 
-  // La cadena resuelta remotamente tiene prioridad: no depende del listado ni del FK vinculado.
+  // La cadena resuelta remotamente tiene prioridad: no depende del listado ni del FK vinculado
   useEffect(() => {
     if (!prefillChain?.distId || prefillChain.token === ultimoPrefillToken.current) {
       return;
