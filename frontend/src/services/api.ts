@@ -1,3 +1,4 @@
+//base de datos
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
