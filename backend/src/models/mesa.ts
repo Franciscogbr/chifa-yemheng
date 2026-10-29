@@ -1,4 +1,4 @@
-/** Tipos del módulo mesas (mesas.md + MESA/AMBIENTE/TIPO_MESA/ESTADO_MESA). */
+/** Tipos del módulo mesas (mesas.md + MESA/AMBIENTE/TIPO_MESA/ESTADO_DE_MESA). */
 export type EstadoRegistro = 'A' | 'I';
 
 export interface Mesa {
@@ -34,7 +34,7 @@ export interface Ambiente {
   estado: EstadoRegistro;
 }
 
-/** Pedido abierto por mesa (mapa en vivo): mozo + consumo en curso. */
+/** Pedido abierto por mesa (mapa en vivo): mozo + consumo en curso */
 export interface OcupacionMesa {
   mesaId: number;
   pedido: string;
