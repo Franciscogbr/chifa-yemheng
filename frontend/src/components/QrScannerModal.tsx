@@ -7,7 +7,7 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
 interface QrScannerModalProps {
   open: boolean;
   onClose: () => void;
-  onScan: (codigo: string, ambiente: string) => void;
+  onScan: (mesaId: string, ambiente: string) => void;
 }
 
 export function QrScannerModal({ open, onClose, onScan }: QrScannerModalProps) {
@@ -68,7 +68,7 @@ export function QrScannerModal({ open, onClose, onScan }: QrScannerModalProps) {
         .then(async (res) => {
           if (!res.ok) throw new Error('QR_INVALIDO');
           const body = await res.json();
-          onScanRef.current(String(body.id), typeof body?.ambiente === 'string' ? body.ambiente : '');
+           onScanRef.current(String(body.id), typeof body?.ambiente === 'string' ? body.ambiente : '');
         })
         .catch(() => {
           if (!cancelado) marcarInvalido(codigo);

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factura Electrónica A4 · F001-00000200</title>
+<style>
+  :root {
+    --g900: #1f1f1f; --g800: #2e2e2e; --g700: #444444; --g600: #5b5b5b;
+    --g500: #737373; --g400: #9a9a9a; --g300: #c4c4c4; --g200: #dcdcdc;
+    --g150: #e8e8e8; --g100: #f3f3f3; --g50: #fafafa;
+    --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Playfair Display", ui-serif, Georgia, serif;
+  }
+  @page { size: A4; margin: 18mm 15mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); background: #ececec; color: var(--g800); font-size: 12px; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .hoja { width: 210mm; min-height: 297mm; margin: 0 auto; background: #ffffff; padding: 16mm 14mm; box-shadow: 0 8px 32px rgba(0,0,0,0.14); }
+  @media print { body { background: #fff; padding: 0; } .hoja { box-shadow: none; width: auto; padding: 0; } .toolbar { display: none !important; } }
+  .toolbar { max-width: 210mm; margin: 16px auto 8px; display: flex; gap: 10px; align-items: center; }
+  .toolbar button { background: #444444; color: #fff; border: none; padding: 9px 18px; border-radius: 4px; font: 600 13px var(--font-sans); cursor: pointer; }
+  .toolbar button:hover { background: #1f1f1f; }
+  .toolbar span { font-size: 12px; color: #666; }
+
+  .cab { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 6px; }
+  .cab .empresa { flex: 1; display: flex; gap: 16px; }
+  .logo { width: 132px; height: 132px; border: 1.5px solid var(--g300); border-radius: 6px; display: grid; place-items: center; flex: none; text-align: center; padding: 10px; }
+  .logo .marca { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: 0.12em; color: var(--g800); }
+  .logo .rubro { font-size: 9px; letter-spacing: 0.35em; color: var(--g500); text-transform: uppercase; margin-top: 4px; }
+  .datos-empresa { font-size: 11.5px; color: var(--g600); line-height: 1.65; align-self: center; }
+  .datos-empresa .rs { font-size: 15px; font-weight: 700; color: var(--g900); margin-bottom: 2px; }
+  .datos-empresa .nc { font-size: 12px; font-weight: 600; color: var(--g700); margin-bottom: 8px; }
+  .datos-empresa b { color: var(--g800); font-weight: 600; }
+
+  .doc-box { width: 66mm; flex: none; border: 2px solid var(--g800); }
+  .doc-box .tipo { text-align: center; padding: 10px 8px 8px; border-bottom: 2px solid var(--g800); }
+  .doc-box .tipo .t1 { font-size: 20px; font-weight: 800; letter-spacing: 0.08em; color: var(--g900); text-transform: uppercase; }
+  .doc-box .tipo .t2 { font-size: 9px; color: var(--g500); letter-spacing: 0.22em; text-transform: uppercase; margin-top: 2px; }
+  .doc-box .tipo .elect { font-size: 9px; color: var(--g600); letter-spacing: 0.18em; margin-top: 4px; border-top: 1px solid var(--g200); padding-top: 5px; text-transform: uppercase; }
+  .doc-num { text-align: center; padding: 8px; }
+  .doc-num .serie { font-size: 21px; font-weight: 800; letter-spacing: 0.04em; color: var(--g900); }
+  .doc-num .ruc-line { font-size: 10px; color: var(--g500); border-top: 1px solid var(--g200); margin-top: 6px; padding-top: 5px; letter-spacing: 0.05em; }
+
+  .doc-meta { margin-top: 8px; border: 1px solid var(--g300); font-size: 11px; }
+  .doc-meta .row { display: flex; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid var(--g200); gap: 12px; }
+  .doc-meta .row:last-child { border-bottom: 0; }
+  .doc-meta .row span:first-child { color: var(--g500); }
+  .doc-meta .row span:last-child { color: var(--g900); font-weight: 600; text-align: right; }
+
+  .separador { height: 2px; background: var(--g800); margin: 14px 0; }
+  .sec-title { font-size: 10px; font-weight: 700; letter-spacing: 0.18em; color: var(--g500); text-transform: uppercase; margin-bottom: 6px; }
+
+  .cliente { border: 1px solid var(--g300); padding: 10px 12px; font-size: 11.5px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 32px; color: var(--g600); }
+  .cliente b { color: var(--g900); font-weight: 600; }
+  .cliente .full { grid-column: 1 / -1; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 14px; }
+  thead th { background: var(--g800); color: #ffffff; font-weight: 600; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 7px 8px; border: 1px solid var(--g800); }
+  tbody td { padding: 6px 8px; border: 1px solid var(--g200); color: var(--g700); vertical-align: top; }
+  tbody tr:nth-child(even) td { background: var(--g50); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .cod { color: var(--g500); font-size: 10px; }
+  tbody .desc b { color: var(--g900); font-weight: 600; display: block; }
+  tbody .desc small { color: var(--g400); font-size: 10px; }
+  tfoot td { border: 0; padding: 5px 8px; }
+
+  .fin { display: flex; gap: 18px; align-items: flex-start; }
+  .letras { flex: 1; }
+  .letras .lbl { font-size: 10px; letter-spacing: 0.14em; color: var(--g500); text-transform: uppercase; }
+  .letras .txt { font-size: 12.5px; color: var(--g900); font-weight: 600; margin-top: 3px; border: 1px solid var(--g300); background: var(--g100); padding: 7px 10px; }
+  .resumen { width: 78mm; flex: none; background: var(--g100); border: 1px solid var(--g300); box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,0.05); }
+  .resumen .r { display: flex; justify-content: space-between; padding: 5px 12px; font-size: 11.5px; color: var(--g600); }
+  .resumen .r span:last-child { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--g800); }
+  .resumen .sep { border-top: 1px solid var(--g300); margin: 3px 8px; }
+  .resumen .total { display: flex; justify-content: space-between; align-items: center; background: var(--g800); color: #fff; padding: 8px 12px; margin: 4px; border-radius: 2px; }
+  .resumen .total .l { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .resumen .total .v { font-family: var(--font-display); font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  .box { border: 1px solid var(--g200); padding: 10px 12px; }
+  .box ul { list-style: none; font-size: 11px; color: var(--g600); line-height: 1.7; }
+  .box ul b { color: var(--g800); font-weight: 600; }
+  .qr { width: 26mm; height: 26mm; display: grid; place-items: center; background:
+      conic-gradient(var(--g900) 25%, transparent 0 50%, var(--g900) 0 75%, transparent 0) 0 0/6px 6px,
+      conic-gradient(var(--g900) 25%, transparent 0 50%, var(--g900) 0 75%, transparent 0) 3px 3px/6px 6px, #fff;
+    border: 1px solid var(--g800); }
+  .qr-wrap { display: flex; gap: 14px; align-items: center; }
+
+  .credito { border-left: 3px solid var(--g300); background: var(--g50); padding: 8px 12px; font-size: 11px; color: var(--g600); }
+
+  footer { margin-top: 18px; border-top: 2px solid var(--g800); padding-top: 10px; text-align: center; font-size: 10.5px; color: var(--g500); line-height: 1.7; }
+  footer b { color: var(--g700); }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="window.print()">Imprimir / Guardar PDF</button>
+    <span>Formato A4 · 210 × 297 mm · escala de grises corporativa · márgenes 18/15 mm</span>
+  </div>
+
+  <div class="hoja">
+    <div class="cab">
+      <div class="empresa">
+        <div class="logo"><div><div class="marca">YEMHENG</div><div class="rubro">Chifa Peruano</div></div></div>
+        <div class="datos-empresa">
+          <div class="rs">Restaurante Yemheng S.A.C.</div>
+          <div class="nc">Chifa Yemheng</div>
+          <div><b>RUC:</b> 20587654321</div>
+          <div><b>Dirección fiscal:</b> Av. Arequipa N° 1234, Lince — Lima, Perú</div>
+          <div><b>Teléfono:</b> (01) 470-0000 &nbsp;·&nbsp; <b>Cel:</b> 987 654 321</div>
+          <div><b>Correo:</b> ventas@yemheng.pe &nbsp;·&nbsp; <b>Web:</b> www.yemheng.pe</div>
+        </div>
+      </div>
+      <div class="doc-box">
+        <div class="tipo">
+          <div class="t1">Factura</div>
+          <div class="t2">Factura de venta</div>
+          <div class="elect">Factura electrónica</div>
+        </div>
+        <div class="doc-num">
+          <div class="serie">F001-00000200</div>
+          <div class="ruc-line">RUC: 20587654321</div>
+        </div>
+      </div>
+    </div>
+    <div class="separador"></div>
+
+    <div class="doc-meta">
+      <div class="row"><span>Fecha de emisión</span><span>05/11/2026</span></div>
+      <div class="row"><span>Hora de emisión</span><span>14:42:33</span></div>
+      <div class="row"><span>Moneda</span><span>Soles (PEN — S/)</span></div>
+      <div class="row"><span>Condición de pago</span><span>Contado</span></div>
+      <div class="row"><span>Tipo de operación</span><span>Venta interna (0101)</span></div>
+    </div>
+
+    <div class="sec-title" style="margin-top:12px;">Datos del cliente</div>
+    <div class="cliente">
+      <div><span>Razón Social: </span><b>Inversiones Comerciales Los Cerros S.R.L.</b></div>
+      <div><span>RUC: </span><b>20491325876</b></div>
+      <div><span>Tipo doc.: </span><b>RUC (Registro Único de Contribuyentes)</b></div>
+      <div><span>Condición: </span><b>Contribuyente activo — sujeto a crédito fiscal</b></div>
+      <div class="full"><span>Dirección fiscal: </span><b>Av. Aviación N° 2821, San Borja — Lima, Perú</b></div>
+      <div class="full"><span>Dirección de entrega: </span><b>Mesa 12 · Salón principal · Comanda #2408</b></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:10%;">Código</th>
+          <th style="width:34%;">Descripción</th>
+          <th style="width:7%;" class="num">Cant.</th>
+          <th style="width:7%;" class="num">Unid.</th>
+          <th style="width:12%;" class="num">P. Unit</th>
+          <th style="width:10%;" class="num">Dscto</th>
+          <th style="width:8%;" class="num">IGV</th>
+          <th style="width:12%;" class="num">Importe</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="cod">SV-ALM-001</td>
+          <td class="desc"><b>Servicio de alimentación en Mesa Compartida 12</b><small>Código SUNAT: 0021050 · Servicio de restaurante</small></td>
+          <td class="num">1.00</td><td class="num">SERV</td>
+          <td class="num">86.95</td><td class="num">0.00</td><td class="num">15.65</td>
+          <td class="num"><b>102.60</b></td>
+        </tr>
+        <tr>
+          <td class="cod" colspan="2"><small> Constituido por el consumo de los participantes: Ana García (S/ 48.50), Luis Rojas (S/ 31.20), Carmen Díaz (S/ 22.90).</small></td>
+          <td class="num"></td><td class="num"></td><td class="num"></td><td class="num"></td><td class="num"></td><td class="num"></td>
+        </tr>
+      </tbody>
+      <tfoot><tr><td colspan="8"></td></tr></tfoot>
+    </table>
+
+    <div class="fin">
+      <div class="letras">
+        <div class="lbl">Son (importe en letras)</div>
+        <div class="txt">SON: CIENTO DOS CON 60/100 SOLES</div>
+        <div class="lbl" style="margin-top:10px;">Forma de pago</div>
+        <div class="txt" style="font-weight:600;">TRANSFERENCIA BANCARIA — Operación N° 00452187</div>
+      </div>
+      <div class="resumen">
+        <div class="r"><span>Sub Total</span><span>102.60</span></div>
+        <div class="r"><span>Descuento (-)</span><span>0.00</span></div>
+        <div class="sep"></div>
+        <div class="r"><span>Valor Venta</span><span>86.95</span></div>
+        <div class="r"><span>IGV 18%</span><span>15.65</span></div>
+        <div class="r"><span>Otros Cargos</span><span>0.00</span></div>
+        <div class="sep"></div>
+        <div class="total"><span class="l">Total a pagar</span><span class="v">S/ 102.60</span></div>
+      </div>
+    </div>
+
+    <div class="sec-title" style="margin-top:16px;">Representación impresa · Información electrónica</div>
+    <div class="grid2">
+      <div class="box">
+        <div class="qr-wrap">
+          <div class="qr"></div>
+          <ul>
+            <li><b>Hash CDR:</b> f2G7mT0sW5qY8zB4cR1nE6hL3pV9kD2j</li>
+            <li><b>Código de barra CPE:</b> 20587654321|F001|0200|…|102.60</li>
+            <li><b>Envío SUNAT:</b> 05/11/2026 14:45:10</li>
+            <li><b>Estado CPE:</b> ACEPTADO (CDR 0)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="box">
+        <ul>
+          <li><b>XML generado:</b> F001-00000200.xml — UBL 2.1</li>
+          <li><b>Representación impresa:</b> v1.0</li>
+          <li><b>Usuario registrador:</b> mperes (Caja 02)</li>
+          <li><b>Caja / Terminal:</b> CAJA-02 / POS-14</li>
+          <li><b>Comanda origen:</b> #2408 — Mesa 12 — consolidado final (todos los participantes liquidaron)</li>
+          <li><b>Comprobante individual de referencia:</b> B001-00001230, B001-00001231, B001-00001232</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec-title" style="margin-top:14px;">Observaciones</div>
+    <div class="credito">
+      • Factura emitida en el marco del servicio de mesa compartida (modo POR_CONSUMO). Comprobante consolidado final de la mesa.<br>
+      • Boletas individuales previas de los participantes no duplican importes: esta factura consolida el total final de la mesa.<br>
+      • Referencia interna: comanda #2408 · cuaderno de ventas de Noviembre 2026.
+    </div>
+
+    <footer>
+      <b>RESTAURANTE YEMHENG S.A.C. — RUC 20587654321</b><br>
+      Representación impresa de la Factura Electrónica.<br>
+      Este documento puede verificarse en <b>portal.sunat.gob.pe</b>. Gracias por su preferencia.
+    </footer>
+  </div>
+</body>
+</html>

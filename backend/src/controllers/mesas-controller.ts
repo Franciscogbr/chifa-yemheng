@@ -166,3 +166,82 @@ export async function patchAmbienteEstado(req: Request, res: Response): Promise<
     errorMesa(res, err);
   }
 }
+
+export async function getMesaPorQrConTipo(req: Request, res: Response): Promise<void> {
+  const { codigo } = req.query;
+  const { tipo } = req.params;
+  try {
+    let result;
+    if (tipo === '2') {
+      result = await obtenerPorQrService(codigo);
+      if (!result) {
+        res.status(404).json({ error: 'QR_INVALIDO' });
+        return;
+      }
+      result.esNuevo = false;
+      res.json(result);
+    } else {
+      result = await obtenerPorQrService(codigo);
+      if (!result) {
+        res.status(404).json({ error: 'QR_INVALIDO' });
+        return;
+      }
+      result.esNuevo = true;
+      res.json(result);
+    }
+  } catch (err) {
+    errorMesa(res, err);
+  }
+}
+
+export async function abrirOUnirseComandaQRConQr(req: Request, res: Response): Promise<void> {
+  const { codigo, tipo } = req.query;
+  try {
+    let result;
+    if (tipo === '2') {
+      // Unirse a comanda existente
+      const mesa = await obtenerPorQrService(codigo as string);
+      if (!mesa) {
+        res.status(404).json({ error: 'QR_INVALIDO' });
+        return;
+      }
+      // Usar RPC existente para unirse
+      const { data, error } = await supabase
+        .rpc('fn_abrir_o_unirse_comanda_qr', {
+          p_tipo: 2,
+          p_usuario: 1, // usuario anónimo
+          p_mesa: mesa.id_mesa,
+          p_cliente: 1,
+          p_comensales: 1,
+          p_obs: 'QR scan'
+        });
+      if (error) {
+        throw error;
+      }
+      result = { id: data.id_pedido, numero: data.numero_pedido, esNuevo: data.es_nuevo === true };
+    } else {
+      // Nueva comanda
+      const mesa = await obtenerPorQrService(codigo as string);
+      if (!mesa) {
+        res.status(404).json({ error: 'QR_INVALIDO' });
+        return;
+      }
+      const { data, error } = await supabase
+        .rpc('fn_abrir_o_unirse_comanda_qr', {
+          p_tipo: 1,
+          p_usuario: 1,
+          p_mesa: mesa.id_mesa,
+          p_cliente: 1,
+          p_comensales: 1,
+          p_obs: 'QR scan'
+        });
+      if (error) {
+        throw error;
+      }
+      result = { id: data.id_pedido, numero: data.numero_pedido, esNuevo: data.es_nuevo === true };
+    }
+    res.json(result);
+  } catch (err) {
+    errorMesa(res, err);
+  }
+}

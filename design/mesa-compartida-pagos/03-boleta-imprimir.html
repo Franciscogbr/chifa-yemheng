@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es-PE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boleta Individual - Imprimir</title>
+<style>
+  @page { size: 80mm auto; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; font-size: 12px; color: #000; padding: 6px; line-height: 1.4; background: #fff; }
+  .hoja { max-width: 320px; margin: 0 auto; }
+  .cabecera { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
+  .cabecera h1 { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; margin: 0; color: #000; }
+  .cabecera .sub { font-size: 10px; color: #000; margin-top: 3px; }
+  .datos { font-size: 10.5px; margin-bottom: 10px; border-bottom: 1px solid #000; padding-bottom: 6px; line-height: 1.5; color: #000; }
+  .datos b { color: #000; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  th, td { border-bottom: 1px solid #000; padding: 5px 3px; text-align: left; font-size: 11px; color: #000; }
+  th { background: #f0f0f0; font-size: 9.5px; text-transform: uppercase; color: #000; }
+  td.monto { text-align: right; font-variant-numeric: tabular-nums; color: #000; }
+  .total { font-weight: 800; font-size: 13px; border-top: 2px solid #000; padding-top: 6px !important; color: #000; }
+  .pagos { margin-bottom: 8px; }
+  .pago-item { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #e0e0e0; font-size: 10.5px; color: #000; }
+  .pie { margin-top: 10px; font-size: 9px; color: #000; text-align: center; border-top: 1px solid #000; padding-top: 6px; line-height: 1.4; }
+  @media screen {
+    body { background: #f5f1ea; padding: 16px; }
+    .pantalla-nota { margin-bottom: 14px; font-size: 0.9rem; color: #5a413e; }
+    .btn-imprimir { display: inline-block; background: #a61e22; color: #fff; border: none; border-radius: 6px; padding: 10px 16px; font-weight: 700; cursor: pointer; text-decoration: none; }
+    .btn-imprimir:hover { background: #7f1518; }
+  }
+</style>
+</head>
+<body>
+  <p class="pantalla-nota">Versión de impresión (blanco y negro, recibo térmico). Usá Ctrl+P o el botón "Imprimir" del navegador y seleccioná "Guardar como PDF".</p>
+  <a class="btn-imprimir" href="javascript:window.print()">Imprimir / Guardar PDF</a>
+
+  <div class="hoja">
+    <div class="cabecera">
+      <h1>Yemheng</h1>
+      <div class="sub">Comida China Peruana · Chifa · RUC 10123456789</div>
+    </div>
+    <div class="datos">
+      <div><b>Boleta individual</b> · N° B-002408-01</div>
+      <div><b>Mesa:</b> 12 &nbsp;|&nbsp; <b>Comanda:</b> #2408</div>
+      <div><b>Cliente:</b> Ana García</div>
+      <div><b>Fecha:</b> 05/11/2026 14:32</div>
+      <div><b>Cajero:</b> María P.</div>
+    </div>
+    <table>
+      <thead>
+        <tr><th style="width:60%">Producto</th><th style="width:15%;text-align:right">Cant</th><th style="width:25%;text-align:right">Importe</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Arroz Chifa</td><td style="text-align:right">1</td><td class="monto">S/ 18.00</td></tr>
+        <tr><td>Tall Saltado</td><td style="text-align:right">1</td><td class="monto">S/ 24.00</td></tr>
+        <tr><td>Inka Kola 500ml</td><td style="text-align:right">1</td><td class="monto">S/ 6.50</td></tr>
+        <tr class="total"><td colspan="2">Total cuenta individual</td><td class="monto">S/ 48.50</td></tr>
+      </tbody>
+    </table>
+    <div class="pagos">
+      <div class="pago-item"><span>Efectivo</span><span class="monto">S/ 50.00</span></div>
+      <div class="pago-item"><span>Vuelto</span><span class="monto">S/ 1.50</span></div>
+    </div>
+    <div class="pie">Estado: <b>PAGADO</b><br>Comprobante de cuenta individual. La mesa permanece abierta hasta que todos los participantes hayan pagado.<br>Gracias por su consumo.</div>
+  </div>
+</body>
+</html>

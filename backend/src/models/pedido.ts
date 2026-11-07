@@ -75,7 +75,10 @@ export type PedidoErrorCode =
   | 'YA_POR_COBRAR'
   | 'MOZO_PEDIDO_DIGITAL'
   | 'ENTREGA_NO_DISPONIBLE'
-  | 'VALIDATION_ERROR';
+  | 'VALIDATION_ERROR'
+  | 'LA_MESA_NO_ADMITE_NUEVOS_PARTICIPANTES'
+  | 'MODO_PAGO_BLOQUEADO'
+  | 'SIN_CUENTA';
 
 export interface ParticipantePedido {
   clienteId: number;

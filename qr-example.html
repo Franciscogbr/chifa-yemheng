@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Ejemplo de Overlay QR con Botones</title>
+<style>
+  /* ---------- Estilos generales ---------- */
+  html, body {
+    margin: 0;
+    height: 100%;
+    font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    background: #fbf9f8;               /* color de fondo de la página (difuminado) */
+    overflow: hidden;
+  }
+  \n  \n  /* ---------- Overlay semitransparente ---------- */
+  .qr-overlay {
+    position: fixed;
+    inset: 0;                         /* top/right/bottom/left = 0 */
+    background: rgba(27, 28, 28, 0.55); /* fondo oscuro semitransparente */
+    backdrop-filter: blur(6px);        /* efecto de desenfoque */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  \n  .qr-modal {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+  }
+  \n  .qr-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  \n  .qr-modal-title {
+    font-size: 1.2rem;
+    color: #1b1c1c;
+    margin: 0;
+  }
+  \n  .qr-modal-close {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    color: #333;
+    font-size: 1.2rem;
+    line-height: 30px;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+  }
+  .qr-modal-close:hover { background: #d0d0d0; }
+  \n  \n  /* ---------- QR placeholder (puedes sustituirlo por tu SVG real) ---------- */
+  .qr-placeholder {
+    width: 100%;
+    height: 180px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed #bbb;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+    color: #666;
+  }
+  \n  \n  /* ---------- Botones ---------- */
+  .qr-btn {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--color-primary, #a61e22);   /* rojo Chifa */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .qr-btn:hover { background: var(--color-primary-dark, #7f1518); }
+  \n  .qr-btn.update {
+    background: var(--color-warning, #d4a017);   /* dorado */
+  }
+  .qr-btn.update:hover { background: var(--color-warning-dark, #795900); }
+  \n  \n  /* ---------- Texto de instrucción ---------- */
+  .qr-instr {
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: #555;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="qr-overlay" id="qr-overlay">
+  <div class="qr-modal">
+    <div class="qr-modal-header">
+      <div class="qr-modal-title">Escanear QR de Mesa</div>
+      <div class="qr-modal-close" onclick="document.getElementById('qr-overlay').remove()">×</div>
+    </div>
+
+    <div class="qr-modal-body" style="text-align:center; padding:32px;">
+      <div class="qr-placeholder">
+        QR<br/>CODE<br/>AQUÍ
+      </div>
+
+      <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
+        <button class="qr-btn" onclick="downloadQr()">📥 Descargar QR</button>
+        <button class="qr-btn update" onclick="updateQr()">🔄 Actualizar QR</button>
+      </div>
+
+      <p class="qr-instr">Apunta al código QR de la mesa</p>
+    </div>
+  </div>
+</div>
+
+<script>
+function downloadQr() {
+  const svg = document.getElementById('qr-svg');
+  if (!svg) {
+    alert('No se encontró el elemento QR para descargar.');
+    return;
+  }
+  const blob = new Blob([new XMLSerializer().serializeToString(svg)], {
+    type: 'image/svg+xml'
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'qr-mesa.png';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function updateQr() {
+  location.reload();
+}
+</script>
+</body>
+</html>

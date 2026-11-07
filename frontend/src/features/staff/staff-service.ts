@@ -185,11 +185,11 @@ export function listarCajaPendientes(): Promise<Ticket[]> {
   return fetch(`${BASE}/caja/pendientes`, { headers: headers() }).then(lanzar<Ticket[]>);
 }
 
-export function aperturarCaja(cajaId: number, montoInicial: number): Promise<{ id: number; mensaje: string }> {
+export function aperturarCaja(cajaId: number, montoInicial: number, observacion = ''): Promise<{ id: number; mensaje: string }> {
   return fetch(`${BASE}/caja/turno`, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify({ cajaId, montoInicial }),
+    body: JSON.stringify({ cajaId, montoInicial, observacion }),
   }).then(lanzar<{ id: number; mensaje: string }>);
 }
 
@@ -254,3 +254,147 @@ export function registrarMovimientoCaja(input: {
       body: JSON.stringify({ aperturaId }),
     }).then(lanzar<{ sistema: number; declarado: number; diferencia: number; resultado: string }>);
   }
+
+/* ------------------------- Arqueo e incidencias (S5) ------------------------- */
+
+export interface DenominacionInput {
+  valor: number;
+  cantidad: number;
+  tipo: 'BILLETE' | 'MONEDA';
+}
+
+export interface ArqueoResultado {
+  aperturaId: number;
+  sistema: number;
+  declarado: number;
+  diferencia: number;
+  resultado: 'CUADRADA' | 'SOBRANTE' | 'FALTANTE';
+  idIncidencia: number | null;
+  requiereSupervisor: boolean;
+}
+
+export interface IncidenciaCajaInfo {
+  id: number;
+  aperturaId: number;
+  cajaId: number;
+  cajeroId: number;
+  diferencia: number;
+  nivel: 'MEDIA' | 'CRITICA';
+  estado: 'PENDIENTE' | 'EN_REVISION' | 'JUSTIFICADA' | 'CERRADA';
+  motivo: string;
+  resueltaPor: number | null;
+  fecha: string;
+}
+
+export function registrarArqueo(input: {
+  cajaId: number;
+  denominaciones: DenominacionInput[];
+  observacion: string;
+}): Promise<ArqueoResultado> {
+  return fetch(`${BASE}/caja/cierre/arqueo`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(input),
+  }).then(lanzar<ArqueoResultado>);
+}
+
+export function listarIncidencias(pendientes = true): Promise<IncidenciaCajaInfo[]> {
+  return fetch(`${BASE}/caja/incidencias?pendientes=${pendientes}`, { headers: headers() })
+    .then(lanzar<{ data: IncidenciaCajaInfo[] }>)
+    .then((r) => r.data);
+}
+
+export function resolverIncidencia(
+  id: number,
+  input: { estado: 'EN_REVISION' | 'JUSTIFICADA' | 'CERRADA'; comentario: string },
+): Promise<{ ok: true }> {
+  return fetch(`${BASE}/caja/incidencias/${id}`, {
+    method: 'PATCH',
+    headers: headers(),
+    body: JSON.stringify(input),
+  }).then(lanzar<{ ok: true }>);
+}
+
+export function rechazarArqueo(aperturaId: number): Promise<{ ok: true }> {
+  return fetch(`${BASE}/caja/turno/cierre/rechazar`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ aperturaId }),
+  }).then(lanzar<{ ok: true }>);
+}
+
+/* ------------------------- Acta Z (T15a5) ------------------------- */
+
+export interface ActaCierreInfo {
+  aperturaId: number;
+  caja: string;
+  numeroTurno: string | null;
+  cajero: string;
+  validador: string | null;
+  fechaApertura: string | null;
+  fechaCierre: string | null;
+  saldoInicial: number;
+  totalIngresos: number;
+  totalEgresos: number;
+  saldoTeorico: number;
+  dineroContado: number;
+  diferencia: number;
+  resultado: 'CUADRADA' | 'SOBRANTE' | 'FALTANTE';
+  situacion: 'A' | 'P' | 'C';
+  observacion: string | null;
+  conteo: { valor: number; tipo: string; cantidad: number }[];
+  incidencia: { id: number; nivel: string; estado: string; motivo: string; comentarioResolucion: string | null } | null;
+}
+
+export function verActaCierre(aperturaId: number): Promise<ActaCierreInfo> {
+  return fetch(`${BASE}/caja/turno/${aperturaId}/acta`, { headers: headers() })
+    .then(lanzar<ActaCierreInfo>);
+}
+
+/* ------------------------- T16: Mi cuenta del cliente ------------------------- */
+
+export interface MiCuentaInfo {
+  pedido: {
+    id: number;
+    mesaId: number | null;
+    modoPagoMesa: 'CUENTA_UNICA' | 'POR_CONSUMO';
+    mesaLiquidada: boolean;
+  };
+  cuenta: {
+    idCuenta: number;
+    estadoCuenta: 'ABIERTA' | 'PAGADA';
+    saldoPendiente: number;
+    montoPagado: number;
+    platos: {
+      id: number;
+      producto: string;
+      cantidad: number;
+      precioUnitario: number;
+      subTotal: number;
+      estadoPreparacion: string;
+    }[];
+  };
+}
+
+export function miCuentaClienteService(pedidoId: number): Promise<MiCuentaInfo> {
+  return fetch(`${BASE}/cliente/pedidos/${pedidoId}/mi-cuenta`, { headers: headers() })
+    .then(lanzar<MiCuentaInfo>);
+}
+
+/* ------------------------- Comprobante (T17) ------------------------- */
+
+export interface ComprobanteData {
+  venta: Record<string, unknown> | null;
+  pedido: Record<string, unknown> | null;
+  cliente: Record<string, unknown> | null;
+  cuenta: Record<string, unknown> | null;
+  detalles: Record<string, unknown>[];
+  comprobante: Record<string, unknown> | null;
+  emisor: Record<string, unknown> | null;
+  pagos: Record<string, unknown>[];
+}
+
+export function verComprobante(ventaId: number): Promise<ComprobanteData> {
+  return fetch(`${BASE}/caja/comprobante/${ventaId}`, { headers: headers() })
+    .then(lanzar<ComprobanteData>);
+}

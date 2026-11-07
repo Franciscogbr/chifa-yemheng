@@ -1,5 +1,14 @@
 import { leerToken } from '../../auth/login/auth-service';
-import type { Ambiente, AmbienteForm, Mesa, MesaForm, MesaLista, OcupacionMesa } from './mesas-types';
+import type {
+  Ambiente,
+  AmbienteForm,
+  ClientesMesaResponse,
+  EstadoMesas,
+  Mesa,
+  MesaForm,
+  MesaLista,
+  OcupacionMesa,
+} from './mesas-types';
 
 const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/mesas`;
 
@@ -93,6 +102,15 @@ export function listarOcupacion(): Promise<OcupacionMesa[]> {
   return fetch(`${BASE}/ocupacion`, { headers: headers() }).then(lanzar<OcupacionMesa[]>);
 }
 
+/** Clientes participantes en la comanda activa de una mesa, con modo de pago y total. */
+export function listarClientesMesa(
+  mesaId: number,
+): Promise<ClientesMesaResponse> {
+  return fetch(`${BASE}/${mesaId}/clientes`, { headers: headers() }).then(
+    lanzar<ClientesMesaResponse>,
+  );
+}
+
 export function listarAmbientes(): Promise<Ambiente[]> {
   return fetch(`${BASE}/ambientes/todos`, { headers: headers() }).then(
     lanzar<{ data: Ambiente[] }>,
@@ -113,4 +131,8 @@ export function cambiarEstadoAmbiente(id: number, estado: 'A' | 'I'): Promise<Am
     headers: headers(),
     body: JSON.stringify({ estado }),
   }).then(lanzar<Ambiente>);
+}
+
+export function estadoService(): Promise<EstadoMesas> {
+  return fetch(`${BASE}/estado`, { headers: headers() }).then(lanzar<EstadoMesas>);
 }

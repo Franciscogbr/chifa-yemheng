@@ -27,6 +27,7 @@ export function ClienteComandaPage() {
 
   const MENSAJES_ERR: Record<string, string> = {
     MESA_POR_COBRAR: 'Tu mesa ya pidió la cuenta; no se pueden agregar más productos.',
+    LA_MESA_NO_ADMITE_NUEVOS_PARTICIPANTES: 'La mesa no admite nuevos participantes.',
     PEDIDO_FACTURADO: 'El pedido ya está facturado.',
     PEDIDO_ANULADO: 'El pedido fue anulado.',
     PRODUCTO_NO_DISPONIBLE: 'Uno de los productos ya no está disponible.',

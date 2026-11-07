@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chifa Yemheng — Design System</title>
+<style>
+  :root {
+    /* Colores extraídos de frontend/src/index.css (@theme y :root) */
+    --color-primary: #a61e22;
+    --color-primary-dark: #7f1518;
+    --color-primary-light: #b3282a;
+    --color-gold: #d4a017;
+    --color-gold-light: #f6be39;
+    --color-gold-dark: #795900;
+    --color-gold-soft: #ffdfa0;
+    --color-tertiary: #7c1316;
+    --color-tertiary-container: #9d2c2b;
+    --color-surface: #fbf9f8;
+    --color-surface-lowest: #ffffff;
+    --color-surface-low: #f6f3f2;
+    --color-surface-container: #f0eded;
+    --color-surface-high: #eae8e7;
+    --color-surface-highest: #e4e2e1;
+    --color-surface-dim: #dcd9d9;
+    --color-background: #fbf9f8;
+    --color-border: #e2bebb;
+    --color-outline: #8e706d;
+    --color-ink: #1b1c1c;
+    --color-text-secondary: #5a413e;
+    --color-success: #22c55e;
+    --color-warning: #f6be39;
+    --color-error: #ba1a1a;
+    --color-info: #2563eb;
+
+    --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Playfair Display", ui-serif, Georgia, serif;
+    --font-epilogue: "Epilogue", ui-sans-serif, system-ui, sans-serif;
+    --font-newsreader: "Newsreader", ui-serif, Georgia, serif;
+
+    --r: 16px;
+    --shadow: 0 4px 16px rgba(166, 30, 34, 0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-background);
+    color: var(--color-ink);
+    line-height: 1.5;
+    padding: 40px;
+  }
+
+  h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; }
+  h1 { font-size: 2rem; margin-bottom: 1rem; color: var(--color-primary-dark); }
+  h2 { font-size: 1.5rem; margin-top: 2rem; margin-bottom: 0.75rem; color: var(--color-primary); }
+  h3 { font-size: 1.125rem; margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--color-ink); }
+  p { margin-bottom: 1rem; color: var(--color-text-secondary); }
+
+  .container { max-width: 1120px; margin: 0 auto; }
+
+  /* Tokens de color */
+  .color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 2rem;
+  }
+  .color-swatch {
+    border: 1px solid var(--color-border);
+    border-radius: var(--r);
+    padding: 16px;
+    background: var(--color-surface-lowest);
+    box-shadow: var(--shadow);
+  }
+  .color-swatch .chip {
+    width: 48px; height: 48px; border-radius: 8px; margin-bottom: 8px; display: block;
+  }
+  .color-swatch .name { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-secondary); margin-bottom: 4px; }
+  .color-swatch .value { font-size: 0.875rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: var(--color-ink); }
+
+  /* Tipografía */
+  .type-section { margin-top: 2.5rem; border-top: 1px solid var(--color-border); padding-top: 1rem; }
+  .type-sample {
+    border: 1px solid var(--color-border);
+    border-radius: var(--r);
+    padding: 16px;
+    background: var(--color-surface-lowest);
+    box-shadow: var(--shadow);
+    margin-bottom: 1rem;
+  }
+  .type-sample h2 { font-family: var(--font-display); font-size: clamp(21px, 3vw, 26px); margin-bottom: 0.25rem; }
+  .type-sample p { font-family: var(--font-sans); font-size: 1rem; color: var(--color-text-secondary); }
+  .type-sample p.sans { font-family: var(--font-sans); }
+  .type-sample p.epilogue { font-family: var(--font-epilogue); }
+  .type-sample p.newsreader { font-family: var(--font-newsreader); }
+  .type-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--color-primary); margin-bottom: 0.25rem; }
+
+  /* Espaciado y bordes */
+  .metrics-section { margin-top: 2.5rem; border-top: 1px solid var(--color-border); padding-top: 1rem; }
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .metric-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--r);
+    padding: 16px;
+    background: var(--color-surface-lowest);
+    box-shadow: var(--shadow);
+  }
+  .metric-name { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-secondary); margin-bottom: 6px; }
+  .metric-value { font-size: 0.875rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: var(--color-ink); }
+
+  /* Componentes de ejemplo */
+  .components-section { margin-top: 2.5rem; border-top: 1px solid var(--color-border); padding-top: 1rem; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 8px;
+    padding: 11px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: 0.2s;
+    text-decoration: none;
+  }
+  .btn-primary { background: var(--color-primary); color: #ffffff; }
+  .btn-primary:hover { background: var(--color-primary-dark); }
+  .btn-line { background: transparent; border: 1px solid var(--color-outline); color: var(--color-ink); }
+  .btn-line:hover { background: var(--color-surface-container); }
+  .btn-gold { background: var(--color-gold); color: var(--color-ink); }
+  .btn-gold:hover { background: var(--color-gold-light); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 4px 11px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge.ok { background: rgba(34, 197, 94, 0.14); color: #15803d; }
+  .badge.warn { background: var(--warning-container); color: var(--color-gold-dark); }
+  .badge.bad { background: var(--danger-container); color: var(--color-error); }
+
+  .card {
+    background: var(--color-surface-lowest);
+    border: 1px solid var(--color-outline-variant);
+    border-radius: var(--r);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    margin-bottom: 1rem;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--color-primary);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .hero-flow {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: clamp(22px, 4vw, 36px);
+    border: 1px solid rgba(255, 223, 160, 0.3);
+    border-radius: 22px;
+    color: #fffaf0;
+    background: linear-gradient(118deg, #5b1014 0%, #8f191e 52%, #a61e22 100%);
+    box-shadow: 0 18px 44px rgba(83, 15, 19, 0.2);
+    margin-bottom: 2rem;
+  }
+  .hero-flow h2 { color: #fffaf0; margin-bottom: 0.5rem; }
+  .hero-flow p { color: rgba(255, 250, 240, 0.82); margin: 0; }
+
+  table.token-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+  table.token-table th {
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  table.token-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.875rem;
+  }
+  table.token-table tr:hover { background: var(--color-surface-low); }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Chifa Yemheng — Design System</h1>
+    <p>Tokens extraídos de <code>frontend/src/index.css</code>. Única fuente de verdad para el sistema visual del proyecto.</p>
+
+    <section class="color-grid">
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-primary);"></span>
+        <span class="name">color-primary</span>
+        <span class="value">#a61e22</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-primary-dark);"></span>
+        <span class="name">color-primary-dark</span>
+        <span class="value">#7f1518</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-primary-light);"></span>
+        <span class="name">color-primary-light</span>
+        <span class="value">#b3282a</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-gold);"></span>
+        <span class="name">color-gold</span>
+        <span class="value">#d4a017</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-gold-light);"></span>
+        <span class="name">color-gold-light</span>
+        <span class="value">#f6be39</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-gold-dark);"></span>
+        <span class="name">color-gold-dark</span>
+        <span class="value">#795900</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-gold-soft);"></span>
+        <span class="name">color-gold-soft</span>
+        <span class="value">#ffdfa0</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-tertiary);"></span>
+        <span class="name">color-tertiary</span>
+        <span class="value">#7c1316</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-tertiary-container);"></span>
+        <span class="name">color-tertiary-container</span>
+        <span class="value">#9d2c2b</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-surface);"></span>
+        <span class="name">color-surface</span>
+        <span class="value">#fbf9f8</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-surface-lowest);"></span>
+        <span class="name">color-surface-lowest</span>
+        <span class="value">#ffffff</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-surface-low);"></span>
+        <span class="name">color-surface-low</span>
+        <span class="value">#f6f3f2</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-surface-container);"></span>
+        <span class="name">color-surface-container</span>
+        <span class="value">#f0eded</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-surface-high);"></span>
+        <span class="name">color-surface-high</span>
+        <span class="value">#eae8e7</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-surface-highest);"></span>
+        <span class="name">color-surface-highest</span>
+        <span class="value">#e4e2e1</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-surface-dim);"></span>
+        <span class="name">color-surface-dim</span>
+        <span class="value">#dcd9d9</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-border);"></span>
+        <span class="name">color-border</span>
+        <span class="value">#e2bebb</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-outline);"></span>
+        <span class="name">color-outline</span>
+        <span class="value">#8e706d</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-ink);"></span>
+        <span class="name">color-ink</span>
+        <span class="value">#1b1c1c</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-text-secondary);"></span>
+        <span class="name">color-text-secondary</span>
+        <span class="value">#5a413e</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-success);"></span>
+        <span class="name">color-success</span>
+        <span class="value">#22c55e</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-warning);"></span>
+        <span class="name">color-warning</span>
+        <span class="value">#f6be39</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-error);"></span>
+        <span class="name">color-error</span>
+        <span class="value">#ba1a1a</span>
+      </div>
+      <div class="color-swatch">
+        <span class="chip" style="background: var(--color-info);"></span>
+        <span class="name">color-info</span>
+        <span class="value">#2563eb</span>
+      </div>
+    </section>
+
+    <section class="type-section">
+      <h2>Tipografía</h2>
+      <div class="type-sample">
+        <span class="type-label">font-display — Playfair Display</span>
+        <h2>Título de sección — Playfair Display</h2>
+        <p class="sans">Cuerpo en Plus Jakarta Sans (font-sans)</p>
+        <p class="epilogue">Texto alternativo en Epilogue</p>
+        <p class="newsreader">Lectura larga en Newsreader</p>
+      </div>
+    </section>
+
+    <section class="metrics-section">
+      <h2>Espaciado y bordes</h2>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <span class="metric-name">Radio estándar (--r)</span>
+          <span class="metric-value">16px</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-name">Sombra estándar (--shadow)</span>
+          <span class="metric-value">0 4px 16px rgba(166, 30, 34, 0.12)</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="components-section">
+      <h2>Componentes de ejemplo</h2>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 1rem;">
+        <button class="btn btn-primary">Botón primario</button>
+        <button class="btn btn-line">Borde (line)</button>
+        <button class="btn btn-gold">Dorado (gold)</button>
+        <span class="badge ok">Organizador</span>
+        <span class="badge warn">Pendiente</span>
+        <span class="badge bad">Inactivo</span>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Sección de clientes</span>
+        <h2>Detalle de mesa</h2>
+        <p>Tarjeta de componente siguiendo los tokens del sistema: radio 16px, borde #e2bebb, fondo #ffffff.</p>
+      </div>
+      <div class="hero-flow">
+        <h2>Hero de flujo (ejemplo)</h2>
+        <p>Degradado de primario a primario-dark, texto #fffaf0, radio 22px.</p>
+      </div>
+    </section>
+
+    <section>
+      <table class="token-table">
+        <thead>
+          <tr><th>Token</th><th>Valor</th><th>Uso sugerido</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>--color-primary</td><td>#a61e22</td><td>Botones primarios, estado activo</td></tr>
+          <tr><td>--color-primary-dark</td><td>#7f1518</td><td>Hover primario, acentos oscuros</td></tr>
+          <tr><td>--color-gold</td><td>#d4a017</td><td>Acentos dorados</td></tr>
+          <tr><td>--color-success</td><td>#22c55e</td><td>Estados de éxito</td></tr>
+          <tr><td>--color-error</td><td>#ba1a1a</td><td>Estados de error</td></tr>
+          <tr><td>--color-info</td><td>#2563eb</td><td>Estados informativos</td></tr>
+          <tr><td>--color-surface-lowest</td><td>#ffffff</td><td>Tarjetas, modales</td></tr>
+          <tr><td>--color-border</td><td>#e2bebb</td><td>Bordes estándar</td></tr>
+          <tr><td>--color-ink</td><td>#1b1c1c</td><td>Texto principal</td></tr>
+          <tr><td>--color-text-secondary</td><td>#5a413e</td><td>Texto secundario</td></tr>
+          <tr><td>--font-display</td><td>Playfair Display</td><td>Títulos</td></tr>
+          <tr><td>--font-sans</td><td>Plus Jakarta Sans</td><td>Cuerpo</td></tr>
+          <tr><td>--r</td><td>16px</td><td>Radio de borde estándar</td></tr>
+          <tr><td>--shadow</td><td>0 4px 16px rgba(166, 30, 34, 0.12)</td><td>Sombra de tarjetas</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>

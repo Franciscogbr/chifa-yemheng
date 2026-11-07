@@ -18,6 +18,7 @@ const SECTIONS: { title: string; links: L[] }[] = [
     { to: '/admin/cocina', label: 'Cocina KDS', roles: ADMIN_ROLES.kitchen, icon: Flame },
     { to: '/admin/mozo', label: 'Mozo', roles: ADMIN_ROLES.waiter, icon: Users },
     { to: '/admin/caja', label: 'Caja', roles: ADMIN_ROLES.cashier, icon: Wallet },
+    { to: '/admin/rendiciones', label: 'Rendiciones', roles: ADMIN_ROLES.cashier, permisos: ['REN_VER'], icon: Wallet },
     { to: '/admin/delivery', label: 'Delivery', roles: ADMIN_ROLES.delivery, icon: Bike },
     { to: '/admin/reservas-admin', label: 'Reservas', roles: ADMIN_ROLES.reservations, icon: CalendarDays },
   ] },

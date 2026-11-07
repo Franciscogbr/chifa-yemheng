@@ -1,4 +1,12 @@
 import type { DeliveryListaShared, DeliveryShared, PorRendirShared } from '../types/delivery';
+import type {
+  PedidoPendienteRendicion,
+  RepartidorRendicion,
+  RendicionHistorial,
+  RendicionHistorialPagina,
+  RendicionRegistroResultado,
+  EstadoRendicion,
+} from '../types/rendicion';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
 const CLIENTE_TOKEN_KEY = 'chifa.cliente.token';
@@ -141,10 +149,17 @@ class ApiClient {
     return this.request<PorRendirShared[]>('/repartidor/por-rendir');
   }
 
-  registrarPushToken(token: string, platform: string) {
+  registrarPushToken(token: string, platform: 'web' | 'android' | 'ios') {
     return this.request<{ ok: boolean }>('/repartidor/entregas/token', {
       method: 'POST',
       body: JSON.stringify({ token, platform }),
+    });
+  }
+
+  eliminarPushToken(token: string) {
+    return this.request<{ ok: boolean }>('/repartidor/entregas/token', {
+      method: 'DELETE',
+      body: JSON.stringify({ token }),
     });
   }
 
@@ -187,15 +202,33 @@ class ApiClient {
   }
 
   // Rendiciones
+  getRepartidoresRendicion() {
+    return this.request<RepartidorRendicion[]>('/rendiciones/repartidores');
+  }
+
   getPendientesRendicion(repartidorId: number) {
-    return this.request<any>(`/rendiciones/pendientes?repartidorId=${repartidorId}`);
+    return this.request<PedidoPendienteRendicion[]>(
+      `/rendiciones/pendientes?repartidorId=${encodeURIComponent(String(repartidorId))}`,
+    );
   }
 
   registrarRendicion(data: { repartidorId: number; pedidoIds: number[]; montoEntregado: number; observaciones?: string }) {
-    return this.request<any>('/rendiciones', {
+    return this.request<RendicionRegistroResultado>('/rendiciones', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  getRendiciones(filters?: {
+    repartidorId?: number;
+    estado?: EstadoRendicion;
+    desde?: string;
+    hasta?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const query = buildQuery(filters);
+    return this.request<RendicionHistorialPagina>(`/rendiciones${query ? `?${query}` : ''}`);
   }
 
   validarRendicion(id: number) {
@@ -210,7 +243,7 @@ class ApiClient {
   }
 
   getRendicionPdf(id: number) {
-    return this.request<any>(`/rendiciones/${id}/pdf`);
+    return this.request<RendicionHistorial>(`/rendiciones/${id}/pdf`);
   }
 
   // Maestros

@@ -509,13 +509,16 @@ function MozoDetalles({
         className="card"
         style={{ width: 'min(640px, 94vw)', padding: 22, maxHeight: '88vh', overflow: 'auto' }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mozo-mesa-title"
       >
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <div className="ys-mesa" style={{ ['--tone' as string]: tone(mesa), padding: 0 }}>
             <div className="n" style={{ width: 44, height: 44, fontSize: 18 }}>{mesa.numero}</div>
           </div>
           <div style={{ flex: 1 }}>
-            <h3 style={{ margin: 0 }}>Mesa {mesa.numero}</h3>
+            <h3 id="mozo-mesa-title" style={{ margin: 0 }}>Mesa {mesa.numero}</h3>
             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 12 }}>{mesa.ambiente} · {mesa.capacidad} pax</p>
           </div>
           <button className="btn btn-ghost" onClick={onClose}>Cerrar</button>

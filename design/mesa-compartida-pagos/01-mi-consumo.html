@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi consumo · Mesa 12</title>
+<style>
+  :root {
+    --color-primary: #a61e22; --color-primary-dark: #7f1518; --color-primary-light: #b3282a;
+    --color-gold: #d4a017; --color-gold-light: #f6be39; --color-gold-dark: #795900; --color-gold-soft: #ffdfa0;
+    --color-surface: #fbf9f8; --color-surface-lowest: #ffffff; --color-surface-low: #f6f3f2;
+    --color-surface-container: #f0eded; --color-border: #e2bebb; --color-outline: #8e706d;
+    --color-ink: #1b1c1c; --color-text-secondary: #5a413e;
+    --color-success: #22c55e; --color-warning: #f6be39; --color-error: #ba1a1a; --color-info: #2563eb;
+    --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Playfair Display", ui-serif, Georgia, serif;
+    --font-logo: "Cinzel", serif;
+    --r: 16px; --shadow: 0 4px 16px rgba(166, 30, 34, 0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); background: var(--color-surface); color: var(--color-ink); line-height: 1.5; }
+
+  /* header real de la app cliente */
+  .y-header { position: sticky; top: 0; z-index: 40; background: var(--color-surface-lowest); border-bottom: 1px solid var(--color-border); }
+  .y-header .in { max-width: 1280px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .y-logo { display: flex; align-items: center; gap: 10px; }
+  .y-logo .w { font-family: var(--font-logo); font-weight: 600; letter-spacing: 0.18em; font-size: 17px; color: var(--color-ink); }
+  .y-logo .s { display: block; font-size: 8px; letter-spacing: 0.45em; color: var(--color-gold-dark); margin-top: 3px; text-transform: uppercase; }
+  .y-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 11px; font-size: 11px; font-weight: 600; }
+  .y-chip.ok { background: rgba(34, 197, 94, 0.14); color: #15803d; }
+  .y-chip.warn { background: #ffdfa0; color: #795900; }
+
+  .y-page { max-width: 520px; margin: 0 auto; padding: 20px 16px 140px; }
+
+  .y-flow-hero { position: relative; isolation: isolate; overflow: hidden; padding: 22px; border: 1px solid rgba(255, 223, 160, 0.3); border-radius: 22px; color: #fffaf0;
+    background: radial-gradient(ellipse at 86% 12%, rgba(255, 198, 65, 0.22), transparent 34%), linear-gradient(118deg, #5b1014 0%, #8f191e 52%, #a61e22 100%);
+    box-shadow: 0 18px 44px rgba(83, 15, 19, 0.2); margin-bottom: 16px; }
+  .y-flow-hero__eyebrow { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 10px; color: #ffdfa0; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .y-flow-hero__eyebrow::before { width: 20px; height: 1px; content: ""; background: currentColor; }
+  .y-flow-hero__title { color: #fffaf0; font-family: var(--font-display); font-size: clamp(22px, 4vw, 30px); font-weight: 700; line-height: 1.15; }
+  .y-cliente-hero__details { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .y-cliente-hero__detail { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid rgba(255, 250, 240, 0.24); border-radius: 999px; background: rgba(255, 250, 240, 0.08); color: #fffaf0; font-size: 12px; font-weight: 600; }
+
+  .saldo-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; background: var(--color-surface-lowest); border: 1px solid var(--color-border); border-radius: var(--r); box-shadow: var(--shadow); margin-bottom: 16px; }
+  .saldo-card .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-secondary); }
+  .saldo-card .valor { font-family: var(--font-display); font-size: 2.2rem; font-weight: 700; color: var(--color-primary-dark); line-height: 1.1; }
+  .saldo-card .sub { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+
+  .btn-cta { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; background: linear-gradient(180deg, var(--color-primary), var(--color-primary-dark)); color: #fff; border: none; border-radius: 12px; padding: 16px 20px; font-size: 15px; font-weight: 700; font-family: var(--font-sans); cursor: pointer; box-shadow: 0 6px 18px rgba(166, 30, 34, 0.28); transition: 0.2s; }
+  .btn-cta:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(166, 30, 34, 0.34); }
+  .btn-cta small { display: block; font-size: 11px; font-weight: 600; opacity: 0.85; margin-top: 2px; }
+
+  .y-cliente-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin: 22px 0 10px; }
+  .y-cliente-section-heading h2 { margin: 0; font-family: var(--font-display); font-size: 22px; }
+  .y-cliente-kicker { color: var(--color-primary); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+
+  .y-panel { background: var(--color-surface-lowest); border: 1px solid var(--color-border); border-radius: var(--r); }
+  .y-panel-card { box-shadow: var(--shadow); }
+
+  .y-line { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--color-border, var(--color-border)); }
+  .y-line:last-child { border-bottom: 0; }
+  .y-line .tx { flex: 1; min-width: 0; }
+  .y-line .tx b { font-size: 14px; color: var(--color-ink); }
+  .y-line .chiprow { display: inline-flex; margin-left: 8px; vertical-align: middle; }
+  .y-line .tx small { display: block; color: var(--color-text-secondary); font-size: 12px; margin-top: 2px; }
+  .y-line .precio { flex: none; align-self: center; font-family: var(--font-display); font-weight: 600; font-size: 15px; color: var(--color-ink); font-variant-numeric: tabular-nums; }
+  .y-ph { width: 54px; height: 54px; border-radius: 10px; display: grid; place-items: center;
+    background: radial-gradient(circle at 30% 20%, rgba(201, 164, 92, 0.14), transparent 60%), linear-gradient(135deg, rgba(201, 164, 92, 0.12), rgba(166, 30, 34, 0.08));
+    color: rgba(201, 164, 92, 0.8); font-size: 22px; flex: none; }
+
+  /* seguimiento de estados (y-tstep) */
+  .seguimiento { padding: 14px; margin-top: 12px; }
+  .y-track { display: grid; gap: 18px; }
+  .y-tstep { position: relative; display: flex; gap: 12px; align-items: center; color: var(--color-text-secondary); }
+  .y-tstep:not(:last-child):before { content: ""; position: absolute; left: 17px; top: 38px; width: 2px; height: 18px; background: var(--color-border); }
+  .y-tstep.done:not(:last-child):before { background: var(--color-success); }
+  .y-tstep .dot { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--color-border); background: var(--color-surface-lowest); flex: none; }
+  .y-tstep b { display: block; font-size: 13px; color: var(--color-text-secondary); }
+  .y-tstep small { font-size: 11px; }
+  .y-tstep.done .dot { border-color: var(--color-success); color: var(--color-success); }
+  .y-tstep.done b { color: var(--color-ink); }
+  .y-tstep.now .dot { border-color: var(--color-warning); color: var(--color-warning); background: rgba(255, 198, 65, 0.12); }
+  .y-tstep.now b { color: var(--color-ink); }
+
+  /* bottom nav real de la app cliente */
+  .y-bnav { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 50; height: 66px; background: var(--color-surface-lowest); border: 1px solid var(--color-border); border-radius: 22px; display: flex; align-items: center; justify-content: space-around; padding: 0 6px; box-shadow: 0 12px 32px rgba(35, 18, 12, 0.14); }
+  .y-bnav a { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--color-text-secondary); text-decoration: none; flex: 1; }
+  .y-bnav a.active { color: var(--color-primary-dark); font-weight: 600; }
+  .y-bnav .qr { flex: 0 0 60px; height: 60px; margin-top: -26px; border-radius: 50%; background: var(--color-surface-lowest); border: 2px solid var(--color-error); display: grid; place-items: center; font-size: 22px; box-shadow: 0 0 24px rgba(200, 30, 43, 0.2); }
+</style>
+</head>
+<body>
+  <header class="y-header">
+    <div class="in">
+      <div class="y-logo"><div><span class="w">YEMHENG</span><span class="s">Chifa Peruano</span></div></div>
+      <span class="y-chip warn">Mesa 12 · Comanda #2408</span>
+    </div>
+  </header>
+
+  <div class="y-page">
+    <section class="y-flow-hero">
+      <span class="y-flow-hero__eyebrow">Autoconsumo QR</span>
+      <h1 class="y-flow-hero__title">Tu consumo, a tu ritmo.</h1>
+      <div class="y-cliente-hero__details">
+        <span class="y-cliente-hero__detail">👤 Ana García · Organizadora</span>
+        <span class="y-cliente-hero__detail">🕐 Pagás cuando quieras</span>
+      </div>
+    </section>
+
+    <div class="saldo-card">
+      <div>
+        <div class="label">Tu cuenta pendiente</div>
+        <div class="valor">S/ 48.50</div>
+        <div class="sub">3 platos pedidos · 1 en cocina</div>
+      </div>
+      <span class="y-chip warn">Pendiente</span>
+    </div>
+
+    <div class="y-cliente-section-heading">
+      <h2>Tus platos</h2>
+      <span class="y-cliente-kicker">Solo lo tuyo</span>
+    </div>
+
+    <div class="y-panel y-panel-card">
+      <div class="y-line">
+        <div class="y-ph">🍜</div>
+        <div class="tx"><b>Arroz Chifa <span class="chiprow"><span class="y-chip warn">En preparación</span></span></b><small>Cantidad 1 · S/ 18.00 c/u</small></div>
+        <div class="precio">S/ 18.00</div>
+      </div>
+      <div class="y-line">
+        <div class="y-ph">🥩</div>
+        <div class="tx"><b>Tall Saltado <span class="chiprow"><span class="y-chip ok">Servido</span></span></b><small>Cantidad 1 · S/ 24.00 c/u</small></div>
+        <div class="precio">S/ 24.00</div>
+      </div>
+      <div class="y-line">
+        <div class="y-ph">🥤</div>
+        <div class="tx"><b>Inka Kola 500ml <span class="chiprow"><span class="y-chip ok">Entregado</span></span></b><small>Cantidad 1 · S/ 6.50 c/u</small></div>
+        <div class="precio">S/ 6.50</div>
+      </div>
+    </div>
+
+    <div class="seguimiento">
+      <div class="y-track">
+        <div class="y-tstep done"><div class="dot">✓</div><div><b>Pedido a cocina</b><small>a las 13:58</small></div></div>
+        <div class="y-tstep now"><div class="dot">🍳</div><div><b>En preparación</b><small>Arroz Chifa está en cocina</small></div></div>
+        <div class="y-tstep"><div class="dot">💳</div><div><b>Pago de tu cuenta</b><small>cuando vos quieras</small></div></div>
+      </div>
+    </div>
+
+    <button class="btn-cta" style="width:100%; margin-top:16px;"><span>💳 Pagar mi cuenta</span><span style="text-align:right; margin-left:auto;"><small>S/ 48.50</small></span></button>
+    <p style="text-align:center; font-size:12px; color:var(--color-text-secondary); margin-top:8px;">La mesa sigue abierta para los demás. Tu pago no afecta a nadie más.</p>
+  </div>
+
+  <nav class="y-bnav">
+    <a href="#">🏠<span>Inicio</span></a>
+    <a href="#">📋<span>Carta</span></a>
+    <a class="qr" href="#" title="Escanear mesa">📷</a>
+    <a class="active" href="#">🍽️<span>Mi consumo</span></a>
+    <a href="#">👤<span>Perfil</span></a>
+  </nav>
+</body>
+</html>

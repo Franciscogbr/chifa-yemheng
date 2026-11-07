@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caja · Cobro por participante · Mesa 12</title>
+<style>
+  :root {
+    --color-primary: #a61e22; --color-primary-dark: #7f1518; --color-primary-light: #b3282a;
+    --color-gold: #d4a017; --color-gold-light: #f6be39; --color-gold-dark: #795900; --color-gold-soft: #ffdfa0;
+    --color-surface: #fbf9f8; --color-surface-lowest: #ffffff; --color-surface-low: #f6f3f2;
+    --color-surface-container: #f0eded; --color-surface-high: #eae8e7; --color-border: #e2bebb; --color-outline: #8e706d;
+    --color-ink: #1b1c1c; --color-text-secondary: #5a413e;
+    --color-success: #22c55e; --color-warning: #f6be39; --color-error: #ba1a1a; --color-info: #2563eb;
+    --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Playfair Display", ui-serif, Georgia, serif;
+    --font-logo: "Cinzel", serif;
+    --r: 16px; --shadow: 0 4px 16px rgba(166, 30, 34, 0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); background: var(--color-surface); color: var(--color-ink); line-height: 1.5; }
+
+  .y-header { position: sticky; top: 0; z-index: 40; background: var(--color-surface-lowest); border-bottom: 1px solid var(--color-border); }
+  .y-header .in { max-width: 1280px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .y-logo .w { font-family: var(--font-logo); font-weight: 600; letter-spacing: 0.18em; font-size: 17px; color: var(--color-ink); }
+  .y-logo .s { display: block; font-size: 8px; letter-spacing: 0.45em; color: var(--color-gold-dark); margin-top: 3px; text-transform: uppercase; }
+  .y-header nav { display: flex; gap: 22px; }
+  .y-header nav a { font-size: 13px; color: var(--color-text-secondary); text-decoration: none; padding: 6px 0; border-bottom: 2px solid transparent; }
+  .y-header nav a.active { color: var(--color-primary); border-color: var(--color-primary-dark); font-weight: 600; }
+
+  .y-shell { max-width: 1120px; margin: 0 auto; padding: 22px 20px 40px; }
+
+  .y-flow-hero { position: relative; isolation: isolate; overflow: hidden; padding: clamp(20px, 3vw, 30px); border: 1px solid rgba(255, 223, 160, 0.3); border-radius: 22px; color: #fffaf0;
+    background: radial-gradient(ellipse at 86% 12%, rgba(255, 198, 65, 0.22), transparent 34%), linear-gradient(118deg, #5b1014 0%, #8f191e 52%, #a61e22 100%);
+    box-shadow: 0 18px 44px rgba(83, 15, 19, 0.2); margin-bottom: 16px; }
+  .y-mozo-hero-top { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+  .y-flow-hero__eyebrow { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 10px; color: #ffdfa0; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .y-flow-hero__eyebrow::before { width: 20px; height: 1px; content: ""; background: currentColor; }
+  .y-flow-hero__title { color: #fffaf0; font-family: var(--font-display); font-size: clamp(24px, 4vw, 34px); font-weight: 700; line-height: 1.12; }
+  .y-cliente-hero__details { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .y-cliente-hero__detail { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid rgba(255, 250, 240, 0.24); border-radius: 999px; background: rgba(255, 250, 240, 0.08); color: #fffaf0; font-size: 12px; font-weight: 600; }
+  .y-mozo-hero-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 18px; }
+  .y-mozo-hero-stat { display: grid; gap: 3px; padding: 12px 14px; border: 1px solid rgba(255, 250, 240, 0.22); border-radius: 12px; background: rgba(38, 8, 10, 0.22); }
+  .y-mozo-hero-stat span { color: rgba(255, 250, 240, 0.84); font-size: 11px; font-weight: 600; }
+  .y-mozo-hero-stat strong { color: #fffaf0; font-family: var(--font-display); font-size: 24px; line-height: 1.1; }
+  .y-mozo-hero-stat--ready { border-color: rgba(255, 223, 160, 0.56); background: rgba(255, 198, 65, 0.13); }
+
+  .grid { display: grid; grid-template-columns: 350px 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } .y-mozo-hero-stats { grid-template-columns: repeat(2, 1fr); } }
+
+  .y-panel { background: var(--color-surface-lowest); border: 1px solid var(--color-border); border-radius: var(--r); }
+  .y-panel-card { box-shadow: var(--shadow); }
+  .y-panel-head { padding: 14px 16px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between; }
+  .y-cliente-kicker { color: var(--color-primary); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+  .y-panel-head h2 { margin: 2px 0 0; font-family: var(--font-display); font-size: 20px; }
+
+  .y-row { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-bottom: 1px solid var(--color-border); background: none; border-left: 0; border-right: 0; border-top: 0; width: 100%; text-align: left; font: inherit; cursor: pointer; transition: 0.15s; }
+  .y-row:last-child { border-bottom: 0; }
+  .y-row:hover { background: var(--color-surface-low); }
+  .y-row.sel { background: rgba(166, 30, 34, 0.06); box-shadow: inset 3px 0 0 var(--color-primary); }
+  .y-row .tx { flex: 1; min-width: 0; }
+  .y-row .tx b { font-size: 14px; color: var(--color-ink); }
+  .y-row .tx .chiprow { display: inline-flex; margin-left: 8px; vertical-align: middle; }
+  .y-row .tx small { display: block; color: var(--color-text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+  .y-row .col-right { text-align: right; flex: none; min-width: 92px; }
+  .y-row .importe { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; color: var(--color-primary-dark); display: block; }
+  .y-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+  .y-chip.ok { background: rgba(34, 197, 94, 0.14); color: #15803d; }
+  .y-chip.warn { background: #ffdfa0; color: #795900; }
+
+  .detalle { padding: 16px; }
+  .detalle-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border); margin-bottom: 12px; }
+  .detalle-head h3 { font-family: var(--font-display); font-size: 20px; }
+  .sv-line { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--color-surface-container); font-size: 14px; color: var(--color-ink); }
+  .sv-line:last-of-type { border-bottom: none; }
+  .sv-line .r { font-variant-numeric: tabular-nums; color: var(--color-text-secondary); }
+  .resumen-final { margin-top: 12px; padding: 14px; border-radius: 12px; background: var(--color-surface-low); border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between; }
+  .resumen-final .etiq { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-secondary); font-weight: 700; }
+  .resumen-final .monto { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--color-primary-dark); }
+
+  .metodos { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 16px; }
+  .metodo { border: 2px solid var(--color-border); border-radius: 12px; padding: 14px 10px; text-align: center; cursor: pointer; font: inherit; background: var(--color-surface-lowest); transition: 0.15s; }
+  .metodo:hover { border-color: var(--color-outline); }
+  .metodo.on { border-color: var(--color-primary); background: rgba(166, 30, 34, 0.06); box-shadow: var(--shadow); }
+  .metodo .m { font-size: 22px; display: block; margin-bottom: 4px; }
+  .metodo .n { font-size: 13px; font-weight: 600; color: var(--color-ink); }
+
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 16px; }
+  .form-grid label { display: grid; gap: 5px; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
+  .form-grid input, .form-grid select { width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; font: inherit; font-size: 13.5px; background: var(--color-surface-lowest); color: var(--color-ink); }
+
+  .acciones { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .y-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 12px 20px; font-size: 13.5px; font-weight: 600; cursor: pointer; border: 1px solid transparent; font-family: var(--font-sans); transition: 0.2s; }
+  .y-btn.primary { background: var(--color-primary); color: #fff; }
+  .y-btn.primary:hover { background: var(--color-primary-dark); }
+  .y-btn.line { background: transparent; border-color: var(--color-outline); color: var(--color-ink); }
+  .y-btn.line:hover { background: var(--color-surface-container); }
+  .y-btn.block { flex: 1; min-width: 220px; }
+</style>
+</head>
+<body>
+  <header class="y-header">
+    <div class="in">
+      <div class="y-logo"><div><span class="w">YEMHENG</span><span class="s">Chifa Peruano</span></div></div>
+      <nav>
+        <a href="#">Salón</a>
+        <a href="#">Delivery</a>
+        <a class="active" href="#">Caja</a>
+        <a href="#">Reportes</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="y-shell">
+    <section class="y-flow-hero">
+      <div class="y-mozo-hero-top">
+        <div>
+          <span class="y-flow-hero__eyebrow">Cuentas compartidas</span>
+          <h1 class="y-flow-hero__title">Cobro por participante · Mesa 12</h1>
+          <div class="y-cliente-hero__details">
+            <span class="y-cliente-hero__detail">🧾 Comanda #2408 · modo POR_CONSUMO</span>
+            <span class="y-cliente-hero__detail">👤 3 participantes</span>
+          </div>
+        </div>
+      </div>
+      <div class="y-mozo-hero-stats">
+        <div class="y-mozo-hero-stat"><span>Pendientes</span><strong>2</strong></div>
+        <div class="y-mozo-hero-stat"><span>Pagados</span><strong>1</strong></div>
+        <div class="y-mozo-hero-stat"><span>Por cobrar</span><strong>S/ 79.70</strong></div>
+        <div class="y-mozo-hero-stat y-mozo-hero-stat--ready"><span>Total mesa</span><strong>S/ 102.60</strong></div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <aside class="y-panel y-panel-card">
+        <div class="y-panel-head">
+          <div>
+            <span class="y-cliente-kicker">Mesa 12</span>
+            <h2>Participantes</h2>
+          </div>
+          <span class="y-chip warn">2 pendientes</span>
+        </div>
+        <button class="y-row sel">
+          <div class="tx"><b>Ana García <span class="chiprow"><span class="y-chip warn">Pendiente</span></span></b><small>Organizadora · 3 platos</small></div>
+          <div class="col-right"><span class="importe">S/ 48.50</span><small style="color:var(--color-text-secondary); font-size:10px; text-transform:uppercase; letter-spacing:0.08em;">Su consumo</small></div>
+        </button>
+        <button class="y-row">
+          <div class="tx"><b>Luis Rojas <span class="chiprow"><span class="y-chip warn">Pendiente</span></span></b><small>Participante · 2 platos</small></div>
+          <div class="col-right"><span class="importe">S/ 31.20</span><small style="color:var(--color-text-secondary); font-size:10px; text-transform:uppercase; letter-spacing:0.08em;">Su consumo</small></div>
+        </button>
+        <button class="y-row">
+          <div class="tx"><b>Carmen Díaz <span class="chiprow"><span class="y-chip ok">Pagado</span></span></b><small>Participante · 1 plato</small></div>
+          <div class="col-right"><span class="importe" style="color:#15803d;">S/ 22.90</span><small style="color:#15803d; font-size:10px; text-transform:uppercase; letter-spacing:0.08em;">Pagado ✓</small></div>
+        </button>
+      </aside>
+
+      <main class="y-panel y-panel-card">
+        <div class="y-panel-head">
+          <div>
+            <span class="y-cliente-kicker">Cobro</span>
+            <h2>Ana García</h2>
+          </div>
+          <span class="y-chip warn">Pendiente</span>
+        </div>
+        <div class="detalle">
+          <div class="sv-line"><span>Arroz Chifa × 1</span><span class="r">S/ 18.00</span></div>
+          <div class="sv-line"><span>Tall Saltado × 1</span><span class="r">S/ 24.00</span></div>
+          <div class="sv-line"><span>Inka Kola 500ml × 1</span><span class="r">S/ 6.50</span></div>
+          <div class="resumen-final">
+            <div><div class="etiq">Método</div><div style="font-size:14px; font-weight:600;">Efectivo</div></div>
+            <div style="text-align:right;"><div class="etiq">Total a cobrar</div><div class="monto">S/ 48.50</div></div>
+          </div>
+
+          <div style="margin-top:16px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--color-text-secondary);">Métodos de pago</div>
+          <div class="metodos">
+            <button class="metodo on"><span class="m">💵</span><span class="n">Efectivo</span></button>
+            <button class="metodo"><span class="m">💳</span><span class="n">Tarjeta</span></button>
+            <button class="metodo"><span class="m">📱</span><span class="n">Yape / Plin</span></button>
+          </div>
+
+          <div class="form-grid">
+            <label>Monto recibido<input type="number" step="0.01" value="48.50"></label>
+            <label>Vuelto<input type="text" value="S/ 0.00" readonly style="background: var(--color-surface-low); color: var(--color-primary-dark); font-weight:700;"></label>
+          </div>
+
+          <div class="acciones">
+            <button class="y-btn primary block">✓ Registrar pago y emitir boleta</button>
+            <button class="y-btn line">Ver boleta (PDF)</button>
+          </div>
+          <p style="margin-top:12px; font-size:12px; color:var(--color-text-secondary);">Al registrar el pago, la cuenta individual de Ana queda cerrada y el cliente recibe la notificación. La mesa sigue abierta para los participantes pendientes.</p>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

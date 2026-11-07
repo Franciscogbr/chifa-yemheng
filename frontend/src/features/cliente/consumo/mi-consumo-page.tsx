@@ -5,6 +5,9 @@ import { QrScannerModal } from '../../../components/QrScannerModal';
 import { Loading } from '../../../components/ui';
 import { useClienteAuth } from '../auth/cliente-auth-context';
 import { useCart } from '../../../contexts/CartContext';
+import { miCuentaClienteService } from '../../staff/staff-service';
+import { ComprobanteBoleta } from '../../staff/caja/ComprobanteBoleta';
+import { ComprobanteFactura } from '../../staff/caja/ComprobanteFactura';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -27,6 +30,24 @@ interface ComandaActiva {
   }[];
 }
 
+interface PedidoDetalleCliente {
+  id: number;
+  numero: string;
+  total: number;
+  detalles: {
+    id: number;
+    clienteId: number | null;
+    producto: string;
+    cantidad: number;
+    subTotal: number;
+    notaCocina: string | null;
+    estadoPreparacion: 'P' | 'E' | 'S' | 'A';
+    estadoRegistro: 'A' | 'I';
+  }[];
+}
+
+type ModalInfo = 'pedido' | 'mesa' | null;
+
 const ESTUDIOS: Record<string, string> = {
   'EN PREPARACION': 'f59e0b',
   'SERVIDO': '22c55e',
@@ -35,16 +56,21 @@ const ESTUDIOS: Record<string, string> = {
 
 export function ClienteMiConsumoPage() {
   const { mesaId, setMesaId } = useCart();
-  const { token, logoutCliente } = useClienteAuth();
+  const { token, cliente, logoutCliente } = useClienteAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [comanda, setComanda] = useState<ComandaActiva | null>(null);
+  const [pedidoDetalle, setPedidoDetalle] = useState<PedidoDetalleCliente | null>(null);
+  const [modalInfo, setModalInfo] = useState<ModalInfo>(null);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
+  const [errorDetalle, setErrorDetalle] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [pidiendo, setPidiendo] = useState(false);
   const [msgCuenta, setMsgCuenta] = useState<string | null>(null);
   const [guardandoModo, setGuardandoModo] = useState(false);
   const [errModo, setErrModo] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [comprobanteAbierto, setComprobanteAbierto] = useState<{ idVenta: number; tipoDocumento: string } | null>(null);
 
   const cargar = useCallback(async () => {
     if (!mesaId || !token) return;
@@ -64,6 +90,11 @@ export function ClienteMiConsumoPage() {
       }
       const data = (await res.json()) as ComandaActiva | null;
       setComanda(data && 'id' in data ? data : null);
+
+  if (data && 'id' in data && data.id) {
+        const cuentaData = await miCuentaClienteService(data.id);
+        setComprobanteAbierto({ idVenta: cuentaData.cuenta.idCuenta, tipoDocumento: '03' });
+      }
     } finally {
       setLoading(false);
     }
@@ -74,6 +105,39 @@ export function ClienteMiConsumoPage() {
     const t = setInterval(() => void cargar(), 10000);
     return () => clearInterval(t);
   }, [cargar]);
+
+  useEffect(() => {
+    if (!modalInfo) return;
+    const cerrarConEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setModalInfo(null);
+    };
+    window.addEventListener('keydown', cerrarConEscape);
+    return () => window.removeEventListener('keydown', cerrarConEscape);
+  }, [modalInfo]);
+
+  async function abrirDetallePedido() {
+    if (!comanda || !token || cargandoDetalle) return;
+    setModalInfo('pedido');
+    setCargandoDetalle(true);
+    setErrorDetalle(null);
+    try {
+      const response = await fetch(`${API_URL}/cliente/pedidos/${comanda.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.status === 401) {
+        await logoutCliente();
+        return;
+      }
+      if (!response.ok) {
+        throw new Error('No se pudo cargar el detalle de tu pedido.');
+      }
+      setPedidoDetalle((await response.json()) as PedidoDetalleCliente);
+    } catch (error) {
+      setErrorDetalle(error instanceof Error ? error.message : 'No se pudo cargar el detalle de tu pedido.');
+    } finally {
+      setCargandoDetalle(false);
+    }
+  }
 
   async function pedirLaCuenta() {
     if (!mesaId || !token || pidiendo) return;
@@ -178,11 +242,23 @@ export function ClienteMiConsumoPage() {
           <span className="y-flow-hero__eyebrow">Mesa {mesaId}</span>
           <h1 id="consumo-hero-title" className="y-flow-hero__title">Tu consumo, siempre a la vista.</h1>
           <p className="y-flow-hero__description">
-            Consulta la cuenta compartida de tu mesa y solicita el cobro cuando estén listos.
+            Revisa el resumen de la mesa y consulta los productos asociados a tu pedido.
           </p>
           <div className="y-flow-hero__actions y-client-actions">
             {comanda ? (
               <>
+                <button
+                  className="y-btn y-btn-hero-secondary y-client-action-secondary"
+                  onClick={() => setModalInfo('mesa')}
+                >
+                  Resumen de mesa
+                </button>
+                <button
+                  className="y-btn y-btn-hero-secondary y-client-action-secondary"
+                  onClick={() => void abrirDetallePedido()}
+                >
+                  Ver mi pedido
+                </button>
                 <button className="y-btn y-btn-hero-secondary y-client-action-secondary" onClick={() => navigate(`/cliente/pedido/${comanda.id}`)}>
                   Ver seguimiento
                 </button>
@@ -247,7 +323,7 @@ export function ClienteMiConsumoPage() {
               <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
                 {comanda.participantes.map((participante) => (
                   <div key={participante.clienteId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                    <span>{participante.nombre}{participante.esOrganizador ? ' · Organizador' : ''}</span>
+                    <span>{participante.nombre}{participante.clienteId === cliente?.id ? ' · Tú' : ''}</span>
                     <b>S/ {participante.consumoEstimado.toFixed(2)}</b>
                   </div>
                 ))}
@@ -264,6 +340,138 @@ export function ClienteMiConsumoPage() {
         </div>
       )}
 
+      {modalInfo && (
+        <div
+          role="presentation"
+          onClick={() => setModalInfo(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 80,
+            display: 'grid',
+            placeItems: 'center',
+            padding: 16,
+            background: 'rgba(0,0,0,.58)',
+          }}
+        >
+          <section
+            className="y-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cliente-info-modal-title"
+            onClick={(event) => event.stopPropagation()}
+            style={{ width: 'min(560px, 100%)', maxHeight: '85vh', overflow: 'auto', padding: 20 }}
+          >
+            <header style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <span className="y-flow-hero__eyebrow">{modalInfo === 'mesa' ? `Mesa ${mesaId}` : 'Detalle personal'}</span>
+                <h2 id="cliente-info-modal-title" className="font-d" style={{ margin: '4px 0', fontSize: 24 }}>
+                  {modalInfo === 'mesa' ? 'Resumen de la mesa' : 'Productos de tu pedido'}
+                </h2>
+                <p style={{ margin: 0, color: 'var(--muted)', fontSize: 13 }}>
+                  {modalInfo === 'mesa'
+                    ? 'Estado y participantes registrados en la comanda actual.'
+                    : `Pedido ${pedidoDetalle?.numero ?? comanda?.numero ?? ''}`}
+                </p>
+              </div>
+              <button type="button" className="y-btn line" onClick={() => setModalInfo(null)}>Cerrar</button>
+            </header>
+
+            {modalInfo === 'mesa' && comanda && (
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div className="y-panel" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, padding: 14 }}>
+                  <div>
+                    <small style={{ color: 'var(--muted)' }}>Estado</small>
+                    <strong style={{ display: 'block' }}>{comanda.estadoComandaDerivado}</strong>
+                  </div>
+                  <div>
+                    <small style={{ color: 'var(--muted)' }}>Total actual</small>
+                    <strong style={{ display: 'block' }}>S/ {comanda.total.toFixed(2)}</strong>
+                  </div>
+                  <div>
+                    <small style={{ color: 'var(--muted)' }}>Productos enviados</small>
+                    <strong style={{ display: 'block' }}>{comanda.cantidadDetalles}</strong>
+                  </div>
+                  <div>
+                    <small style={{ color: 'var(--muted)' }}>Personas en la comanda</small>
+                    <strong style={{ display: 'block' }}>{comanda.participantes.length}</strong>
+                  </div>
+                </div>
+                {comanda.mesaEstado === 'POR COBRAR' && (
+                  <div className="y-banner">La mesa ya solicitó la cuenta.</div>
+                )}
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <h3 style={{ margin: 0, fontSize: 15 }}>Participantes</h3>
+                  {comanda.participantes.map((participante) => (
+                    <div
+                      key={participante.clienteId}
+                      className="y-line"
+                      style={{ justifyContent: 'space-between', padding: '10px 0' }}
+                    >
+                      <span>{participante.nombre}{participante.clienteId === cliente?.id ? ' · Tú' : ''}</span>
+                      <span style={{ color: 'var(--muted)', fontSize: 12 }}>
+                        {comanda.modoPagoMesa === 'POR_CONSUMO'
+                          ? `Consumo estimado S/ ${participante.consumoEstimado.toFixed(2)}`
+                          : 'Participante'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {modalInfo === 'pedido' && (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {cargandoDetalle && <Loading text="Cargando tus productos…" />}
+                {errorDetalle && (
+                  <div className="y-banner" role="alert">
+                    {errorDetalle}
+                    <button type="button" className="y-btn line" onClick={() => void abrirDetallePedido()} style={{ marginLeft: 8 }}>
+                      Reintentar
+                    </button>
+                  </div>
+                )}
+                {!cargandoDetalle && !errorDetalle && pedidoDetalle && (() => {
+                  const misDetalles = pedidoDetalle.detalles.filter(
+                    (detalle) => detalle.estadoRegistro === 'A' && detalle.clienteId === cliente?.id,
+                  );
+                  return (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                        <span>Subtotal de tus {misDetalles.length === 1 ? 'producto' : 'productos'}</span>
+                        <strong>S/ {misDetalles.reduce((sum, detalle) => sum + detalle.subTotal, 0).toFixed(2)}</strong>
+                      </div>
+                      {misDetalles.length === 0 ? (
+                        <p style={{ color: 'var(--muted)', margin: 0 }}>
+                          Aún no hay productos asociados a tu cuenta en esta comanda.
+                        </p>
+                      ) : misDetalles.map((detalle) => (
+                        <article key={detalle.id} className="y-panel" style={{ padding: 12 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                            <strong>{detalle.cantidad} × {detalle.producto}</strong>
+                            <strong>S/ {detalle.subTotal.toFixed(2)}</strong>
+                          </div>
+                          {detalle.notaCocina && (
+                            <p style={{ margin: '5px 0', color: 'var(--muted)', fontSize: 12 }}>
+                              Nota: {detalle.notaCocina}
+                            </p>
+                          )}
+                          <small style={{ color: 'var(--muted)' }}>
+                            {detalle.estadoPreparacion === 'P' ? 'Pendiente' :
+                              detalle.estadoPreparacion === 'E' ? 'En preparación' :
+                                detalle.estadoPreparacion === 'S' ? 'Servido' : 'Anulado'}
+                          </small>
+                        </article>
+                      ))}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
       <QrScannerModal
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
@@ -272,6 +480,25 @@ export function ClienteMiConsumoPage() {
           setScannerOpen(false);
         }}
       />
+
+      {comprobanteAbierto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-[280mm] w-full overflow-y-auto max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-brown-800 tracking-tighter uppercase">YEMHENG</h2>
+                <p className="text-xs text-gray-600">Comprobante de Pago Individual</p>
+              </div>
+              <button className="y-btn line" onClick={() => setComprobanteAbierto(null)}>Cerrar</button>
+            </div>
+            {comprobanteAbierto.tipoDocumento === '01' ? (
+              <ComprobanteFactura ventaId={comprobanteAbierto.idVenta} onClose={() => setComprobanteAbierto(null)} />
+            ) : (
+              <ComprobanteBoleta ventaId={comprobanteAbierto.idVenta} onClose={() => setComprobanteAbierto(null)} />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

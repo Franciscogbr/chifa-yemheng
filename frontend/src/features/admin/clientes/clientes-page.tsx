@@ -5,6 +5,8 @@ import {
   actualizarCliente,
   cambiarEstadoCliente,
   crearCliente,
+  consultarDni,
+  consultarRuc,
   listarClientes,
   listarDistritos,
   listarTiposIdentidad,
@@ -61,6 +63,25 @@ function tiposPersona(tipos: Maestro[]): { valor: TipoDocPersona; label: string 
   return out;
 }
 
+function mensajeErrorConsulta(codigo: string, tipo: 'DNI' | 'RUC'): string {
+  if (codigo === 'FACTILIZA_NOT_CONFIGURED') {
+    return 'La consulta de documentos no está configurada en el servidor.';
+  }
+  if (codigo === 'DOCUMENT_NOT_FOUND') {
+    return `No se encontraron datos para ese ${tipo}.`;
+  }
+  if (codigo === 'FACTILIZA_RATE_LIMITED') {
+    return 'Se alcanzó el límite de consultas. Espera un momento e inténtalo otra vez.';
+  }
+  if (codigo === 'FACTILIZA_TIMEOUT') {
+    return 'La consulta tardó demasiado. Intenta nuevamente.';
+  }
+  if (codigo === 'FACTILIZA_CREDENTIALS_INVALID') {
+    return 'No se pudo validar la configuración de Factiliza.';
+  }
+  return `No se pudo consultar el ${tipo}. Intenta nuevamente.`;
+}
+
 /** /admin/clientes — ABM de clientes Natural/Empresa (clientes.md). */
 export function ClientesPage() {
   const [page, setPage] = useState(1);
@@ -77,6 +98,9 @@ export function ClientesPage() {
   const [form, setForm] = useState<ClienteForm>(VACIO);
   const [formError, setFormError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [consultandoDocumento, setConsultandoDocumento] = useState<'dni' | 'ruc' | null>(null);
+  const [consultaFeedback, setConsultaFeedback] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
+  const [documentoConsultado, setDocumentoConsultado] = useState<{ tipo: 'dni' | 'ruc'; numero: string } | null>(null);
   const [distritos, setDistritos] = useState<Maestro[]>([]);
   const [cargandoDistritos, setCargandoDistritos] = useState(true);
   const [errorDistritos, setErrorDistritos] = useState<string | null>(null);
@@ -128,6 +152,8 @@ export function ClientesPage() {
   const abrirNuevo = () => {
     setForm(VACIO);
     setFormError(null);
+    setDocumentoConsultado(null);
+    setConsultaFeedback(null);
     setModal({ editando: null });
   };
 
@@ -151,6 +177,8 @@ export function ClientesPage() {
       codigoCliente: c.codigoCliente ?? '',
     });
     setFormError(null);
+    setDocumentoConsultado(null);
+    setConsultaFeedback(null);
     setModal({ editando: c });
   };
 
@@ -226,6 +254,58 @@ export function ClientesPage() {
       );
     } finally {
       setGuardando(false);
+    }
+  };
+
+  const autocompletarDni = async () => {
+    const dni = form.dni.trim();
+    if (!/^\d{8}$/.test(dni)) return;
+    setConsultandoDocumento('dni');
+    setConsultaFeedback(null);
+    try {
+      const datos = await consultarDni(dni);
+      setDocumentoConsultado({ tipo: 'dni', numero: dni });
+      setForm((actual) => ({
+        ...actual,
+        nombres: datos.nombres,
+        apPaterno: datos.apPaterno,
+        apMaterno: datos.apMaterno,
+        fNacimiento: datos.fNacimiento ?? actual.fNacimiento,
+        genero: datos.genero ?? actual.genero,
+        direccion: datos.direccion ?? actual.direccion,
+      }));
+      setConsultaFeedback({ tipo: 'ok', texto: 'Datos encontrados. Revisa y completa los campos restantes.' });
+    } catch (error) {
+      setConsultaFeedback({
+        tipo: 'error',
+        texto: mensajeErrorConsulta(error instanceof Error ? error.message : '', 'DNI'),
+      });
+    } finally {
+      setConsultandoDocumento(null);
+    }
+  };
+
+  const autocompletarRuc = async () => {
+    const ruc = form.ruc.trim();
+    if (!/^\d{11}$/.test(ruc)) return;
+    setConsultandoDocumento('ruc');
+    setConsultaFeedback(null);
+    try {
+      const datos = await consultarRuc(ruc);
+      setDocumentoConsultado({ tipo: 'ruc', numero: ruc });
+      setForm((actual) => ({
+        ...actual,
+        razonSocial: datos.razonSocial,
+        direccion: datos.direccion ?? actual.direccion,
+      }));
+      setConsultaFeedback({ tipo: 'ok', texto: 'Datos encontrados. Revisa y completa los campos restantes.' });
+    } catch (error) {
+      setConsultaFeedback({
+        tipo: 'error',
+        texto: mensajeErrorConsulta(error instanceof Error ? error.message : '', 'RUC'),
+      });
+    } finally {
+      setConsultandoDocumento(null);
     }
   };
 
@@ -549,7 +629,11 @@ export function ClientesPage() {
                     <button
                       key={t}
                       type="button"
-                      onClick={() => setForm({ ...form, tipo: t })}
+                      disabled={consultandoDocumento !== null}
+                      onClick={() => {
+                        setForm({ ...form, tipo: t });
+                        setConsultaFeedback(null);
+                      }}
                       className={`cursor-pointer rounded-lg py-2.5 text-sm font-bold transition-all ${
                         form.tipo === t
                           ? 'bg-white text-[#A61E22] shadow-sm'
@@ -579,7 +663,7 @@ export function ClientesPage() {
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">Tipo Doc.</span>
                     <select
                       value={form.tipoDoc}
-                      disabled={!!modal.editando || cargandoDistritos}
+                      disabled={!!modal.editando || cargandoDistritos || consultandoDocumento !== null}
                       onChange={(e) => setForm({ ...form, tipoDoc: e.target.value as ClienteForm['tipoDoc'] })}
                       className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none disabled:opacity-60"
                     >
@@ -598,11 +682,40 @@ export function ClientesPage() {
                       value={form.dni}
                       maxLength={15}
                       inputMode={form.tipoDoc === 'PASAPORTE' ? 'text' : 'numeric'}
-                      disabled={!!modal.editando}
-                      onChange={(e) => setForm({ ...form, dni: e.target.value })}
+                      disabled={!!modal.editando || consultandoDocumento !== null}
+                      onChange={(e) => {
+                        const limpiarDatosConsultados =
+                          documentoConsultado?.tipo === 'dni' && documentoConsultado.numero !== e.target.value;
+                        setForm({
+                          ...form,
+                          dni: e.target.value,
+                          ...(limpiarDatosConsultados
+                            ? {
+                                nombres: '',
+                                apPaterno: '',
+                                apMaterno: '',
+                                fNacimiento: '',
+                                genero: '',
+                                direccion: '',
+                              }
+                            : {}),
+                        });
+                        if (limpiarDatosConsultados) setDocumentoConsultado(null);
+                        setConsultaFeedback(null);
+                      }}
                       placeholder={form.tipoDoc === 'DNI' ? '48291049' : form.tipoDoc === 'CE' ? '001234567' : 'AB123456'}
                       className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 font-mono text-sm outline-none focus:bg-white focus:ring-1 focus:ring-[#A61E22] disabled:opacity-60"
                     />
+                    {!modal.editando && form.tipoDoc === 'DNI' && (
+                      <button
+                        type="button"
+                        onClick={() => void autocompletarDni()}
+                        disabled={!/^\d{8}$/.test(form.dni.trim()) || consultandoDocumento !== null}
+                        className="mt-2 rounded-lg border border-[#A61E22]/30 px-3 py-2 text-xs font-bold text-[#A61E22] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {consultandoDocumento === 'dni' ? 'Consultando…' : 'Consultar DNI'}
+                      </button>
+                    )}
                   </label>
                   <label className="flex flex-col gap-1.5 md:col-span-4">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">F. Nacimiento</span>
@@ -671,11 +784,31 @@ export function ClientesPage() {
                       value={form.ruc}
                       maxLength={11}
                       inputMode="numeric"
-                      disabled={!!modal.editando}
-                      onChange={(e) => setForm({ ...form, ruc: e.target.value })}
+                      disabled={!!modal.editando || consultandoDocumento !== null}
+                      onChange={(e) => {
+                        const limpiarDatosConsultados =
+                          documentoConsultado?.tipo === 'ruc' && documentoConsultado.numero !== e.target.value;
+                        setForm({
+                          ...form,
+                          ruc: e.target.value,
+                          ...(limpiarDatosConsultados ? { razonSocial: '', direccion: '' } : {}),
+                        });
+                        if (limpiarDatosConsultados) setDocumentoConsultado(null);
+                        setConsultaFeedback(null);
+                      }}
                       placeholder="20601928371"
                       className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 font-mono text-sm outline-none focus:bg-white focus:ring-1 focus:ring-[#A61E22] disabled:opacity-60"
                     />
+                    {!modal.editando && (
+                      <button
+                        type="button"
+                        onClick={() => void autocompletarRuc()}
+                        disabled={!/^\d{11}$/.test(form.ruc.trim()) || consultandoDocumento !== null}
+                        className="mt-2 rounded-lg border border-[#A61E22]/30 px-3 py-2 text-xs font-bold text-[#A61E22] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {consultandoDocumento === 'ruc' ? 'Consultando…' : 'Consultar RUC'}
+                      </button>
+                    )}
                   </label>
                   <label className="flex flex-col gap-1.5 md:col-span-12">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">
@@ -690,6 +823,14 @@ export function ClientesPage() {
                     />
                   </label>
                 </div>
+              )}
+              {consultaFeedback && (
+                <p
+                  role={consultaFeedback.tipo === 'error' ? 'alert' : 'status'}
+                  className={`text-sm ${consultaFeedback.tipo === 'error' ? 'text-[#B91C1C]' : 'text-emerald-700'}`}
+                >
+                  {consultaFeedback.texto}
+                </p>
               )}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label className="flex flex-col gap-1.5">

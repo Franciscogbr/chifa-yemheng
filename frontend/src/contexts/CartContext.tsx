@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Producto } from '../types/db';
 
 const IGV_RATE = 0.18;
@@ -25,6 +25,15 @@ export const useCart = () => useContext(Ctx);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [mesaId, setMesaIdState] = useState(() => sessionStorage.getItem(MESA_SESSION_KEY) ?? '');
+  useEffect(() => {
+    const limpiarSesion = () => {
+      setItems([]);
+      setMesaIdState('');
+      sessionStorage.removeItem(MESA_SESSION_KEY);
+    };
+    window.addEventListener('cliente:limpiar-sesion', limpiarSesion);
+    return () => window.removeEventListener('cliente:limpiar-sesion', limpiarSesion);
+  }, []);
   const setMesaId = useCallback((value: string) => {
     const mesa = value.trim();
     setMesaIdState(mesa);
@@ -48,7 +57,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const remove = (id: number) => setItems((p) => p.filter((x) => x.producto.id_producto !== id));
   const setQty = (id: number, q: number) => setItems((p) => (q <= 0 ? p.filter((x) => x.producto.id_producto !== id) : p.map((x) => (x.producto.id_producto === id ? { ...x, cantidad: q } : x))));
   const setNota = (id: number, n: string) => setItems((p) => p.map((x) => (x.producto.id_producto === id ? { ...x, nota: n } : x)));
-  const clear = () => setItems([]);
+  const clear = useCallback(() => setItems([]), []);
   const { subtotal, igv, total, count } = useMemo(() => {
     const total = items.reduce((s, x) => s + x.cantidad * Number(x.producto.precio), 0);
     const subtotal = total / (1 + IGV_RATE);

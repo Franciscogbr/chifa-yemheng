@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { cobroCajaSchema, movimientoCajaSchema } from './caja.js';
+import { cobroCajaSchema, movimientoCajaSchema, turnoCajaSchema } from './caja.js';
 import { resumirMovimientosPorMedio } from '../utils/caja-totales.js';
 
 describe('schemas de caja', () => {
+  it('acepta observación opcional en apertura y limita su longitud a 200', () => {
+    const base = { cajaId: 1, montoInicial: 300 };
+    expect(turnoCajaSchema.safeParse(base).success).toBe(true);
+    expect(turnoCajaSchema.parse(base).observacion).toBe('');
+    expect(turnoCajaSchema.safeParse({ ...base, observacion: 'Fondo inicial contado' }).success).toBe(true);
+    expect(turnoCajaSchema.safeParse({ ...base, observacion: 'x'.repeat(201) }).success).toBe(false);
+  });
   it('acepta varios medios de pago en el mismo cobro', () => {
     const parsed = cobroCajaSchema.safeParse({
       pedidoId: 14,

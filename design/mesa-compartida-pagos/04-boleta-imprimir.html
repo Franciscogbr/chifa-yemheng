@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es-PE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boleta Consolidada - Imprimir</title>
+<style>
+  @page { size: 80mm auto; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; font-size: 12px; color: #000; padding: 6px; line-height: 1.4; background: #fff; }
+  .hoja { max-width: 720px; margin: 0 auto; }
+  .cabecera { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
+  .cabecera h1 { font-size: 15px; letter-spacing: 2px; text-transform: uppercase; margin: 0; color: #000; }
+  .cabecera .sub { font-size: 10px; color: #000; margin-top: 3px; }
+  .datos { font-size: 10.5px; margin-bottom: 12px; border-bottom: 1px solid #000; padding-bottom: 6px; line-height: 1.5; color: #000; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .datos b { color: #000; }
+  .resumen { margin-bottom: 12px; }
+  .resumen h3 { font-size: 1rem; color: #000; margin-bottom: 8px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  th, td { border-bottom: 1px solid #000; padding: 5px 3px; text-align: left; font-size: 11px; color: #000; }
+  th { background: #f0f0f0; font-size: 9.5px; text-transform: uppercase; color: #000; }
+  td.monto, td.estado { text-align: right; font-variant-numeric: tabular-nums; color: #000; }
+  .total-mesa { font-weight: 800; font-size: 13px; border-top: 2px solid #000; padding-top: 8px !important; color: #000; }
+  .pie { margin-top: 14px; font-size: 9px; color: #000; text-align: center; border-top: 1px solid #000; padding-top: 6px; line-height: 1.4; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; border: 1px solid #000; color: #000; background: #fff; }
+  @media screen {
+    body { background: #f5f1ea; padding: 16px; }
+    .pantalla-nota { margin-bottom: 14px; font-size: 0.9rem; color: #5a413e; }
+    .btn-imprimir { display: inline-block; background: #a61e22; color: #fff; border: none; border-radius: 6px; padding: 10px 16px; font-weight: 700; cursor: pointer; text-decoration: none; }
+    .btn-imprimir:hover { background: #7f1518; }
+  }
+</style>
+</head>
+<body>
+  <p class="pantalla-nota">Versión de impresión (blanco y negro, recibo térmico). Usá Ctrl+P o el botón "Imprimir" del navegador y seleccioná "Guardar como PDF".</p>
+  <a class="btn-imprimir" href="javascript:window.print()">Imprimir / Guardar PDF</a>
+
+  <div class="hoja">
+    <div class="cabecera">
+      <h1>Yemheng</h1>
+      <div class="sub">Comida China Peruana · Chifa · RUC 10123456789</div>
+    </div>
+    <div class="datos">
+      <div><b>Boleta consolidada</b> · N° B-002408-FINAL</div>
+      <div><b>Mesa:</b> 12 &nbsp;|&nbsp; <b>Comanda:</b> #2408</div>
+      <div><b>Fecha:</b> 05/11/2026 15:10</div>
+      <div><b>Cajero:</b> María P.</div>
+      <div><b>Estado mesa:</b> <b style="text-transform:uppercase;">cerrada - todos pagaron</b></div>
+    </div>
+    <div class="resumen">
+      <h3>👥 Participantes y pagos</h3>
+      <table>
+        <thead>
+          <tr><th style="width:45%">Participante</th><th style="width:20%;text-align:right">Su consumo</th><th style="width:20%;text-align:right">Pagado</th><th style="width:15%;text-align:right">Estado</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Ana García (organizadora)</td><td class="monto">S/ 48.50</td><td class="monto">S/ 48.50</td><td class="estado"><span class="chip">PAGADO</span></td></tr>
+          <tr><td>Luis Rojas</td><td class="monto">S/ 31.20</td><td class="monto">S/ 31.20</td><td class="estado"><span class="chip">PAGADO</span></td></tr>
+          <tr><td>Carmen Díaz</td><td class="monto">S/ 22.90</td><td class="monto">S/ 22.90</td><td class="estado"><span class="chip">PAGADO</span></td></tr>
+          <tr class="total-mesa"><td colspan="2">Total de la mesa</td><td class="monto">S/ 102.60</td><td class="estado">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pie">Compromiso fiscal único de la mesa al cierre total.<br>Cada participante conserva su boleta individual como respaldo de su propio pago.<br>Gracias por su consumo.</div>
+  </div>
+</body>
+</html>

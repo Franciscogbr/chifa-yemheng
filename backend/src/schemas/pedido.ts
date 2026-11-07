@@ -46,7 +46,12 @@ export const modoPagoMesaSchema = z.object({
   modo: z.enum(['CUENTA_UNICA', 'POR_CONSUMO']),
 });
 
+export const joinSettingSchema = z.object({
+  aceptaParticipantes: z.boolean(),
+});
+
 export type PedidoQuery = z.infer<typeof pedidoQuerySchema>;
+export type JoinSetting = z.infer<typeof joinSettingSchema>;
 export type PedidoAbrir = z.infer<typeof pedidoAbrirSchema>;
 export type DetalleAdd = z.infer<typeof detalleAddSchema>;
 export type PedidoAnular = z.infer<typeof pedidoAnularSchema>;

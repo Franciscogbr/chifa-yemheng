@@ -14,6 +14,7 @@
 
 - `GET /maestros` — cajas, métodos de pago y conceptos de movimiento.
 - `GET /pendientes` — pedidos no anulados ni facturados disponibles para cobro.
+- `GET /cierres/pendientes` (`CAJ_VALIDAR_CIERRE`) — cierres de turno pendientes de validación.
 - `POST /turno` (`CAJ_APERTURAR` | `CAJA_APERTURA`) — `{ cajaId, montoInicial }`.
 - `POST /cobro` (`VEN_COBRAR` | `VEN_EMITIR`) — `{ pedidoId, cajaId, tipoDocumento, clienteId?, pagos:[{ metodoPagoId, monto, montoRecibido?, referencia?, banco?, clienteId? }], aportes? }`. Devuelve `{ idVenta, serie, numero, total, vuelto }`.
 - `POST /movimientos` (`CAJ_EGRESO`) — `{ cajaId, conceptoId, metodoPagoId, monto, descripcion, referencia?, banco? }`.
@@ -28,8 +29,19 @@
 - Tarjeta y transferencia requieren referencia/operación; transferencia registra también el banco. En efectivo se valida lo recibido por encima del monto asignado y se devuelve el vuelto correspondiente.
 - Cualquier fallo cancela toda la operación. El pedido no queda facturado parcialmente.
 
+## Historial, movimientos del turno y reporte Z
+
+- `GET /caja/movimientos` — movimientos del turno activo con concepto, método, monto, descripción, fecha y usuario.
+- `GET /caja/historial?page=&limit=&desde=&hasta=` — turnos paginados con `id`, `caja`, `numeroTurno`, `fApertura`, `fCierre`, `montoInicial`, `montoSistema`, `montoDeclarado`, `diferencia`, `situacion`, `usuario`.
+- `GET /caja/reporte-z?desde=&hasta=` — reporte Z diario con:
+  - Por método de pago: cantidad y monto total.
+  - Por tipo documento (`01` factura / `03` boleta): cantidad y monto.
+  - Totales: ventas, cobrado, diferencias.
+  - Por caja: ventas y cobrado.
+
 ## Errores
 
 - `400 VALIDATION_ERROR`; `404` para entidades inexistentes.
-- `409` para caja cerrada, pedido cobrado/anulado o cierre no disponible.
+- `409` para caja cerrada, pedido cobrado/anulado, cierre no disponible, turno ya cerrado o no hay turno activo.
 - `422` para importes que no cuadran, aportes incorrectos, medio inválido, referencia/banco faltante o efectivo insuficiente.
+- `503` si hay migración de pagos mixtos pendiente (`MIGRACION_CAJA_PAGOS_MIXTOS_PENDIENTE`).

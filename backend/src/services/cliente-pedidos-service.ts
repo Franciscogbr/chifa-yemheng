@@ -11,6 +11,7 @@ import {
   obtenerEstadoMesa as repoEstadoMesa,
   clienteParticipa,
   pedirCuentaComanda,
+  saldoParticipante, type CuentaParticipanteSaldo,
   registrarParticipanteMesa,
   listarParticipantesPedido,
   configurarModoPagoMesa,
@@ -217,6 +218,34 @@ export async function configurarModoPagoClienteService(
   }
   const nuevoModo = await configurarModoPagoMesa(pedidoId, clienteId, modo);
   return { pedidoId, modoPagoMesa: nuevoModo };
+}
+
+/** S3/S2: la vista "Mi cuenta" del participante: solo lo suyo. */
+export async function miCuentaClienteService(
+  pedidoId: number,
+  clienteId: number,
+): Promise<{ pedido: { id: number; mesaId: number | null; modoPagoMesa: ModoPagoMesa; mesaLiquidada: boolean }; cuenta: CuentaParticipanteSaldo }> {
+  const pedido = await repoObtener(pedidoId);
+  if (!pedido) {
+    throw new PedidoError('NOT_FOUND');
+  }
+  // Validar permiso de ese cliente sobre el pedido sin traer datos ajenos.
+  if (pedido.clienteId !== clienteId) {
+    await validarParticipacion(pedido, clienteId);
+  }
+  const cuenta = await saldoParticipante(pedidoId, clienteId);
+  if (!cuenta) {
+    throw new PedidoError('SIN_CUENTA');
+  }
+  return {
+    pedido: {
+      id: pedido.id,
+      mesaId: pedido.mesaId,
+      modoPagoMesa: pedido.modoPagoMesa,
+      mesaLiquidada: false,
+    },
+    cuenta,
+  };
 }
 
 export async function pedirCuentaClienteService(mesaId: number, clienteId: number): Promise<{

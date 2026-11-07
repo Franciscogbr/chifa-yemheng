@@ -1,5 +1,21 @@
 export type EstadoRegistro = 'A' | 'I';
 
+export interface ClienteMesa {
+  clienteId: number;
+  nombre: string;
+  tipoDocumento: string;
+  documento: string;
+  esOrganizador: boolean;
+  consumoEstimado: number;
+}
+
+/** Respuesta del endpoint de clientes por mesa. */
+export interface ClientesMesaResponse {
+  modoPagoMesa: 'CUENTA_UNICA' | 'POR_CONSUMO';
+  totalComanda: number;
+  clientes: ClienteMesa[];
+}
+
 export interface OcupacionMesa {
   mesaId: number;
   pedido: string;
@@ -10,6 +26,7 @@ export interface OcupacionMesa {
   items: number;
   pendientes: number;
   platos: string[];
+  clientes: ClienteMesa[];
 }
 
 export interface Mesa {
@@ -34,6 +51,15 @@ export interface MesaLista {
   data: Mesa[];
   page: number;
   limit: number;
+  total: number;
+}
+
+export interface EstadoMesas {
+  libres: number;
+  ocupadas: number;
+  reservadas: number;
+  porCobrar: number;
+  fueraDeServicio: number;
   total: number;
 }
 

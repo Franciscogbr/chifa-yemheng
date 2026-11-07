@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/login/auth-context';
 import { leerPermisos } from '../features/auth/login/auth-service';
 import { useClienteAuth } from '../features/cliente/auth/cliente-auth-context';
+import { limpiarModoCliente, leerQrValidado, limpiarQrValidado, useModoCliente, type ClienteModo } from '../features/cliente/auth/cliente-mode';
+import { useCart } from '../contexts/CartContext';
 
 /** Valida JWT y retorna payload si válido, null si inválido/expirado. */
 function validateToken(token: string | null): { exp?: number; tipo?: string } | null {
@@ -188,5 +190,36 @@ export function ClienteAuthGuard({ children }: { children: ReactNode }) {
   }, [payload, logoutCliente, navigate]);
 
   if (!authorized) return null;
+  return <>{children}</>;
+}
+
+/** Restringe las rutas del cliente a la experiencia elegida tras iniciar sesión. */
+export function ClienteFlowGuard({
+  modoPermitido,
+  children,
+}: {
+  modoPermitido: ClienteModo | 'cualquiera';
+  children: ReactNode;
+}) {
+  const { token } = useClienteAuth();
+  const payload = useMemo(() => validateToken(token), [token]);
+  const modo = useModoCliente();
+  const { mesaId } = useCart();
+  const qrValidado = leerQrValidado();
+  const requiereMesa = modoPermitido === 'local';
+  const modoValido = modoPermitido === 'cualquiera' ? modo !== null : modo === modoPermitido;
+  // Para modo local se exige mesaId Y que el QR haya sido validado en esta sesión.
+  const accesoValido =
+    !payload ||
+    (modoValido && (!requiereMesa || (Boolean(mesaId) && qrValidado)));
+
+  useEffect(() => {
+    if (payload && requiereMesa && modo === 'local' && (!mesaId || !qrValidado)) {
+      limpiarModoCliente();
+      limpiarQrValidado();
+    }
+  }, [payload, requiereMesa, modo, mesaId, qrValidado]);
+
+  if (!accesoValido) return <Navigate to="/cliente/inicio" replace />;
   return <>{children}</>;
 }

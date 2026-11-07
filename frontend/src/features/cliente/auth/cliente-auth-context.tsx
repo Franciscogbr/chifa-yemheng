@@ -9,6 +9,7 @@ import {
   leerTokenCliente,
 } from '../login/cliente-auth-service';
 import type { ClienteSesion } from '../login/cliente-auth-service';
+import { limpiarModoCliente } from './cliente-mode';
 
 interface ClienteAuthContextValue {
   token: string | null;
@@ -35,6 +36,8 @@ export function ClienteAuthProvider({ children }: { children: ReactNode }) {
     await clienteLogoutRequest();
     setToken(null);
     setCliente(null);
+    limpiarModoCliente();
+    window.dispatchEvent(new Event('cliente:limpiar-sesion'));
   }, []);
 
   const refrescarSesion = useCallback(async () => {
@@ -44,6 +47,8 @@ export function ClienteAuthProvider({ children }: { children: ReactNode }) {
     } else {
       setToken(null);
       setCliente(null);
+      limpiarModoCliente();
+      window.dispatchEvent(new Event('cliente:limpiar-sesion'));
     }
   }, []);
 

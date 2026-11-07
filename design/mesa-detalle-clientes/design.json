@@ -1,0 +1,49 @@
+{
+  "title": "Detalle de mesa con clientes",
+  "brief": "Diseño de la ficha de clientes en el detalle de mesa del admin (admin/mesas), mostrando consumo individual según modo de pago (CUENTA_UNICA vs POR_CONSUMO), organizador vs participante, y participación porcentual del total. Incluye vista administrativo detallista con campos expandibles y acciones por cliente, y una versión modal emergente sobre la pantalla de mesas.",
+  "feature": null,
+  "artboards": [
+    {
+      "file": "01-hero-clientes.html",
+      "title": "Hero con tarjetas de cliente",
+      "tradeoff": "Visual cálido con degradado de hero, barras de progreso individuales, ideal para mostrar consumo y rol de cada cliente de forma destacada.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "02-tabla-clientes.html",
+      "title": "Vista tabular de clientes",
+      "tradeoff": "Densa y escaneable, ideal para muchas personas; resumen de modo de pago en tarjetas superiores, tabla con consumo y participación porcentual.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "03-tarjetas-consumo.html",
+      "title": "Tarjetas de consumo individual",
+      "tradeoff": "Foco total en el monto de cada cliente con tarjetas grandes y barra de progreso, ideal para cobro rápido por consumo; incluye platos compartidos.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "04-detalle-administrativo.html",
+      "title": "Detalle administrativo expandible",
+      "tradeoff": "Máximo detalle para panel administrativo: datos personales completos por cliente (teléfono, correo, dirección, fecha nacimiento, género, distrito, puntos), botones 'Ver más' que expanden historial y acciones (editar, eliminar de comanda), ideal para gestión operativa profunda.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "05-modal-detalle-mesa.html",
+      "title": "Modal emergente de detalle de mesa",
+      "tradeoff": "Modal sobre la pantalla de admin/mesas con overlay oscuro y botón de cerrar; concentra toda la información de clientes y comanda sin navegar fuera de la lista de mesas, ideal para flujo rápido de atención al mesero/cajero. Incluye datos personales completos, botones expandibles y acciones por cliente.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "06-admin-mesas-completo.html",
+      "title": "Admin Mesas Completo",
+      "tradeoff": "Vista integrada que combina mapa de mesas, tabla de mesas, escáner QR, información ambiental y detalle de clientes en una sola pantalla. Permite ver todo el contexto operativo y los datos de cada cliente en un flujo continuo, ideal para coordinación del servicio.",
+      "width": 1440,
+      "height": 900
+    }
+  ]
+}

@@ -6,13 +6,14 @@ import {
   cambiarEstadoMesa,
   crearAmbiente,
   crearMesa,
+  estadoService,
   listarAmbientes,
   listarMesas,
   listarOcupacion,
 } from './mesas-service';
 import { MesaIcon } from './mesa-icon';
 import { COLOR_POR_ESTADO, TIPOS_MESA } from './mesas-types';
-import type { Ambiente, AmbienteForm, Mesa, MesaForm, OcupacionMesa } from './mesas-types';
+import type { Ambiente, AmbienteForm, EstadoMesas, Mesa, MesaForm, OcupacionMesa } from './mesas-types';
 
 const LIMITE = 20;
 type Tab = 'mapa' | 'mesas' | 'ambientes';
@@ -106,6 +107,13 @@ export function MesasPage() {
   const [zonaMapa, setZonaMapa] = useState<number | 'all'>('all');
   const [detalle, setDetalle] = useState<Mesa | null>(null);
   const [hojaQR, setHojaQR] = useState<Ambiente | null>(null);
+  const [estadoMesas, setEstadoMesas] = useState<EstadoMesas | null>(null);
+  const [cargandoEstado, setCargandoEstado] = useState(false);
+  const [pagados, setPagados] = useState<Set<number>>(new Set());
+  const [filtroClientes, setFiltroClientes] = useState<'todos' | 'organizador' | 'participantes'>('todos');
+  const [soloLectura, setSoloLectura] = useState(false);
+  const [clientesDetalle, setClientesDetalle] = useState<Map<number, { telefono?: string; correo?: string; direccion?: string; errores: Record<string, string> }>>(new Map());
+  const [expandidos, setExpandidos] = useState<Set<number>>(new Set());
 
   const cargar = async () => {
     setCargando(true);
@@ -127,8 +135,78 @@ export function MesasPage() {
     }
   };
 
+  const cargarEstado = async () => {
+    setCargandoEstado(true);
+    try {
+      const estado = await estadoService();
+      setEstadoMesas(estado);
+    } catch {
+      setEstadoMesas(null);
+    } finally {
+      setCargandoEstado(false);
+    }
+  };
+
+  const togglePago = (clienteId: number) => {
+    setPagados((prev) => {
+      const next = new Set(prev);
+      if (next.has(clienteId)) next.delete(clienteId);
+      else next.add(clienteId);
+      return next;
+    });
+  };
+
+  const clientePagado = (clienteId: number) => pagados.has(clienteId);
+
+  const clientesPendientes = () => {
+    const clientes = detalle?.ocupacion?.clientes ?? [];
+    return clientes.filter((c) => (c.consumoEstimado ?? 0) > 0 && !clientePagado(c.clienteId)).length;
+  };
+
+  const clientesFiltrados = () => {
+    const clientes = detalle?.ocupacion?.clientes ?? [];
+    if (filtroClientes === 'organizador') return clientes.filter((c) => c.esOrganizador);
+    if (filtroClientes === 'participantes') return clientes.filter((c) => !c.esOrganizador);
+    return clientes;
+  };
+
+  const validarCampo = (clienteId: number, campo: string, valor: string): string => {
+    const errores = clientesDetalle.get(clienteId)?.errores ?? {};
+    let error = '';
+    switch (campo) {
+      case 'telefono':
+        if (valor && !/^(\+51)?\d{9}$/.test(valor.replace(/\s/g, ''))) error = 'Teléfono inválido (ej. 999888777)';
+        break;
+      case 'correo':
+        if (valor && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)) error = 'Correo inválido';
+        break;
+      case 'dni':
+        if (valor && !/^\d{8}$/.test(valor)) error = 'DNI debe tener 8 dígitos';
+        break;
+    }
+    if (error) errores[campo] = error;
+    else delete errores[campo];
+    setClientesDetalle((prev) => {
+      const next = new Map(prev);
+      next.set(clienteId, { ...(next.get(clienteId) ?? {}), errores });
+      return next;
+    });
+    return error;
+  };
+
+  const actualizarDetalleCliente = (clienteId: number, campo: string, valor: string) => {
+    setClientesDetalle((prev) => {
+      const next = new Map(prev);
+      const actual = next.get(clienteId) ?? { errores: {} };
+      next.set(clienteId, { ...actual, [campo]: valor });
+      return next;
+    });
+    validarCampo(clienteId, campo, valor);
+  };
+
   useEffect(() => {
     void cargar();
+    void cargarEstado();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, buscar, ambiente]);
 
@@ -280,6 +358,45 @@ export function MesasPage() {
           </button>
         ))}
       </div>
+
+      {/* Tarjetas de estado de mesas */}
+      {cargandoEstado && !estadoMesas ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 my-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="flex flex-col items-center rounded-xl bg-[#F5F5F5] p-2.5 text-center animate-pulse">
+              <span className="text-[10px] font-bold tracking-wider text-[#333333]/60 uppercase">Cargando…</span>
+              <span className="mt-0.5 text-sm font-bold text-[#333333]/40">—</span>
+            </div>
+          ))}
+        </div>
+      ) : estadoMesas && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 my-3">
+          <div className="flex flex-col items-center rounded-xl bg-[#F5F5F5] p-2.5 text-center">
+            <span className="text-[10px] font-bold tracking-wider text-[#333333]/60 uppercase">Libres</span>
+            <span className="mt-0.5 text-sm font-bold text-[#28A745]">{estadoMesas.libres}</span>
+          </div>
+          <div className="flex flex-col items-center rounded-xl bg-[#F5F5F5] p-2.5 text-center">
+            <span className="text-[10px] font-bold tracking-wider text-[#333333]/60 uppercase">Ocupadas</span>
+            <span className="mt-0.5 text-sm font-bold text-[#DC3545]">{estadoMesas.ocupadas}</span>
+          </div>
+          <div className="flex flex-col items-center rounded-xl bg-[#F5F5F5] p-2.5 text-center">
+            <span className="text-[10px] font-bold tracking-wider text-[#333333]/60 uppercase">Reservadas</span>
+            <span className="mt-0.5 text-sm font-bold text-[#FFC107]">{estadoMesas.reservadas}</span>
+          </div>
+          <div className="flex flex-col items-center rounded-xl bg-[#F5F5F5] p-2.5 text-center">
+            <span className="text-[10px] font-bold tracking-wider text-[#333333]/60 uppercase">Por Cobrar</span>
+            <span className="mt-0.5 text-sm font-bold text-[#17A2B8]">{estadoMesas.porCobrar}</span>
+          </div>
+          <div className="flex flex-col items-center rounded-xl bg-[#F5F5F5] p-2.5 text-center">
+            <span className="text-[10px] font-bold tracking-wider text-[#333333]/60 uppercase">Fuera Servicio</span>
+            <span className="mt-0.5 text-sm font-bold text-[#6C757D]">{estadoMesas.fueraDeServicio}</span>
+          </div>
+          <div className="flex flex-col items-center rounded-xl bg-[#F5F5F5] p-2.5 text-center">
+            <span className="text-[10px] font-bold tracking-wider text-[#333333]/60 uppercase">Total</span>
+            <span className="mt-0.5 text-sm font-bold text-[#7F1518]">{estadoMesas.total}</span>
+          </div>
+        </div>
+      )}
 
       {tab === 'mapa' && (
         <section className="flex flex-col gap-6">
@@ -713,6 +830,198 @@ export function MesasPage() {
                 </span>
               </div>
             </div>
+
+            {/* Indicador POR COBRAR */}
+            {detalle?.ocupacion?.clientes && detalle.ocupacion.clientes.some((c) => (c.consumoEstimado ?? 0) > 0) && (
+              <div className="flex items-center justify-between rounded-lg bg-[#FEF2F2] border border-[#FECACA]/50 p-3 my-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#DC3545]">payment</span>
+                  <span className="font-semibold text-[#DC3545] tracking-wide">Pendientes de pago</span>
+                </div>
+                <span className="text-lg font-bold text-[#DC3545]">
+                  {clientesPendientes()} de {detalle.ocupacion.clientes.filter((c) => (c.consumoEstimado ?? 0) > 0).length}
+                </span>
+              </div>
+            )}
+
+            {/* Filtros y modo solo-lectura */}
+            {detalle?.ocupacion?.clientes && detalle.ocupacion.clientes.length > 0 && (
+              <div className="flex items-center justify-between gap-3 p-2 rounded-lg bg-[#F5F5F5]/50 border border-[#D9D9D9]/30 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold tracking-wider text-[#333333]/50 uppercase">Ver:</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setFiltroClientes('todos')}
+                      className={`rounded px-2.5 py-1 text-[10px] font-bold transition-colors ${filtroClientes === 'todos' ? 'bg-[#A61E22] text-white shadow-sm' : 'bg-white text-[#333333]/60 border border-[#D9D9D9]'}`}
+                    >
+                      Todos
+                    </button>
+                    <button
+                      onClick={() => setFiltroClientes('organizador')}
+                      className={`rounded px-2.5 py-1 text-[10px] font-bold transition-colors ${filtroClientes === 'organizador' ? 'bg-[#A61E22] text-white shadow-sm' : 'bg-white text-[#333333]/60 border border-[#D9D9D9]'}`}
+                    >
+                      Org.
+                    </button>
+                    <button
+                      onClick={() => setFiltroClientes('participantes')}
+                      className={`rounded px-2.5 py-1 text-[10px] font-bold transition-colors ${filtroClientes === 'participantes' ? 'bg-[#A61E22] text-white shadow-sm' : 'bg-white text-[#333333]/60 border border-[#D9D9D9]'}`}
+                    >
+                      Part.
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSoloLectura((prev) => !prev)}
+                    className={`rounded px-2.5 py-1 text-[10px] font-bold transition-colors ${soloLectura ? 'bg-[#A61E22] text-white shadow-sm' : 'bg-white text-[#333333]/60 border border-[#D9D9D9]'}`}
+                    title={soloLectura ? 'Desactivar modo solo-lectura' : 'Activar modo solo-lectura'}
+                  >
+                    {soloLectura ? 'Edición' : 'Solo lectura'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Sección de clientes */}
+            {detalle?.ocupacion?.clientes && detalle.ocupacion.clientes.length > 0 && (
+              <div className="space-y-4">
+                {/* Lista resumida */}
+                <section className="client-list" id="client-list">
+                  <h3 className="sr-only">Clientes en la mesa</h3>
+                  <ul role="list" className="space-y-1.5">
+                    {clientesFiltrados().map((c: any, i: number) => (
+                      <li key={i} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-[#F5F5F5]/50 border border-[#D9D9D9]/30">
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="doc-icon"></span>
+                          <span className="font-semibold text-[#333333]">{c.nombre}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs">
+                          <span className="text-[#333333]/60">({c.dni})</span>
+                          <span className="consumo font-bold text-[#A61E22]">S/. {c.consumoEstimado?.toFixed(2) ?? '0.00'}</span>
+                        </div>
+                        {c.consumoEstimado > 0 && (
+                          <button
+                            onClick={() => togglePago(c.clienteId)}
+                            className={`rounded px-2 py-1 text-[10px] font-bold transition-colors ${clientePagado(c.clienteId) ? 'bg-[#22C55E] text-white' : 'bg-[#DC3545] text-white'}`}
+                            disabled={soloLectura}
+                            title={clientePagado(c.clienteId) ? 'Marcar como pendiente' : 'Marcar como pagado'}
+                          >
+                            {clientePagado(c.clienteId) ? 'Pagado' : 'Pagar'}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                {/* Tarjetas de clientes con barras de progreso */}
+                <div className="progress-bars-container space-y-3">
+                  {clientesFiltrados().map((cliente: any) => {
+                    const total = detalle.ocupacion?.total ?? 1;
+                    const porcentaje = total > 0 ? Math.max(0, Math.min(100, ((cliente.consumoEstimado ?? 0) / total) * 100)) : 0;
+                    const esOrg = cliente.esOrganizador;
+                    const det = clientesDetalle.get(cliente.clienteId) ?? { errores: {} };
+                    const estaExpandido = expandidos.has(cliente.clienteId);
+                    return (
+                      <article key={cliente.clienteId} className="cliente-card rounded-xl border p-3 shadow-sm" style={{ borderColor: esOrg ? '#A61E22' : '#22C55E' }}>
+                        <div className="cliente-header flex items-start justify-between gap-3 mb-2">
+                          <div className="cliente-roles flex items-center gap-2">
+                            <span className={`role-chip inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-bold ${esOrg ? 'bg-[#A61E22]/15 text-[#A61E22]' : 'bg-[#22C55E]/15 text-[#22C55E]'}`}>
+                              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: esOrg ? 'var(--color-primary)' : 'var(--color-success)', display: 'inline-block' }}></span>
+                              {esOrg ? 'ORGANIZADOR' : 'PARTICIPANTE'}
+                            </span>
+                            {cliente.consumoEstimado > 0 && (
+                              <button
+                                onClick={() => togglePago(cliente.clienteId)}
+                                className={`rounded px-2 py-1 text-[10px] font-bold transition-colors ${clientePagado(cliente.clienteId) ? 'bg-[#22C55E] text-white' : 'bg-[#DC3545] text-white'}`}
+                                disabled={soloLectura}
+                                title={clientePagado(cliente.clienteId) ? 'Marcar como pendiente' : 'Marcar como pagado'}
+                              >
+                                {clientePagado(cliente.clienteId) ? '✓ Pagado' : '✗ Pendiente'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="cliente-body space-y-2">
+                          <div className="cliente-nombre font-bold text-lg text-[#7F1518]">{cliente.nombre}</div>
+                          <div className="cliente-doc flex items-center gap-2 text-sm">
+                            <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: esOrg ? 'var(--color-primary)' : 'var(--color-success)', display: 'inline-block' }}></span>
+                            <span className="font-medium text-[#333333]">DNI {cliente.dni}</span>
+                          </div>
+                          <div className="detalle-fila flex justify-between items-center text-sm">
+                            <span className="etiqueta text-[10px] font-bold tracking-wider uppercase text-[#333333]/50">Consumo</span>
+                            <span className="valor font-bold text-[#333333]">S/. {(cliente.consumoEstimado ?? 0).toFixed(2)}</span>
+                          </div>
+                          <div className="progress-wrapper mt-1">
+                            <span className="progress-label block text-[10px] font-bold tracking-wider uppercase text-[#333333]/50 mb-1">Progreso</span>
+                            <progress className="progress-bar w-full h-1.5 bg-[#F5F5F5] rounded-full appearance-none" value={cliente.consumoEstimado ?? 0} max={total}></progress>
+                            <div className="progress-bar-visual h-1.5 rounded-full" style={{ width: `${porcentaje}%`, background: esOrg ? 'var(--color-primary)' : 'var(--color-success)' }}></div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (estaExpandido) setExpandidos((prev) => { const n = new Set(prev); n.delete(cliente.clienteId); return n; });
+                              else setExpandidos((prev) => { const n = new Set(prev); n.add(cliente.clienteId); return n; });
+                            }}
+                            className="w-full mt-2 py-2 rounded-lg border border-[#D9D9D9]/50 text-[10px] font-semibold text-[#333333]/60 transition-colors hover:bg-[#F5F5F5]/50"
+                            disabled={soloLectura}
+                          >
+                            {estaExpandido ? 'Ocultar información' : 'Ver más información'}
+                          </button>
+                          {estaExpandido && (
+                            <div className="mt-3 p-3 rounded-lg bg-[#F5F5F5]/50 border border-[#D9D9D9]/30 space-y-3">
+                              <div className="flex items-center justify-between text-sm">
+                                <label className="block text-[10px] font-bold tracking-wider uppercase text-[#333333]/50">Teléfono</label>
+                                <span>{det.telefono || '—'}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-sm">
+                                <label className="block text-[10px] font-bold tracking-wider uppercase text-[#333333]/50">Correo</label>
+                                <span>{det.correo || '—'}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-sm">
+                                <label className="block text-[10px] font-bold tracking-wider uppercase text-[#333333]/50">Dirección</label>
+                                <span>{det.direccion || '—'}</span>
+                              </div>
+                              {!soloLectura && (
+                                <div className="pt-3 border-t border-[#D9D9D9]/50 grid grid-cols-3 gap-2">
+                                  <input
+                                    type="tel"
+                                    value={det.telefono ?? ''}
+                                    onChange={(e) => actualizarDetalleCliente(cliente.clienteId, 'telefono', e.target.value)}
+                                    placeholder="999888777"
+                                    className={`w-full px-2 py-1.5 rounded border ${det.errores.telefono ? 'border-[#DC3545] bg-[#FEF2F2]' : 'border-[#D9D9D9] bg-white'} focus:ring-1 focus:ring-[#A61E22] text-sm`}
+                                    disabled={soloLectura}
+                                  />
+                                  {det.errores.telefono && <span className="col-span-3 text-[10px] text-[#DC3545] font-medium mt-0.5">{det.errores.telefono}</span>}
+                                  <input
+                                    type="email"
+                                    value={det.correo ?? ''}
+                                    onChange={(e) => actualizarDetalleCliente(cliente.clienteId, 'correo', e.target.value)}
+                                    placeholder="cliente@email.com"
+                                    className={`w-full px-2 py-1.5 rounded border ${det.errores.correo ? 'border-[#DC3545] bg-[#FEF2F2]' : 'border-[#D9D9D9] bg-white'} focus:ring-1 focus:ring-[#A61E22] text-sm`}
+                                    disabled={soloLectura}
+                                  />
+                                  {det.errores.correo && <span className="col-span-3 text-[10px] text-[#DC3545] font-medium mt-0.5">{det.errores.correo}</span>}
+                                  <input
+                                    type="text"
+                                    value={det.direccion ?? ''}
+                                    onChange={(e) => actualizarDetalleCliente(cliente.clienteId, 'direccion', e.target.value)}
+                                    placeholder="Av. Siempre Viva 123"
+                                    className={`w-full px-2 py-1.5 rounded border ${det.errores.direccion ? 'border-[#DC3545] bg-[#FEF2F2]' : 'border-[#D9D9D9] bg-white'} focus:ring-1 focus:ring-[#A61E22] text-sm`}
+                                    disabled={soloLectura}
+                                  />
+                                  {det.errores.direccion && <span className="col-span-3 text-[10px] text-[#DC3545] font-medium mt-0.5">{det.errores.direccion}</span>}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-4 p-6">
               {detalle.ocupacion ? (
                 <div className="rounded-xl bg-[#F5F5F5] p-4">

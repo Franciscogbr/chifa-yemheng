@@ -12,6 +12,7 @@ import {
   abrirClienteService,
   comandaActivaClienteService,
   detalleClienteService,
+  miCuentaClienteService,
   pedirCuentaClienteService,
   pedidosAbiertosPorMesaService,
   recalcularClienteService,
@@ -21,7 +22,7 @@ import {
 function errorPedido(res: Response, err: unknown): void {
   if (err instanceof PedidoError) {
     const status =
-      err.code === 'NOT_FOUND' || err.code === 'NO_COMANDA_ACTIVA'
+      err.code === 'NOT_FOUND' || err.code === 'NO_COMANDA_ACTIVA' || err.code === 'SIN_CUENTA'
         ? 404
         : err.code === 'NO_PARTICIPANTE' || err.code === 'NO_ES_ORGANIZADOR'
           ? 403
@@ -163,6 +164,25 @@ export async function getClientePedidoDetalle(req: Request, res: Response): Prom
   try {
     const pedido = await detalleClienteService(id, user.sub);
     res.json(pedido);
+  } catch (err) {
+    errorPedido(res, err);
+  }
+}
+
+/** S2/S3: "Mi cuenta" del participante: solo sus platos, estados y saldo. */
+export async function getClienteMiCuenta(req: Request, res: Response): Promise<void> {
+  const id = Number(req.params['id']);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: 'VALIDATION_ERROR' });
+    return;
+  }
+  const user = (req as Request & { user?: { sub: number } }).user;
+  if (!user) {
+    res.status(401).json({ error: 'CREDENCIALES_INVALIDAS' });
+    return;
+  }
+  try {
+    res.json(await miCuentaClienteService(id, user.sub));
   } catch (err) {
     errorPedido(res, err);
   }

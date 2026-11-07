@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { AuthGuard, PublicGuard, RoleGuard, AreaGuard, ClienteAuthGuard, ClientePublicGuard } from './guards';
+import { AuthGuard, PublicGuard, RoleGuard, AreaGuard, ClienteAuthGuard, ClientePublicGuard, ClienteFlowGuard } from './guards';
 import { ADMIN_ROLES } from './admin-access';
 import { useAuth } from '../features/auth/login/auth-context';
 import { RouteError } from '../shared/ui/route-error';
@@ -40,6 +40,7 @@ import { StaffMozoPage } from '../features/staff/mozo/mozo-page';
 import { StaffCajaPage } from '../features/staff/caja/caja-page';
 import { StaffDeliveryPage } from '../features/staff/delivery/delivery-page';
 import { StaffCocinaPage } from '../features/staff/cocina/cocina-page';
+import { RendicionPage } from '../features/caja/rendicion/RendicionPage';
 
 // Repartidor Pages
 import { MisEntregasPage } from '../features/repartidor/mis-entregas/mis-entregas-page';
@@ -119,39 +120,39 @@ export const router = createBrowserRouter([
       },
       {
         path: 'cliente/menu',
-        element: <ClienteMenuPage />,
+        element: <ClienteFlowGuard modoPermitido="local"><ClienteMenuPage /></ClienteFlowGuard>,
       },
       {
         path: 'cliente/comanda',
-        element: <ClienteAuthGuard><ClienteComandaPage /></ClienteAuthGuard>,
+        element: <ClienteAuthGuard><ClienteFlowGuard modoPermitido="local"><ClienteComandaPage /></ClienteFlowGuard></ClienteAuthGuard>,
       },
       {
         path: 'cliente/mi-consumo',
-        element: <ClienteAuthGuard><ClienteMiConsumoPage /></ClienteAuthGuard>,
+        element: <ClienteAuthGuard><ClienteFlowGuard modoPermitido="local"><ClienteMiConsumoPage /></ClienteFlowGuard></ClienteAuthGuard>,
       },
       {
         path: 'cliente/perfil',
-        element: <ClienteAuthGuard><ClientePerfilPage /></ClienteAuthGuard>,
+        element: <ClienteAuthGuard><ClienteFlowGuard modoPermitido="cualquiera"><ClientePerfilPage /></ClienteFlowGuard></ClienteAuthGuard>,
       },
       {
         path: 'cliente/historial',
-        element: <ClienteAuthGuard><ClienteHistorialPage /></ClienteAuthGuard>,
+        element: <ClienteAuthGuard><ClienteFlowGuard modoPermitido="cualquiera"><ClienteHistorialPage /></ClienteFlowGuard></ClienteAuthGuard>,
       },
       {
         path: 'cliente/reservas',
-        element: <ClienteReservasPage />,
+        element: <ClienteFlowGuard modoPermitido="casa"><ClienteReservasPage /></ClienteFlowGuard>,
       },
       {
         path: 'cliente/reservar',
-        element: <ClienteAuthGuard><ClienteReservaNuevaPage /></ClienteAuthGuard>,
+        element: <ClienteAuthGuard><ClienteFlowGuard modoPermitido="casa"><ClienteReservaNuevaPage /></ClienteFlowGuard></ClienteAuthGuard>,
       },
       {
         path: 'cliente/delivery',
-        element: <ClienteDeliveryPage />,
+        element: <ClienteFlowGuard modoPermitido="casa"><ClienteDeliveryPage /></ClienteFlowGuard>,
       },
       {
         path: 'cliente/pedido/:id',
-        element: <ClienteAuthGuard><ClientePedidoTrackingPage /></ClienteAuthGuard>,
+        element: <ClienteAuthGuard><ClienteFlowGuard modoPermitido="cualquiera"><ClientePedidoTrackingPage /></ClienteFlowGuard></ClienteAuthGuard>,
       },
       {
         path: 'cliente/restablecer',
@@ -202,6 +203,10 @@ export const router = createBrowserRouter([
       {
         path: 'caja',
         element: <RoleGuard roles={ADMIN_ROLES.cashier}><AreaGuard area="CAJA"><StaffCajaPage /></AreaGuard></RoleGuard>,
+      },
+      {
+        path: 'rendiciones',
+        element: <RoleGuard roles={ADMIN_ROLES.cashier}><RendicionPage /></RoleGuard>,
       },
       {
         path: 'delivery',

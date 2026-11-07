@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { isSupported, onMessage } from 'firebase/messaging';
+import { getFirebaseMessaging } from '../services/firebase-messaging';
 
 export interface PushNotificationOptions {
   onNewAssignment?: (deliveryId: number) => void;
@@ -7,57 +9,47 @@ export interface PushNotificationOptions {
 }
 
 export function usePushNotifications(options: PushNotificationOptions = {}) {
-  const { onNewAssignment, onEnRuta } = options;
+  const { onNewAssignment, onEnRuta, onSupervisorMessage } = options;
   const [tokenRegistrado, setTokenRegistrado] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Solicitar permiso de notificaciones
-    if (!('Notification' in window)) {
-      console.log('Notifications not supported');
-      return;
-    }
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
 
-    Notification.requestPermission().then(permission => {
-      if (permission === 'granted') {
-        setTokenRegistrado(true);
-        // Registrar token FCM en backend
-        navigator.serviceWorker.ready.then(registration => {
-          registration.pushManager.getSubscription().then(subscription => {
-            if (subscription) {
-              // Enviar token al backend
-              // fetch('/api/v1/repartidor/entregas/token', {
-              //   method: 'POST',
-              //   body: JSON.stringify({ token: subscription.toJSON(), platform: 'web' })
-              // })
-              console.log('Token FCM listo:', subscription.toJSON());
-            }
-          });
-        });
+    const listen = async () => {
+      if (!('Notification' in window) || Notification.permission !== 'granted') {
+        return;
       }
-    });
-  }, []);
-
-  // Simular listener de mensajes entrantes (en producción usaría service worker)
-  useEffect(() => {
-    const checkMessages = () => {
-      // En producción: navigator.serviceWorker.addEventListener('message', ...)
-      // Por ahora, simulación con setInterval
-      // const data = localStorage.getItem('push-data');
-      // if (data) {
-      //   const parsed = JSON.parse(data);
-      //   if (parsed.type === 'new_assignment' && onNewAssignment) {
-      //     onNewAssignment(parsed.deliveryId);
-      //   }
-      //   if (parsed.type === 'en_ruta' && onEnRuta) {
-      //     onEnRuta(parsed.deliveryId);
-      //   }
-      //   localStorage.removeItem('push-data');
-      // }
+      if (!(await isSupported()) || !active) return;
+      const messaging = getFirebaseMessaging();
+      unsubscribe = onMessage(messaging, (payload) => {
+        if (!active) return;
+        const type = payload.data?.type;
+        const deliveryId = Number(payload.data?.deliveryId);
+        if (type === 'NUEVA_ASIGNACION' && Number.isInteger(deliveryId)) onNewAssignment?.(deliveryId);
+        if (type === 'EN_RUTA' && Number.isInteger(deliveryId)) onEnRuta?.(deliveryId);
+        if (type === 'MENSAJE_SUPERVISOR' && payload.data?.message) {
+          onSupervisorMessage?.(payload.data.message);
+        }
+      });
+      if (active) {
+        setTokenRegistrado(true);
+        setError(null);
+      }
     };
 
-    const interval = setInterval(checkMessages, 15000);
-    return () => clearInterval(interval);
-  }, [onNewAssignment, onEnRuta]);
+    void listen().catch((reason: unknown) => {
+      if (!active) return;
+      setError(reason instanceof Error ? reason.message : 'PUSH_LISTENER_FAILED');
+      setTokenRegistrado(false);
+    });
 
-  return { tokenRegistrado };
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [onEnRuta, onNewAssignment, onSupervisorMessage]);
+
+  return { tokenRegistrado, error };
 }

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getClienteComandaActiva,
   getClientePedidoDetalle,
+  getClienteMiCuenta,
   getClientePedidosActivos,
   patchClienteCuenta,
   patchClienteModoPago,
@@ -17,6 +18,7 @@ clientePedidosRouter.use(clienteAuthGuard);
 // GET /comanda debe registrarse antes de /:id para no colisionar.
 clientePedidosRouter.get('/activos', getClientePedidosActivos);
 clientePedidosRouter.get('/comanda', getClienteComandaActiva);
+clientePedidosRouter.get('/:id/mi-cuenta', getClienteMiCuenta);
 clientePedidosRouter.get('/:id', getClientePedidoDetalle);
 clientePedidosRouter.post('/', postClientePedido);
 clientePedidosRouter.post('/:id/detalles', postClienteDetalle);

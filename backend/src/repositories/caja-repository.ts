@@ -224,13 +224,18 @@ export async function abrirCaja(args: {
   usuarioId: number;
   montoInicial: number;
   numeroTurno: string;
+  observacion?: string;
 }): Promise<{ id: number; mensaje: string }> {
-  const { data, error } = await supabase.rpc('fn_aperturar_caja_atomic', {
+  const { data, error } = await supabase.rpc('fn_aperturar_caja_atomic_observada', {
     p_caja: args.cajaId,
     p_usuario: args.usuarioId,
     p_monto: args.montoInicial,
     p_numero: args.numeroTurno,
+    p_observacion: args.observacion ?? '',
   });
+  if (error?.code === 'PGRST202') {
+    throw new Error('MIGRACION_APERTURA_OBSERVACION_PENDIENTE');
+  }
   if (error) {
     throw new Error(error.message);
   }
@@ -922,6 +927,249 @@ export async function cobrarAtomicMixto(args: {
   };
 }
 
+/** S5: el supervisor rechaza el arqueo; el cajero re-cuenta. */
+export async function rechazarCierreCaja(args: {
+  aperturaId: number;
+  supervisorId: number;
+}): Promise<void> {
+  const { error } = await supabase.rpc('fn_rechazar_cierre_caja', {
+    p_apertura: args.aperturaId,
+    p_supervisor: args.supervisorId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/* ------------------------- T17: comprobante (boleta/factura) ------------------------- */
+
+export interface ComprobanteData {
+  venta: Record<string, unknown> | null;
+  pedido: Record<string, unknown> | null;
+  cliente: Record<string, unknown> | null;
+  cuenta: Record<string, unknown> | null;
+  detalles: Record<string, unknown>[];
+  comprobante: Record<string, unknown> | null;
+  emisor: Record<string, unknown> | null;
+  pagos: Record<string, unknown>[];
+}
+
+export async function getComprobante(ventaId: number): Promise<ComprobanteData> {
+  const { data: venta, error: errVenta } = await supabase
+    .from('venta')
+    .select('*')
+    .eq('id_venta', ventaId)
+    .maybeSingle();
+  if (errVenta) throw new Error(`DB_GET_FAIL: ${errVenta.message}`);
+  if (!venta) throw new Error('COMPROBANTE_NO_ENCONTRADO');
+
+  const { data: pedido } = await supabase
+    .from('pedido')
+    .select('*')
+    .eq('id_pedido', venta.id_pedido)
+    .maybeSingle();
+
+  const { data: cliente } = await supabase
+    .from('cliente')
+    .select('*')
+    .eq('id_cliente', venta.id_cliente)
+    .maybeSingle();
+
+  const { data: cuenta } = await supabase
+    .from('cuenta_participante')
+    .select('*')
+    .eq('id_venta', ventaId)
+    .maybeSingle();
+
+  const { data: detalles } = await supabase
+    .from('detalle_pedido')
+    .select('*')
+    .eq('id_cuenta', cuenta?.id)
+    .eq('estado', 'A');
+
+  const { data: boleta } = await supabase
+    .from('boleta')
+    .select('*')
+    .eq('id_venta', ventaId)
+    .maybeSingle();
+
+  const { data: factura } = await supabase
+    .from('factura')
+    .select('*')
+    .eq('id_venta', ventaId)
+    .maybeSingle();
+
+  const comprobante = venta.tipodocumento === '03' ? boleta : factura;
+
+  const { data: emisor } = await supabase
+    .from('emisor_config')
+    .select('*')
+    .order('feccre', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data: pagos } = await supabase
+    .from('pago_venta')
+    .select('*')
+    .eq('id_venta', ventaId);
+
+  return {
+    venta,
+    pedido,
+    cliente,
+    cuenta,
+    detalles: detalles || [],
+    comprobante,
+    emisor,
+    pagos: pagos || []
+  };
+}
+
+/** S5: solicita cierre con arqueo por denominaciones y niveles (T15a2). */
+export async function solicitarCierreArqueo(args: {
+  aperturaId: number;
+  usuarioId: number;
+  denominaciones: { valor: number; cantidad: number; tipo: 'BILLETE' | 'MONEDA' }[];
+  observacion: string;
+}): Promise<{
+  sistema: number;
+  declarado: number;
+  diferencia: number;
+  resultado: 'CUADRADA' | 'SOBRANTE' | 'FALTANTE';
+  idIncidencia: number | null;
+  requiereSupervisor: boolean;
+}> {
+  const { data, error } = await supabase.rpc('fn_solicitar_cierre_arqueo', {
+    p_apertura: args.aperturaId,
+    p_usuario: args.usuarioId,
+    p_denominaciones: args.denominaciones,
+    p_observacion: args.observacion,
+  });
+  if (error) {
+    if (error.code === 'PGRST202') {
+      throw new Error('MIGRACION_CAJA_ARQUEO_PENDIENTE');
+    }
+    throw new Error(`ARQUEO_FAIL: ${error.message}`);
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+  if (!row) throw new Error('ARQUEO_SIN_RESULTADO');
+  return {
+    sistema: Number(row['sistema'] ?? 0),
+    declarado: Number(row['declarado'] ?? 0),
+    diferencia: Number(row['diferencia'] ?? 0),
+    resultado: (['CUADRADA', 'SOBRANTE', 'FALTANTE'].find(
+      (x) => x === String(row['resultado'] ?? ''),
+    ) ?? 'FALTANTE') as 'CUADRADA' | 'SOBRANTE' | 'FALTANTE',
+    idIncidencia: row['id_incidencia'] == null ? null : Number(row['id_incidencia']),
+    requiereSupervisor: row['requiere_supervisor'] === true,
+  };
+}
+
+export interface IncidenciaCaja {
+  id: number;
+  aperturaId: number;
+  cajaId: number;
+  cajeroId: number;
+  diferencia: number;
+  nivel: 'MEDIA' | 'CRITICA';
+  estado: 'PENDIENTE' | 'EN_REVISION' | 'JUSTIFICADA' | 'CERRADA';
+  motivo: string;
+  resueltaPor: number | null;
+  fecha: string;
+}
+
+export async function listarIncidencias(pendientesSolo: boolean): Promise<IncidenciaCaja[]> {
+  let query = supabase
+    .from('incidencia_caja')
+    .select('id, id_aperturacaja, id_caja, id_cajero, diferencia, nivel, estado, motivo, resuelta_por, feccre')
+    .order('feccre', { ascending: false });
+  if (pendientesSolo) {
+    query = query.in('estado', ['PENDIENTE', 'EN_REVISION']);
+  }
+  const { data, error } = await query;
+  if (error) throw new Error(`DB_LIST_FAIL: ${error.message}`);
+  return ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
+    id: Number(r['id']),
+    aperturaId: Number(r['id_aperturacaja']),
+    cajaId: Number(r['id_caja']),
+    cajeroId: Number(r['id_cajero']),
+    diferencia: Number(r['diferencia'] ?? 0),
+    nivel: (String(r['nivel']) === 'CRITICA' ? 'CRITICA' : 'MEDIA') as 'MEDIA' | 'CRITICA',
+    estado: String(r['estado']) as IncidenciaCaja['estado'],
+    motivo: String(r['motivo'] ?? ''),
+    resueltaPor: r['resuelta_por'] == null ? null : Number(r['resuelta_por']),
+    fecha: new Date(String(r['feccre'])).toISOString(),
+  }));
+}
+
+export async function resolverIncidencia(args: {
+  id: number;
+  estado: 'EN_REVISION' | 'JUSTIFICADA' | 'CERRADA';
+  resueltaPor: number;
+  comentario: string;
+}): Promise<void> {
+  const { error } = await supabase
+    .from('incidencia_caja')
+    .update({
+      estado: args.estado,
+      resuelta_por: args.resueltaPor,
+      resuelta_en: new Date().toISOString(),
+      comentario_resolucion: args.comentario,
+      fecmod: new Date().toISOString(),
+      usumod: 'SYSTEM',
+    })
+    .eq('id', args.id);
+  if (error) throw new Error(`DB_UPDATE_FAIL: ${error.message}`);
+}
+
+/** S3: cobro de la cuenta individual de un participante por fn_cobrar_participante_atomic. */
+export async function cobrarParticipanteAtomic(args: {
+  pedidoId: number;
+  clienteId: number;
+  usuarioId: number;
+  aperturaId: number;
+  tipoDocumento: '03' | '01';
+  pagos: { metodoPagoId: number; monto: number; montoRecibido: number | null; referencia: string; banco: string }[];
+  empresaId: number | null;
+  documento: string | null;
+  nombreDoc: string | null;
+}): Promise<{
+  idCuenta: number;
+  idVenta: number;
+  serie: string;
+  numero: string;
+  total: number;
+  vuelto: number;
+  mesaLiquidada: boolean;
+}> {
+  const { data, error } = await supabase.rpc('fn_cobrar_participante_atomic', {
+    p_pedido: args.pedidoId,
+    p_cliente: args.clienteId,
+    p_usuario: args.usuarioId,
+    p_apertura: args.aperturaId,
+    p_tipodoc: args.tipoDocumento,
+    p_pagos: args.pagos,
+    p_empresa_id: args.empresaId,
+    p_documento: args.documento,
+    p_nombre_doc: args.nombreDoc,
+  });
+  if (error) {
+    if (error.code === 'PGRST202') {
+      throw new Error('MIGRACION_CAJA_PAGOS_MIXTOS_PENDIENTE');
+    }
+    throw new Error(`COBRO_PARTICIPANTE_FAIL: ${error.message}`);
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+  if (!row) throw new Error('COBRO_SIN_RESULTADO');
+  return {
+    idCuenta: Number(row['id_cuenta']),
+    idVenta: Number(row['id_venta']),
+    serie: String(row['serie'] ?? ''),
+    numero: String(row['numero'] ?? ''),
+    total: Number(row['total'] ?? 0),
+    vuelto: Number(row['vuelto'] ?? 0),
+    mesaLiquidada: row['mesa_liquidada'] === true,
+  };
+}
+
 export async function registrarMovimientoCaja(args: {
   aperturaId: number;
   usuarioId: number;
@@ -1117,4 +1365,242 @@ async function listarMovimientosDeApertura(aperturaId: number): Promise<{ movimi
       };
     }),
   };
+}
+
+/* ------------------------ T15a5 · acta Z y reportes ------------------------ */
+
+export interface ActaCierre {
+  aperturaId: number;
+  caja: string;
+  numeroTurno: string | null;
+  cajero: string;
+  validador: string | null;
+  fechaApertura: string | null;
+  fechaCierre: string | null;
+  saldoInicial: number;
+  totalIngresos: number;
+  totalEgresos: number;
+  saldoTeorico: number;
+  dineroContado: number;
+  diferencia: number;
+  resultado: 'CUADRADA' | 'SOBRANTE' | 'FALTANTE';
+  situacion: 'A' | 'P' | 'C';
+  observacion: string | null;
+  conteo: { valor: number; tipo: string; cantidad: number }[];
+  incidencia: {
+    id: number;
+    nivel: 'MEDIA' | 'CRITICA';
+    estado: string;
+    motivo: string;
+    comentarioResolucion: string | null;
+  } | null;
+}
+
+/** S5: datos completos del acta de cierre (Z) de un turno. */
+export async function actaCierre(aperturaId: number): Promise<ActaCierre | null> {
+  const { data, error } = await supabase
+    .from('apertura_caja')
+    .select('id_aperturacaja, numero_turno, f_apertura, f_cierre, monto_inicial, total_ingresos, total_egresos, monto_sistema, monto_declarado, diferencia, situacion, observacion, caja(n_caja), usuario:personal(id_usuario, persona(nombre, ap_paterno, ap_materno))')
+    .eq('id_aperturacaja', aperturaId)
+    .maybeSingle();
+  if (error) throw new Error(`DB_GET_FAIL: ${error.message}`);
+  const row = (data ?? null) as unknown as Record<string, unknown> | null;
+  if (!row) return null;
+
+  const [conteo, incidenciaRes, validador] = await Promise.all([
+    supabase
+      .from('arqueo_denominacion')
+      .select('valor, tipo, cantidad')
+      .eq('id_aperturacaja', apertureIdSafe(aperturaId))
+      .order('valor', { ascending: false }),
+    supabase
+      .from('incidencia_caja')
+      .select('id, nivel, estado, motivo, comentario_resolucion')
+      .eq('id_aperturacaja', apertureIdSafe(aperturaId))
+      .order('feccre', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    Number(row['id_usuariocierre'] ?? 0)
+      ? logeoUsuarioMax([Number(row['id_usuariocierre'])])
+      : Promise.resolve(new Map<number, string>()),
+  ]);
+
+  const conteoRows = ((conteo.data ?? []) as unknown as Record<string, unknown>[]);
+  const incidenciaRow = (incidenciaRes.data ?? null) as unknown as Record<string, unknown> | null;
+  const personal = (row['usuario'] ?? null) as Record<string, unknown> | null;
+  const persona = (personal?.['persona'] ?? null) as Record<string, unknown> | null;
+  const diferencia = Number(row['diferencia'] ?? 0);
+  const caja = (row['caja'] ?? null) as Record<string, unknown> | null;
+
+  return {
+    aperturaId,
+    caja: String(caja?.['n_caja'] ?? ''),
+    numeroTurno: row['numero_turno'] == null ? null : String(row['numero_turno']),
+    cajero: nombrePersona(persona, Number(row['id_usuario'] ?? 0)),
+    validador: validador.get(Number(row['id_usuariocierre'] ?? 0)) ?? null,
+    fechaApertura: row['f_apertura'] == null ? null : new Date(String(row['f_apertura'])).toISOString(),
+    fechaCierre: row['f_cierre'] == null ? null : new Date(String(row['f_cierre'])).toISOString(),
+    saldoInicial: Number(row['monto_inicial'] ?? 0),
+    totalIngresos: Number(row['total_ingresos'] ?? 0),
+    totalEgresos: Number(row['total_egresos'] ?? 0),
+    saldoTeorico: Number(row['monto_sistema'] ?? 0),
+    dineroContado: Number(row['monto_declarado'] ?? 0),
+    diferencia,
+    resultado: diferencia === 0 ? 'CUADRADA' : diferencia > 0 ? 'SOBRANTE' : 'FALTANTE',
+    situacion: (['A', 'P', 'C'].find((x) => x === String(row['situacion'] ?? '')) ?? 'A') as 'A' | 'P' | 'C',
+    observacion: row['observacion'] == null ? null : String(row['observacion']),
+    conteo: conteoRows.map((d) => ({
+      valor: Number(d['valor'] ?? 0),
+      tipo: String(d['tipo'] ?? 'BILLETE'),
+      cantidad: Number(d['cantidad'] ?? 0),
+    })),
+    incidencia: incidenciaRow
+      ? {
+          id: Number(incidenciaRow['id'] ?? 0),
+          nivel: (String(incidenciaRow['nivel']) === 'CRITICA' ? 'CRITICA' : 'MEDIA') as 'MEDIA' | 'CRITICA',
+          estado: String(incidenciaRow['estado'] ?? ''),
+          motivo: String(incidenciaRow['motivo'] ?? ''),
+          comentarioResolucion: incidenciaRow['comentario_resolucion'] == null
+            ? null
+            : String(incidenciaRow['comentario_resolucion']),
+        }
+      : null,
+  };
+}
+
+function apertureIdSafe(id: number): number {
+  return id;
+}
+
+function nombrePersona(persona: Record<string, unknown> | null | undefined, fallbackId: number): string {
+  if (!persona) return `Usuario ${fallbackId}`;
+  const partes = [
+    persona['nombre'],
+    persona['ap_paterno'],
+    persona['ap_materno'],
+  ].filter((p) => typeof p === 'string' && p.length > 0);
+  return partes.length ? partes.map((p) => String(p)).join(' ') : `Usuario ${fallbackId}`;
+}
+
+/** helper logeo: usa el mismo mapping de nombres de historialCaja. */
+async function logeoUsuarioMax(ids: number[]): Promise<Map<number, string>> {
+  if (ids.length === 0) return new Map();
+  return logeoUsuario(ids.filter((x) => x > 0));
+}
+
+export interface DiferenciaReporteRow {
+  aperturaId: number;
+  caja: string;
+  cajero: string;
+  fechaCierre: string | null;
+  saldoTeorico: number;
+  dineroContado: number;
+  diferencia: number;
+  resultado: 'CUADRADA' | 'SOBRANTE' | 'FALTANTE';
+  incidenciaEstado: string | null;
+  incidenciaNivel: string | null;
+}
+
+/** S5: reporte de diferencias de turnos cerrados. */
+export async function reporteDiferencias(): Promise<DiferenciaReporteRow[]> {
+  const { data, error } = await supabase
+    .from('apertura_caja')
+    .select('id_aperturacaja, id_caja, id_usuario, f_cierre, monto_sistema, monto_declarado, diferencia, caja(n_caja), usuario:personal(persona(nombre, ap_paterno, ap_materno))')
+    .eq('situacion', 'C')
+    .neq('diferencia', 0)
+    .order('f_cierre', { ascending: false })
+    .limit(200);
+  if (error) throw new Error(`DB_LIST_FAIL: ${error.message}`);
+  const rows = (data ?? []) as unknown as Record<string, unknown>[];
+  if (rows.length === 0) return [];
+
+  const { data: incs, error: errInc } = await supabase
+    .from('incidencia_caja')
+    .select('id_aperturacaja, nivel, estado')
+    .in('id_aperturacaja', rows.map((r) => Number(r['id_aperturacaja'])));
+  if (errInc) throw new Error(`DB_LIST_FAIL: ${errInc.message}`);
+  const mapaInc = new Map<number, { nivel: string; estado: string }>();
+  for (const i of (incs ?? []) as unknown as Record<string, unknown>[]) {
+    mapaInc.set(Number(i['id_aperturacaja']), {
+      nivel: String(i['nivel'] ?? ''),
+      estado: String(i['estado'] ?? ''),
+    });
+  }
+  return rows.map((r) => {
+    const diferencia = Number(r['diferencia'] ?? 0);
+    const inc = mapaInc.get(Number(r['id_aperturacaja']));
+    const persona = (r['usuario'] ?? null) as Record<string, unknown> | null;
+    const caja = (r['caja'] ?? null) as Record<string, unknown> | null;
+    return {
+      aperturaId: Number(r['id_aperturacaja']),
+      caja: String(caja?.['n_caja'] ?? ''),
+      cajero: nombrePersona((persona?.['persona'] ?? null) as Record<string, unknown> | null, Number(r['id_usuario'] ?? 0)),
+      fechaCierre: r['f_cierre'] == null ? null : new Date(String(r['f_cierre'])).toISOString(),
+      saldoTeorico: Number(r['monto_sistema'] ?? 0),
+      dineroContado: Number(r['monto_declarado'] ?? 0),
+      diferencia,
+      resultado: diferencia === 0 ? 'CUADRADA' : diferencia > 0 ? 'SOBRANTE' : 'FALTANTE',
+      incidenciaEstado: inc?.estado ?? null,
+      incidenciaNivel: inc?.nivel ?? null,
+    };
+  });
+}
+
+export interface HistorialCajeroRow {
+  cajeroId: number;
+  cajero: string;
+  arqueos: number;
+  totalSobrantes: number;
+  totalFaltantes: number;
+  diferenciaAcumulada: number;
+  incidencias: number;
+}
+
+/** S5: historial de arqueos por cajero. */
+export async function historialCajero(): Promise<HistorialCajeroRow[]> {
+  const { data, error } = await supabase
+    .from('apertura_caja')
+    .select('id_usuario, monto_inicial, total_ingresos, total_egresos, monto_sistema, monto_declarado, diferencia, personal(nombre, ap_paterno, ap_materno)')
+    .eq('situacion', 'C')
+    .limit(300);
+  if (error) throw new Error('DB_LIST_FAIL: ' + error.message);
+  const rows = (data ?? []) as unknown as Record<string, unknown>[];
+
+  const porCajero = new Map<number, { arqueos: number; sobrantes: number; faltantes: number }>();
+  for (const r of rows) {
+    const cajeroId = Number(r['id_usuario'] ?? 0);
+    const dif = Number(r['diferencia'] ?? 0);
+    const prev = porCajero.get(cajeroId) ?? { arqueos: 0, sobrantes: 0, faltantes: 0 };
+    prev.arqueos += 1;
+    if (dif > 0) prev.sobrantes += dif;
+    if (dif < 0) prev.faltantes += Math.abs(dif);
+    porCajero.set(cajeroId, prev);
+  }
+
+  const { data: incs, error: errInc } = await supabase
+    .from('incidencia_caja')
+    .select('id_cajero')
+    .in('id_cajero', Array.from(porCajero.keys()));
+  if (errInc) throw new Error('DB_LIST_FAIL: ' + errInc.message);
+  const incidPor = new Map<number, number>();
+  for (const i of (incs ?? []) as unknown as Record<string, unknown>[]) {
+    const k = Number(i['id_cajero'] ?? 0);
+    incidPor.set(k, (incidPor.get(k) ?? 0) + 1);
+  }
+
+  const out: HistorialCajeroRow[] = [];
+  for (const [cajeroId, agg] of porCajero) {
+    const base = rows.find((r) => Number(r['id_usuario']) === cajeroId);
+    const pers = (base?.['personal'] ?? null) as Record<string, unknown> | null;
+    out.push({
+      cajeroId,
+      cajero: nombrePersona(pers, cajeroId),
+      arqueos: agg.arqueos,
+      totalSobrantes: agg.sobrantes,
+      totalFaltantes: agg.faltantes,
+      diferenciaAcumulada: agg.sobrantes - agg.faltantes,
+      incidencias: incidPor.get(cajeroId) ?? 0,
+    });
+  }
+  return out.sort((a, b) => b.arqueos - a.arqueos);
 }

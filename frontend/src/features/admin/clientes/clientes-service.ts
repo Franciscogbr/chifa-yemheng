@@ -3,6 +3,20 @@ import type { Cliente, ClienteForm, ClienteLista, TipoCliente } from './clientes
 
 const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/clientes`;
 
+export interface DatosDni {
+  nombres: string;
+  apPaterno: string;
+  apMaterno: string;
+  fNacimiento: string | null;
+  genero: 'M' | 'F' | 'O' | null;
+  direccion: string | null;
+}
+
+export interface DatosRuc {
+  razonSocial: string;
+  direccion: string | null;
+}
+
 function headers(): HeadersInit {
   return {
     'Content-Type': 'application/json',
@@ -43,6 +57,22 @@ export function listarClientes(f: FiltrosClientes): Promise<ClienteLista> {
     q.set('estado', f.estado);
   }
   return fetch(`${BASE}?${q.toString()}`, { headers: headers() }).then(lanzar<ClienteLista>);
+}
+
+export function consultarDni(dni: string): Promise<DatosDni> {
+  return fetch(`${BASE}/consulta/dni`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ dni }),
+  }).then(lanzar<DatosDni>);
+}
+
+export function consultarRuc(ruc: string): Promise<DatosRuc> {
+  return fetch(`${BASE}/consulta/ruc`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ ruc }),
+  }).then(lanzar<DatosRuc>);
 }
 
 export { listarDistritos } from '../../../services/maestros';

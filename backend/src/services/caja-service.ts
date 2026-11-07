@@ -3,6 +3,11 @@ import type { Pedido } from '../models/pedido.js';
 import {
   abrirCaja,
   cobrarAtomicMixto,
+  rechazarCierreCaja,
+  solicitarCierreArqueo,
+  listarIncidencias,
+  resolverIncidencia, type IncidenciaCaja,
+  cobrarParticipanteAtomic,
   confirmarCierreCaja,
   listarCierresPendientes,
   listarCajas,
@@ -11,6 +16,10 @@ import {
   registrarMovimientoCaja,
   solicitarCierreCaja,
   turnoAbiertoDeCaja,
+  actaCierre, type ActaCierre,
+  reporteDiferencias, type DiferenciaReporteRow,
+  historialCajero, type HistorialCajeroRow,
+  getComprobante, type ComprobanteData,
   type CierrePendiente,
 } from '../repositories/caja-repository.js';
 import { listarPedidosPorCobrar, obtenerPedido } from '../repositories/pedidos-repository.js';
@@ -37,12 +46,13 @@ export async function abrirCajaService(
   cajaId: number,
   usuarioId: number,
   montoInicial: number,
+  observacion = '',
 ): Promise<{ id: number; mensaje: string }> {
   const numeroTurno = new Intl.DateTimeFormat('es-PE', {
     dateStyle: 'short',
     timeStyle: 'short',
   }).format(new Date());
-  return abrirCaja({ cajaId, usuarioId, montoInicial, numeroTurno });
+  return abrirCaja({ cajaId, usuarioId, montoInicial, numeroTurno, observacion });
 }
 
 export async function cobrarService(args: {
@@ -122,6 +132,123 @@ export async function cobrarService(args: {
     return sum + Math.max(0, cents(payment.montoRecibido ?? payment.monto) - cents(payment.monto));
   }, 0) / 100;
   return { ...result, vuelto: change };
+}
+
+/** S5: solicita cierre con arqueo (denominaciones + niveles). */
+export async function arqueoCierreService(args: {
+  cajaId: number;
+  usuarioId: number;
+  denominaciones: { valor: number; cantidad: number; tipo: 'BILLETE' | 'MONEDA' }[];
+  observacion: string;
+}): Promise<{
+  aperturaId: number;
+  sistema: number;
+  declarado: number;
+  diferencia: number;
+  resultado: 'CUADRADA' | 'SOBRANTE' | 'FALTANTE';
+  idIncidencia: number | null;
+  requiereSupervisor: boolean;
+}> {
+  const turno = await turnoAbiertoDeCaja(args.cajaId);
+  if (!turno) throw new Error('TURNO_NO_ABIERTO');
+  const result = await solicitarCierreArqueo({
+    aperturaId: turno.id,
+    usuarioId: args.usuarioId,
+    denominaciones: args.denominaciones,
+    observacion: args.observacion,
+  });
+  return { aperturaId: turno.id, ...result };
+}
+
+export async function incidenciasService(pendientesSolo: boolean): Promise<IncidenciaCaja[]> {
+  return listarIncidencias(pendientesSolo);
+}
+
+/* ------------------------- T15a5: acta Z y reportes ------------------------- */
+
+export async function actaCierreService(aperturaId: number): Promise<ActaCierre | null> {
+  return actaCierre(aperturaId);
+}
+
+export async function reporteDiferenciasService(): Promise<DiferenciaReporteRow[]> {
+  return reporteDiferencias();
+}
+
+export async function historialCajeroService(): Promise<HistorialCajeroRow[]> {
+  return historialCajero();
+}
+
+/** S5: el supervisor rechaza el arqueo para que el cajero re-cuenta. */
+export async function rechazarCierreService(args: {
+  aperturaId: number;
+  supervisorId: number;
+}): Promise<void> {
+  await rechazarCierreCaja({ aperturaId: args.aperturaId, supervisorId: args.supervisorId });
+}
+
+/** S5: resuelve una incidencia; solo un autorizador distinto. */
+export async function resolverIncidenciaService(args: {
+  incidenciaId: number;
+  estado: 'EN_REVISION' | 'JUSTIFICADA' | 'CERRADA';
+  supervisorId: number;
+  comentario: string;
+}): Promise<void> {
+  if (args.estado !== 'EN_REVISION' && !args.comentario.trim()) {
+    throw new Error('COMENTARIO_REQUERIDO');
+  }
+  await resolverIncidencia({
+    id: args.incidenciaId,
+    estado: args.estado,
+    resueltaPor: args.supervisorId,
+    comentario: args.comentario,
+  });
+}
+
+/** S3: cobra la cuenta individual de un participante de mesa compartida. */
+export async function cobrarParticipanteService(args: {
+  pedidoId: number;
+  clienteId: number;
+  usuarioId: number;
+  cajaId: number;
+  tipoDocumento: '03' | '01';
+  participanteDocumento?: string;
+  participanteNombre?: string;
+  empresaId?: number;
+  pagos: {
+    metodoPagoId: number;
+    monto: number;
+    montoRecibido: number | null;
+    referencia: string;
+    banco: string;
+  }[];
+}): Promise<{
+  idCuenta: number;
+  idVenta: number;
+  serie: string;
+  numero: string;
+  total: number;
+  vuelto: number;
+  mesaLiquidada: boolean;
+}> {
+  const apertura = await turnoAbiertoDeCaja(args.cajaId);
+  if (!apertura) {
+    throw new Error('NO_CAJA_ABIERTA');
+  }
+  return cobrarParticipanteAtomic({
+    pedidoId: args.pedidoId,
+    clienteId: args.clienteId,
+    usuarioId: args.usuarioId,
+    aperturaId: apertura.id,
+    tipoDocumento: args.tipoDocumento,
+    pagos: args.pagos,
+    empresaId: args.empresaId ?? null,
+    documento: args.participanteDocumento ?? null,
+    nombreDoc: args.participanteNombre ?? null,
+  });
+}
+
+export async function getComprobanteService(ventaId: number): Promise<ComprobanteData> {
+  return getComprobante(ventaId);
 }
 
 export async function registrarMovimientoCajaService(args: {

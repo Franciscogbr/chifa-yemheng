@@ -1,102 +1,78 @@
-import { useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { deleteToken, getToken, isSupported, onMessage } from 'firebase/messaging';
+import type { Messaging } from 'firebase/messaging';
+import { api } from '../services/api-client';
+import { getFirebaseMessaging } from '../services/firebase-messaging';
 
-interface PushTokenOptions {
-  userId: number;
-  platform?: 'android' | 'ios' | 'web';
-  vapidKey?: string; // Para web push
-}
-
-export function usePushToken({ userId, platform = 'web', vapidKey }: PushTokenOptions) {
-  const registerToken = useCallback(async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      console.log('[Push] Push notifications not supported');
-      return;
-    }
-
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      
-      let subscription = await registration.pushManager.getSubscription();
-      
-      if (!subscription) {
-        const options: PushSubscriptionOptionsInit = {
-          userVisibleOnly: true,
-        };
-        if (vapidKey) {
-          options.applicationServerKey = urlBase64ToUint8Array(vapidKey) as unknown as BufferSource;
-        }
-        subscription = await registration.pushManager.subscribe(options);
-      }
-
-      const token = subscription.toJSON();
-      
-      // Enviar token al backend
-      const response = await fetch('/api/v1/repartidor/entregas/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-        },
-        body: JSON.stringify({
-          userId,
-          token: JSON.stringify(token),
-          platform,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to register push token');
-      }
-
-      console.log('[Push] Token registered successfully');
-    } catch (error) {
-      console.error('[Push] Registration failed:', error);
-    }
-  }, [userId, platform, vapidKey]);
-
-  const unregisterToken = useCallback(async () => {
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      
-      if (subscription) {
-        await subscription.unsubscribe();
-        
-        await fetch('/api/v1/repartidor/entregas/token', {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-          },
-          body: JSON.stringify({ userId }),
-        });
-      }
-    } catch (error) {
-      console.error('[Push] Unregister failed:', error);
-    }
-  }, [userId]);
+export function usePushToken() {
+  const [registered, setRegistered] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [messaging, setMessaging] = useState<Messaging | null>(null);
 
   useEffect(() => {
-    if (platform === 'web') {
-      registerToken();
-    }
-    return () => {
-      if (platform === 'web') {
-        unregisterToken();
+    if (!messaging) return;
+    return onMessage(messaging, (payload) => {
+      if (Notification.permission !== 'granted') return;
+      const title = payload.notification?.title ?? 'Actualización de entrega';
+      new Notification(title, {
+        body: payload.notification?.body ?? '',
+      });
+    });
+  }, [messaging]);
+
+  const registerToken = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+        throw new Error('PUSH_NOT_SUPPORTED');
       }
-    };
-  }, [registerToken, unregisterToken, platform]);
+      if (!(await isSupported())) throw new Error('PUSH_NOT_SUPPORTED');
+      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+      if (!vapidKey) throw new Error('FIREBASE_VAPID_KEY_MISSING');
 
-  return { registerToken, unregisterToken };
-}
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') throw new Error('PUSH_PERMISSION_NOT_GRANTED');
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      const firebaseMessaging = getFirebaseMessaging();
+      const token = await getToken(firebaseMessaging, { vapidKey, serviceWorkerRegistration: registration });
+      if (!token) throw new Error('FCM_TOKEN_EMPTY');
+
+      await api.registrarPushToken(token, 'web');
+      setMessaging(firebaseMessaging);
+      setRegistered(true);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'PUSH_REGISTER_FAILED');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const unregisterToken = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (!(await isSupported())) throw new Error('PUSH_NOT_SUPPORTED');
+      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+      if (!vapidKey) throw new Error('FIREBASE_VAPID_KEY_MISSING');
+      const registration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+      const firebaseMessaging = getFirebaseMessaging();
+      const token = await getToken(firebaseMessaging, {
+        vapidKey,
+        ...(registration ? { serviceWorkerRegistration: registration } : {}),
+      });
+      if (token) await api.eliminarPushToken(token);
+      await deleteToken(firebaseMessaging);
+      setMessaging(null);
+      setRegistered(false);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'PUSH_UNREGISTER_FAILED');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { registered, loading, error, registerToken, unregisterToken };
 }

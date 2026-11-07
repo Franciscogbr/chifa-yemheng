@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mesa 04 · Tarjetas de consumo</title>
+<style>
+  :root {
+    --color-primary: #a61e22;
+    --color-primary-dark: #7f1518;
+    --color-primary-light: #b3282a;
+    --color-gold: #d4a017;
+    --color-gold-light: #f6be39;
+    --color-gold-dark: #795900;
+    --color-gold-soft: #ffdfa0;
+    --color-tertiary: #7c1316;
+    --color-tertiary-container: #9d2c2b;
+    --color-surface: #fbf9f8;
+    --color-surface-lowest: #ffffff;
+    --color-surface-low: #f6f3f2;
+    --color-surface-container: #f0eded;
+    --color-surface-high: #eae8e7;
+    --color-surface-highest: #e4e2e1;
+    --color-surface-dim: #dcd9d9;
+    --color-background: #fbf9f8;
+    --color-border: #e2bebb;
+    --color-outline: #8e706d;
+    --color-ink: #1b1c1c;
+    --color-text-secondary: #5a413e;
+    --color-success: #22c55e;
+    --color-warning: #f6be39;
+    --color-error: #ba1a1a;
+    --color-info: #2563eb;
+
+    --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Playfair Display", ui-serif, Georgia, serif;
+
+    --r: 16px;
+    --shadow: 0 4px 16px rgba(166, 30, 34, 0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-background);
+    color: var(--color-ink);
+    line-height: 1.5;
+    padding: 32px;
+  }
+
+  .container { max-width: 1120px; margin: 0 auto; }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(24px, 4vw, 32px);
+    font-weight: 700;
+    color: var(--color-ink);
+    letter-spacing: -0.02em;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-lowest);
+    color: var(--color-text-secondary);
+  }
+  .pill.active { color: var(--color-primary); border-color: var(--color-primary); background: rgba(166, 30, 34, 0.08); }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    color: var(--color-primary);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .hero-flow {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: 24px;
+    border: 1px solid rgba(255, 223, 160, 0.3);
+    border-radius: 22px;
+    color: #fffaf0;
+    background: linear-gradient(118deg, #5b1014 0%, #8f191e 52%, #a61e22 100%);
+    box-shadow: 0 18px 44px rgba(83, 15, 19, 0.2);
+    margin-bottom: 24px;
+  }
+  .hero-flow h2 { color: #fffaf0; margin-bottom: 0.5rem; font-family: var(--font-display); font-size: clamp(20px, 3vw, 28px); }
+  .hero-flow p { color: rgba(255, 250, 240, 0.82); margin: 0; font-size: 0.95rem; }
+
+  .total-grande {
+    text-align: center;
+    padding: 32px;
+    border-radius: var(--r);
+    background: var(--color-surface-lowest);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+  }
+  .total-grande .label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-secondary); margin-bottom: 8px; }
+  .total-grande .valor { font-family: var(--font-display); font-size: 3rem; font-weight: 800; color: var(--color-primary-dark); line-height: 1; }
+  .total-grande .modo { font-size: 0.875rem; font-weight: 600; color: var(--color-primary-dark); margin-top: 6px; }
+
+  .tarjetas-consumo {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .tarjeta-consumo {
+    border: 1px solid var(--color-border);
+    border-radius: var(--r);
+    padding: 20px;
+    background: var(--color-surface-lowest);
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .tarjeta-consumo::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 4px;
+    background: var(--color-primary);
+  }
+  .tarjeta-consumo.org::before { background: var(--color-primary-dark); }
+  .tarjeta-consumo.part::before { background: var(--color-success); }
+
+  .tarjeta-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .tarjeta-nombre {
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+  .tarjeta-rol {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .tarjeta-rol.org { color: var(--color-primary-dark); }
+  .tarjeta-rol.part { color: #15803d; }
+
+  .tarjeta-doc {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 16px;
+  }
+
+  .tarjeta-monto {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--color-ink);
+    margin-bottom: 8px;
+  }
+
+  .barra-progreso {
+    width: 100%;
+    height: 8px;
+    background: var(--color-surface-low);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .barra-lleno {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.6s ease;
+  }
+
+  .tarjeta-pct {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-primary-dark);
+    margin-top: 6px;
+  }
+
+  .platos-compartidos {
+    border: 1px solid var(--color-border);
+    border-radius: var(--r);
+    padding: 16px;
+    background: var(--color-surface-lowest);
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+  }
+  .platos-compartidos h4 {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--color-ink);
+    margin-bottom: 10px;
+  }
+  .platos-lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .plato-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    background: rgba(166, 30, 34, 0.08);
+    color: var(--color-primary-dark);
+    border: 1px solid rgba(166, 30, 34, 0.2);
+  }
+
+  .acciones {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 8px;
+    padding: 11px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: 0.2s;
+    text-decoration: none;
+  }
+  .btn-primary { background: var(--color-primary); color: #ffffff; }
+  .btn-primary:hover { background: var(--color-primary-dark); }
+  .btn-line { background: transparent; border: 1px solid var(--color-outline); color: var(--color-ink); }
+  .btn-line:hover { background: var(--color-surface-container); }
+
+  @media (max-width: 768px) {
+    body { padding: 16px; }
+    .tarjetas-consumo { grid-template-columns: 1fr; }
+    .acciones { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <span class="pill active">Mesa 04 · SALON PRINCIPAL</span>
+      </div>
+      <div>
+        <h1>Mesa 04 · Tarjetas de consumo</h1>
+      </div>
+    </header>
+
+    <section class="hero-flow">
+      <div class="eyebrow">Vista de consumo individual · Comanda PED202611030001</div>
+      <h2>Cada cliente ve cuánto debe</h2>
+      <p>Tarjetas individuales con monto y barra de progreso por participante.</p>
+    </section>
+
+    <div class="total-grande">
+      <div class="label">Total de la comanda</div>
+      <div class="valor">S/. 76.00</div>
+      <div class="modo">POR CONSUMO · 4 personas · 6 ítems</div>
+    </div>
+
+    <div class="tarjetas-consumo">
+      <article class="tarjeta-consumo org">
+        <div class="tarjeta-header">
+          <div class="tarjeta-nombre">Juan Pérez Gómez</div>
+          <span class="tarjeta-rol org">ORGANIZADOR</span>
+        </div>
+        <div class="tarjeta-doc">DNI 12345678</div>
+        <div class="tarjeta-monto">S/. 45.00</div>
+        <div class="barra-progreso"><div class="barra-lleno" style="width:59%; background:var(--color-primary-dark);"></div></div>
+        <div class="tarjeta-pct">59% del total</div>
+      </article>
+
+      <article class="tarjeta-consumo part">
+        <div class="tarjeta-header">
+          <div class="tarjeta-nombre">María García López</div>
+          <span class="tarjeta-rol part">PARTICIPANTE</span>
+        </div>
+        <div class="tarjeta-doc">DNI 87654321</div>
+        <div class="tarjeta-monto">S/. 31.00</div>
+        <div class="barra-progreso"><div class="barra-lleno" style="width:41%; background:var(--color-success);"></div></div>
+        <div class="tarjeta-pct">41% del total</div>
+      </article>
+    </div>
+
+    <div class="platos-compartidos">
+      <h4>Platos compartidos</h4>
+      <div class="platos-lista">
+        <span class="plato-chip">Lomo Saltado · S/. 38.00</span>
+        <span class="plato-chip">Chicha Morada Jarra · S/. 18.00</span>
+        <span class="plato-chip">Causa Limeña · S/. 16.00</span>
+        <span class="plato-chip">Inca Kola 500ml · S/. 6.00</span>
+      </div>
+    </div>
+
+    <div class="acciones">
+      <button class="btn btn-primary">Gestionar clientes</button>
+      <button class="btn btn-line">Cambiar a cuenta única</button>
+    </div>
+  </div>
+</body>
+</html>

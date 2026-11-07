@@ -1,28 +1,24 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "nvidia/nemotron-3-ultra-550b-a55b",
+  "model": "gonka/deepseek",
+
   "provider": {
-    "nvidia": {
+    "gonka": {
       "npm": "@ai-sdk/openai-compatible",
-      "name": "NVIDIA NIM",
+      "name": "Gonka Broker",
       "options": {
-        "baseURL": "https://integrate.api.nvidia.com/v1",
-        "apiKey": "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"
+        "baseURL": "https://proxy.gonkabroker.com/v1",
+        "apiKey": "gnk-prx-cc46792650d2fd03c02b12781d965709bd389e554fa5b0fd6afa5dc8b8fa1425"
       },
       "models": {
-        "nemotron-3-ultra-550b-a55b": {
-          "name": "Nemotron 3 Ultra 550B",
+        "deepseek": {
+          "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+          "name": "DeepSeek-V4-Flash-0731",
+          "tool_call": true,
           "limit": {
-            "context": 1000000,
-            "output": 32768
-          },
-           "deepseek-ai/deepseek-v4.1-flash": {
-    "name": "DeepSeek V4.1 Flash",
-    "limit": {
-      "context": 32768,
-      "output": 4096
-    }
-  }
+            "context": 400000,
+            "output": 16384
+          }
         }
       }
     }

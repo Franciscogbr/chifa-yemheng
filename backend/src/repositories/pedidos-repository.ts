@@ -97,6 +97,8 @@ function lanzarErrorComanda(error: { message: string }, fallback: string): never
     'NO_COMANDA_ACTIVA',
     'PRODUCTO_NO_DISPONIBLE',
     'MESA_OCUPADA',
+    'LA_MESA_NO_ADMITE_NUEVOS_PARTICIPANTES',
+    'MODO_PAGO_BLOQUEADO',
   ] as const;
   const codigo = codigos.find((candidate) => error.message.includes(candidate));
   if (codigo) {
@@ -494,6 +496,47 @@ export async function listarParticipantesPedidos(
     });
   }
   return result;
+}
+
+/** S3: consulta la cuenta individual del participante (fn_saldo_participante). */
+export interface CuentaParticipanteSaldo {
+  idCuenta: number;
+  estadoCuenta: 'ABIERTA' | 'PAGADA';
+  saldoPendiente: number;
+  montoPagado: number;
+  platos: {
+    id: number;
+    producto: string;
+    cantidad: number;
+    precioUnitario: number;
+    subTotal: number;
+    estadoPreparacion: string;
+  }[];
+}
+
+export async function saldoParticipante(
+  pedidoId: number,
+  clienteId: number,
+): Promise<CuentaParticipanteSaldo | null> {
+  const { data, error } = await supabase.rpc('fn_saldo_participante', {
+    p_pedido: pedidoId,
+    p_cliente: clienteId,
+  });
+  if (error) {
+    throw new Error(`DB_SALDO_FAIL: ${error.message}`);
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+  if (!row) {
+    return null;
+  }
+  const platosRaw = (row['platos'] ?? []) as unknown as CuentaParticipanteSaldo['platos'];
+  return {
+    idCuenta: Number(row['id_cuenta']),
+    estadoCuenta: (row['estado_cuenta'] === 'PAGADA' ? 'PAGADA' : 'ABIERTA') as 'ABIERTA' | 'PAGADA',
+    saldoPendiente: Number(row['consumo_abierto'] ?? 0),
+    montoPagado: Number(row['monto_pagado'] ?? 0),
+    platos: platosRaw,
+  };
 }
 
 export async function configurarModoPagoMesa(

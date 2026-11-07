@@ -77,14 +77,10 @@ export function ClienteLoginPage() {
 
   function redirigirCliente() {
     const mesaParam = params.get('mesa');
-    const redirectTo = params.get('redirect');
-    if (redirectTo === 'comanda') {
-      window.location.href = '/cliente/comanda';
-    } else if (mesaParam) {
-      window.location.href = `/cliente/mesa/${encodeURIComponent(mesaParam)}`;
-    } else {
-      window.location.href = '/cliente/inicio';
-    }
+    const destino = mesaParam
+      ? `/cliente/inicio?mesa=${encodeURIComponent(mesaParam)}`
+      : '/cliente/inicio';
+    window.location.href = destino;
   }
 
   async function enviarFormularioCorreo(event: React.FormEvent<HTMLFormElement>) {
@@ -187,15 +183,7 @@ export function ClienteLoginPage() {
           try {
             const sesion = await clienteGoogleLogin(resp.credential);
             guardarSesionCliente(sesion);
-            const mesaParam = params.get('mesa');
-            const redirectTo = params.get('redirect');
-            if (redirectTo === 'comanda') {
-              window.location.href = '/cliente/comanda';
-            } else if (mesaParam) {
-              window.location.href = `/cliente/mesa/${encodeURIComponent(mesaParam)}`;
-            } else {
-              window.location.href = '/cliente/inicio';
-            }
+            redirigirCliente();
           } catch (e) {
             setErrorGoogle((e as Error)?.message ?? 'No fue posible validar con Google. Reintente.');
           } finally {

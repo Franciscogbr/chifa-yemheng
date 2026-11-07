@@ -1,104 +1,200 @@
-import { Link } from 'react-router-dom';
-import { CalendarDays, ClipboardList, ReceiptText, ShoppingBag, Star, UserRound, UtensilsCrossed } from 'lucide-react';
-import { useClienteAuth } from '../auth/cliente-auth-context';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { CalendarDays, MapPin, QrCode, Truck, UtensilsCrossed } from 'lucide-react';
+import { QrScannerModal } from '../../../components/QrScannerModal';
 import { useCart } from '../../../contexts/CartContext';
+import { guardarModoCliente, limpiarModoCliente, useModoCliente } from '../auth/cliente-mode';
+
+const MESA_QR_VALIDADO_KEY = 'chifa.cliente.mesa.qr-validado';
+
+function marcarQrValidado(): void {
+  sessionStorage.setItem(MESA_QR_VALIDADO_KEY, '1');
+}
+
+function limpiarQrValidado(): void {
+  sessionStorage.removeItem(MESA_QR_VALIDADO_KEY);
+}
 
 export function ClienteHubPage() {
-  const { cliente, logoutCliente } = useClienteAuth();
-  const { mesaId, count, total } = useCart();
+  const { mesaId, setMesaId, clear } = useCart();
+  const navigate = useNavigate();
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const modo = useModoCliente();
+
+  function elegirCasa() {
+    setMesaId('');
+    clear();
+    limpiarQrValidado();
+    guardarModoCliente('casa');
+  }
+
+  function volverASeleccion() {
+    limpiarModoCliente();
+    setMesaId('');
+    limpiarQrValidado();
+    clear();
+  }
+
+  /**
+   * "Estoy en el local": SIEMPRE se exige escaneo QR. Nunca se entra directo,
+   * aunque ya haya una mesa guardada de una sesión previa.
+   */
+  function elegirLocal() {
+    setMesaId('');
+    clear();
+    setScannerOpen(true);
+  }
+
+  /**
+   * Si ya hay modo 'local' pero no hay mesaId (restaurado de sessionStorage
+   * sin escaneo en esta sesión), se abre el scanner automáticamente.
+   */
+  useEffect(() => {
+    if (modo === 'local' && !mesaId && !scannerOpen) {
+      setScannerOpen(true);
+    }
+  }, [modo, mesaId, scannerOpen]);
 
   return (
     <div className="y-shell">
       <main className="y-cliente-page">
-        <section className="y-flow-hero y-cliente-flow-hero" aria-labelledby="cliente-home-title">
-          <div className="y-flow-hero__content">
-            <span className="y-flow-hero__eyebrow">Chifa Yemheng</span>
-            <h1 id="cliente-home-title" className="y-flow-hero__title">
-              {cliente?.nombre ? `Hola, ${cliente.nombre}.` : 'Bienvenido.'}
-            </h1>
-            <p className="y-flow-hero__description">
-              Consulta la carta, revisa tus pedidos y gestiona tus reservas desde aquí.
-            </p>
-            <div className="y-cliente-hero__details">
-              {cliente && (
-                <span className="y-cliente-hero__detail"><Star size={15} /> {cliente.puntos} puntos</span>
-              )}
-              {mesaId && <span className="y-cliente-hero__detail">Mesa {mesaId}</span>}
-              {count > 0 && (
-                <span className="y-cliente-hero__detail">
-                  <ShoppingBag size={15} /> {count} {count === 1 ? 'producto' : 'productos'} · S/ {total.toFixed(2)}
-                </span>
-              )}
+        {modo && (
+          <section className="y-flow-hero y-cliente-flow-hero" aria-labelledby="cliente-home-title">
+            <div className="y-flow-hero__content">
+              <span className="y-flow-hero__eyebrow">Chifa Yemheng</span>
+              <h1 id="cliente-home-title" className="y-flow-hero__title">
+                {modo === 'local'
+                  ? (mesaId ? `Mesa ${mesaId} identificada` : 'Estoy en el local')
+                  : 'No estoy en el local'}
+              </h1>
+              <p className="y-flow-hero__description">
+                {modo === 'local'
+                  ? mesaId
+                    ? 'Consulta el menú, arma tu pedido y revisa la comanda de esta mesa.'
+                    : 'Escanea el QR de tu mesa para continuar.'
+                  : 'Pide delivery o gestiona una reserva desde casa.'}
+              </p>
             </div>
-            <div className="y-flow-hero__actions y-client-actions">
-              {mesaId && count > 0 ? (
-                <Link className="y-btn y-btn-hero y-client-action-primary" to="/cliente/menu">
-                  Agregar platos
-                </Link>
-              ) : (
-                <Link className="y-btn y-btn-hero y-client-action-primary" to={mesaId ? '/cliente/mi-consumo' : '/cliente/menu'}>
-                  {mesaId ? `Ver mi mesa · ${mesaId}` : 'Ver carta'}
-                </Link>
-              )}
-              {mesaId && count > 0 && <Link className="y-btn y-btn-hero-secondary y-client-action-secondary" to="/cliente/mi-consumo">Ver mi comanda</Link>}
-              {mesaId && count === 0 && <Link className="y-btn y-btn-hero-secondary y-client-action-secondary" to="/cliente/menu">Agregar platos</Link>}
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
-        <section aria-labelledby="cliente-secciones-title">
-          <div className="y-cliente-section-heading">
-            <div>
-              <span className="y-cliente-kicker">Tu cuenta</span>
-              <h2 id="cliente-secciones-title" className="font-d">¿Qué necesitas hoy?</h2>
-            </div>
-          </div>
-          {mesaId ? (
-            <div className="y-panel y-cliente-table-card">
+        {!modo && (
+          <section aria-labelledby="cliente-secciones-title">
+            <div className="y-cliente-section-heading">
               <div>
-                <b>Mesa vinculada: {mesaId}</b>
-                <p>{count > 0 ? 'Tu selección actual está guardada en el carrito.' : 'Aún no tienes productos en el carrito.'}</p>
+                <span className="y-cliente-kicker">Elige tu experiencia</span>
+                <h2 id="cliente-secciones-title" className="font-d">
+                  ¿Dónde estás hoy?
+                </h2>
               </div>
             </div>
-          ) : (
-            <div className="y-banner y-cliente-table-card">
-              <p>Para asociar un pedido a una mesa, escanea su QR desde la carta.</p>
+            <div className="y-tiles y-cliente-tiles">
+              <button
+                type="button"
+                className="y-tile"
+                onClick={elegirLocal}
+                style={{ color: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <div className="ic"><QrCode size={20} /></div>
+                <b>Estoy en el local</b>
+                <span>
+                  Escanea el QR de tu mesa para ver el menú, hacer tu pedido y consultar tu comanda.
+                </span>
+              </button>
+              <button
+                type="button"
+                className="y-tile"
+                onClick={elegirCasa}
+                style={{ color: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <div className="ic"><MapPin size={20} /></div>
+                <b>No estoy en el local</b>
+                <span>
+                  Pide delivery desde casa o consulta y realiza una reserva.
+                </span>
+              </button>
             </div>
-          )}
-        </section>
+          </section>
+        )}
 
-        <div className="y-tiles y-cliente-tiles">
-          <Link to="/cliente/menu" className="y-tile">
-            <div className="ic"><UtensilsCrossed size={20} /></div>
-            <b>Carta</b>
-            <span>Consulta los platos disponibles.</span>
-          </Link>
-          <Link to="/cliente/reservas" className="y-tile">
-            <div className="ic"><CalendarDays size={20} /></div>
-            <b>Reservas</b>
-            <span>Solicita o consulta una reserva.</span>
-          </Link>
-          <Link to="/cliente/historial" className="y-tile">
-            <div className="ic"><ClipboardList size={20} /></div>
-            <b>Historial</b>
-            <span>Consulta pedidos y reservas.</span>
-          </Link>
-          <Link to="/cliente/mi-consumo" className="y-tile">
-            <div className="ic"><ReceiptText size={20} /></div>
-            <b>Mi consumo</b>
-            <span>Revisa la comanda de tu mesa.</span>
-          </Link>
-          <Link to="/cliente/perfil" className="y-tile">
-            <div className="ic"><UserRound size={20} /></div>
-            <b>Perfil</b>
-            <span>Consulta los datos de tu cuenta.</span>
-          </Link>
-        </div>
+        {modo === 'local' && (
+          <section aria-label="Opciones en el local">
+            <div className="y-tiles y-cliente-tiles">
+              {mesaId ? (
+                <Link to="/cliente/menu" className="y-tile">
+                  <div className="ic"><UtensilsCrossed size={20} /></div>
+                  <b>Ver menú</b>
+                  <span>Elige platos para agregar a la comanda.</span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  className="y-tile"
+                  onClick={elegirLocal}
+                  style={{ color: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+                >
+                  <div className="ic"><UtensilsCrossed size={20} /></div>
+                  <b>Escanear QR de mesa</b>
+                  <span>Valida la mesa para continuar con tu pedido.</span>
+                </button>
+              )}
+              {mesaId && (
+                <Link to="/cliente/mi-consumo" className="y-tile">
+                  <div className="ic"><QrCode size={20} /></div>
+                  <b>Mi comanda</b>
+                  <span>Consulta los platos y el estado de tu consumo.</span>
+                </Link>
+              )}
+            </div>
+            <button type="button" className="y-btn line" onClick={volverASeleccion}>
+              Cambiar opción
+            </button>
+          </section>
+        )}
 
-        {cliente && (
-          <button onClick={() => void logoutCliente()} className="y-btn line y-cliente-logout">Cerrar sesión</button>
+        {modo === 'casa' && (
+          <section aria-labelledby="cliente-casa-title">
+            <div className="y-cliente-section-heading">
+              <div>
+                <span className="y-cliente-kicker">No estoy en el local</span>
+                <h2 id="cliente-casa-title" className="font-d">
+                  ¿Qué te gustaría hacer?
+                </h2>
+              </div>
+            </div>
+            <p>Haz tu pedido para recibirlo en casa o reserva una mesa para tu próxima visita.</p>
+            <div className="y-tiles y-cliente-tiles">
+              <Link to="/cliente/delivery" className="y-tile">
+                <div className="ic"><Truck size={20} /></div>
+                <b>Pedir delivery</b>
+                <span>Elige tus platos e indica dónde quieres recibirlos.</span>
+              </Link>
+              <Link to="/cliente/reservas" className="y-tile">
+                <div className="ic"><CalendarDays size={20} /></div>
+                <b>Hacer una reserva</b>
+                <span>Solicita una mesa y consulta tus reservas.</span>
+              </Link>
+            </div>
+            <button type="button" className="y-btn line" onClick={volverASeleccion}>
+              Cambiar opción
+            </button>
+          </section>
         )}
       </main>
+
+      {/* El scanner es el ÚNICO camino para entrar al modo local */}
+      <QrScannerModal
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={(mesaId) => {
+          clear();
+          setMesaId(mesaId);
+          marcarQrValidado();
+          guardarModoCliente('local');
+          setScannerOpen(false);
+          navigate('/cliente/menu');
+        }}
+      />
     </div>
   );
 }

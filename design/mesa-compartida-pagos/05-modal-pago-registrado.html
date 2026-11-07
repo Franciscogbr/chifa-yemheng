@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tu pago fue registrado</title>
+<style>
+  :root {
+    --color-primary: #a61e22; --color-primary-dark: #7f1518; --color-primary-light: #b3282a;
+    --color-gold: #d4a017; --color-gold-light: #f6be39; --color-gold-dark: #795900; --color-gold-soft: #ffdfa0;
+    --color-surface: #fbf9f8; --color-surface-lowest: #ffffff; --color-surface-low: #f6f3f2;
+    --color-surface-container: #f0eded; --color-border: #e2bebb; --color-outline: #8e706d;
+    --color-ink: #1b1c1c; --color-text-secondary: #5a413e;
+    --color-success: #22c55e; --color-warning: #f6be39;
+    --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Playfair Display", ui-serif, Georgia, serif;
+    --font-logo: "Cinzel", serif;
+    --r: 16px; --shadow: 0 4px 16px rgba(166, 30, 34, 0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); background: var(--color-surface); color: var(--color-ink); min-height: 100vh; }
+
+  .y-header { position: sticky; top: 0; z-index: 40; background: var(--color-surface-lowest); border-bottom: 1px solid var(--color-border); }
+  .y-header .in { max-width: 1280px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .y-logo .w { font-family: var(--font-logo); font-weight: 600; letter-spacing: 0.18em; font-size: 17px; color: var(--color-ink); }
+  .y-logo .s { display: block; font-size: 8px; letter-spacing: 0.45em; color: var(--color-gold-dark); margin-top: 3px; text-transform: uppercase; }
+
+  .fondo { position: fixed; inset: 0; background: rgba(27, 28, 28, 0.55); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 100; }
+  .modal { background: var(--color-surface-lowest); border-radius: 22px; padding: 30px 26px 24px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 24px 60px rgba(27, 28, 28, 0.35); overflow: hidden; position: relative; }
+  .modal::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(to right, #b91c1c, #d97707, #b91c1c); }
+
+  .check { width: 72px; height: 72px; margin: 4px auto 16px; border-radius: 50%; display: grid; place-items: center; font-size: 34px; background: rgba(34, 197, 94, 0.14); border: 2px solid rgba(34, 197, 94, 0.4); color: #15803d; }
+  .titulo { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--color-ink); margin-bottom: 8px; }
+  .subtitulo { color: var(--color-text-secondary); font-size: 14px; line-height: 1.55; margin-bottom: 22px; }
+
+  .resumen { background: var(--color-surface-low); border: 1px solid var(--color-border); border-radius: 16px; padding: 16px; margin-bottom: 20px; text-align: left; }
+  .resumen-fila { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13.5px; color: var(--color-text-secondary); }
+  .resumen-fila.total { font-weight: 700; color: var(--color-primary-dark); border-top: 1px solid var(--color-border); margin-top: 8px; padding-top: 12px; font-size: 17px; }
+  .resumen-fila.total span:last-child { font-family: var(--font-display); font-size: 20px; }
+
+  .btn-principal { width: 100%; background: var(--color-primary); color: #fff; border: none; border-radius: 8px; padding: 13px 20px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--font-sans); transition: 0.2s; }
+  .btn-principal:hover { background: var(--color-primary-dark); }
+  .btn-secundario { width: 100%; margin-top: 10px; background: transparent; color: var(--color-ink); border: 1px solid var(--color-border); border-radius: 8px; padding: 12px 20px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--font-sans); }
+  .btn-secundario:hover { background: var(--color-surface-container); }
+
+  .nota { font-size: 12px; color: var(--color-text-secondary); margin-top: 16px; line-height: 1.5; }
+  .nota b { color: var(--color-gold-dark); }
+</style>
+</head>
+<body>
+  <header class="y-header">
+    <div class="in">
+      <div class="y-logo"><div><span class="w">YEMHENG</span><span class="s">Chifa Peruano</span></div></div>
+    </div>
+  </header>
+
+  <div class="fondo">
+    <div class="modal">
+      <div class="check">✓</div>
+      <div class="titulo">Tu pago fue registrado</div>
+      <div class="subtitulo">El cajero confirmó tu pago. Tu cuenta individual queda <b>cerrada</b>.</div>
+
+      <div class="resumen">
+        <div class="resumen-fila"><span>Mesa</span><span>12 · Comanda #2408</span></div>
+        <div class="resumen-fila"><span>Cliente</span><span>Ana García</span></div>
+        <div class="resumen-fila"><span>Método</span><span>Efectivo</span></div>
+        <div class="resumen-fila"><span>Fecha</span><span>05/11/2026 14:32</span></div>
+        <div class="resumen-fila total"><span>Total pagado</span><span>S/ 48.50</span></div>
+      </div>
+
+      <button class="btn-principal">🧾 Ver / descargar mi boleta</button>
+      <button class="btn-secundario">Cerrar</button>
+      <div class="nota">La mesa sigue <b>abierta</b> para los demás participantes hasta que todos paguen su cuenta.</div>
+    </div>
+  </div>
+</body>
+</html>

@@ -4,6 +4,11 @@ import { Ico } from '../../../components/Icon';
 import { fmtPEN } from '../../../lib/format';
 import { leerPermisos } from '../../auth/login/auth-service';
 import { StaffFeedbackModal, type StaffFeedback } from '../staff-feedback-modal';
+import { CajaArqueo } from './CajaArqueo';
+import { CajaIncidencias } from './CajaIncidencias';
+import { CajaActa } from './CajaActa';
+import { ComprobanteBoleta } from './ComprobanteBoleta';
+import { ComprobanteFactura } from './ComprobanteFactura';
 import {
   aperturarCaja,
   confirmarCierreCaja,
@@ -42,6 +47,7 @@ function mensajeCaja(codigo: string): string {
     APORTE_NO_COINCIDE_CON_CONSUMO: 'El total pagado por cada integrante debe coincidir con su consumo asignado.',
     PAGO_INCOMPLETO: 'Completa el importe, efectivo recibido, referencia o banco requerido en cada pago.',
     MIGRACION_CAJA_PAGOS_MIXTOS_PENDIENTE: 'Falta aplicar en Supabase la migración de pagos mixtos y reportes antes de cobrar.',
+    MIGRACION_APERTURA_OBSERVACION_PENDIENTE: 'Falta aplicar la migración de observación de apertura en Supabase.'
   };
   if (mensajes[codigo]) return mensajes[codigo];
   if (codigo.startsWith('DB_') || /failed to fetch|networkerror|network_error/i.test(codigo)) {
@@ -59,11 +65,14 @@ export function StaffCajaPage() {
   const [feedback, setFeedback] = useState<StaffFeedback | null>(null);
   const [cajaTurno, setCajaTurno] = useState<number>(0);
   const [montoInicial, setMontoInicial] = useState('');
+  const [observacionApertura, setObservacionApertura] = useState('');
   const [aperturando, setAperturando] = useState(false);
+  const [actaAbierta, setActaAbierta] = useState<number | null>(null);
   const [montoDeclarado, setMontoDeclarado] = useState('');
   const [observacionCierre, setObservacionCierre] = useState('');
   const [solicitandoCierre, setSolicitandoCierre] = useState(false);
   const [validandoCierre, setValidandoCierre] = useState<number | null>(null);
+  const [comprobanteAbierto, setComprobanteAbierto] = useState<{ idVenta: number; tipoDocumento: string } | null>(null);
   const [cierres, setCierres] = useState<CierrePendiente[]>([]);
   const permisos = leerPermisos();
   const puedeCerrar = permisos.includes('CAJ_CERRAR');
@@ -109,9 +118,10 @@ export function StaffCajaPage() {
     if (!cajaSel) return;
     setAperturando(true);
     try {
-      const r = await aperturarCaja(cajaSel.id, Number(montoInicial || 0));
+      const r = await aperturarCaja(cajaSel.id, Number(montoInicial || 0), observacionApertura);
       setMensaje(`Turno aperturado en ${cajaSel.nombre}. ${r.mensaje}`.trim());
       setMontoInicial('');
+      setObservacionApertura('');
       await cargar();
     } catch (e) {
       setFeedback({
@@ -122,7 +132,7 @@ export function StaffCajaPage() {
     } finally {
       setAperturando(false);
     }
-  }, [cajaSel, montoInicial, cargar]);
+  }, [cajaSel, montoInicial, observacionApertura, cargar]);
 
   const solicitarCierre = useCallback(async () => {
     if (!cajaSel?.turnoId || cajaSel.cierrePendiente || montoDeclarado === '') return;
@@ -229,12 +239,23 @@ export function StaffCajaPage() {
                   <input
                     className="input"
                     inputMode="decimal"
+                    min="0"
                     placeholder="Monto inicial S/"
                     value={montoInicial}
                     onChange={(e) => setMontoInicial(e.target.value)}
                     style={{ width: 140 }}
+                    aria-label="Monto inicial de caja"
                   />
-                  <button className="btn btn-gold" disabled={aperturando || !cajaSel} onClick={() => void aperturar()}>
+                  <input
+                    className="input"
+                    maxLength={200}
+                    placeholder="Observación de apertura (opcional)"
+                    value={observacionApertura}
+                    onChange={(e) => setObservacionApertura(e.target.value)}
+                    style={{ minWidth: 220, flex: '1 1 260px' }}
+                    aria-label="Observación de apertura"
+                  />
+                  <button className="btn btn-gold" disabled={aperturando || !cajaSel || montoInicial === '' || !Number.isFinite(Number(montoInicial)) || Number(montoInicial) < 0} onClick={() => void aperturar()}>
                     Aperturar turno
                   </button>
                 </>
@@ -256,6 +277,17 @@ export function StaffCajaPage() {
                         ))}
                       </div>
                     </div>
+                  )}
+                  {cajaSel?.turnoId && (
+                    <CajaArqueo
+                      cajaId={cajaSel.id}
+                      cajaNombre={cajaSel.nombre}
+                      saldoTeorico={cajaSel.montoSistema ?? cajaSel.montoBase}
+                      onHecho={async (msg) => {
+                        setMensaje(msg);
+                        await cargar();
+                      }}
+                    />
                   )}
                   {puedeCerrar && cajaSel?.turnoId && (
                     <div className="caja-cierre-form">
@@ -316,16 +348,42 @@ export function StaffCajaPage() {
                     <span>Declarado <b>{fmtPEN(cierre.montoDeclarado)}</b></span>
                     <span>Diferencia <b>{fmtPEN(cierre.diferencia)}</b></span>
                   </div>
-                  <button
-                    className="btn btn-gold"
-                    disabled={validandoCierre !== null}
-                    onClick={() => void validarCierre(cierre)}
-                  >
-                    {validandoCierre === cierre.id ? 'Validando…' : 'Validar y cerrar'}
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <button
+                      className="btn btn-gold"
+                      disabled={validandoCierre !== null}
+                      onClick={() => void validarCierre(cierre)}
+                    >
+                      {validandoCierre === cierre.id ? 'Validando…' : 'Validar y cerrar'}
+                    </button>
+                    <button className="btn btn-ghost" onClick={() => setActaAbierta(cierre.id)}>
+                      Ver acta Z
+                    </button>
+                  </div>
                 </article>
               ))}
             </section>
+          )}
+          {actaAbierta != null && (
+            <section className="y-panel y-panel-card caja-validaciones" aria-label="Acta de cierre">
+              <div className="caja-section-heading">
+                <div>
+                  <span className="y-flow-hero__eyebrow">Supervisión</span>
+                  <h2 style={{ margin: '2px 0 0', fontFamily: 'var(--font-d)', fontSize: 22 }}>Acta Z · apertura {actaAbierta}</h2>
+                </div>
+                <button className="y-btn line y-btn sm" onClick={() => setActaAbierta(null)}>Cerrar</button>
+              </div>
+              <CajaActa aperturaId={actaAbierta} />
+            </section>
+          )}
+          {puedeValidarCierre && (
+            <CajaIncidencias
+              puedeValidar={true}
+              onChanged={async (msg) => {
+                setMensaje(msg);
+                await cargar();
+              }}
+            />
           )}
           {cajaSel?.aperturada === 'S' && !cajaSel.cierrePendiente && permisos.includes('CAJ_EGRESO') && (
             <CajaMovimientoForm
@@ -383,9 +441,26 @@ export function StaffCajaPage() {
             const res = await registrarCobro(payload);
             setMensaje(`Comprobante ${res.serie}-${res.numero} emitido`);
             setSeleccion(null);
+            setComprobanteAbierto({ idVenta: res.idVenta, tipoDocumento: payload.tipoDocumento });
             await cargar();
           }}
         />
+      )}
+      {comprobanteAbierto && (
+        <section className="y-panel y-panel-card caja-validaciones" aria-label="Comprobante">
+          <div className="caja-section-heading">
+            <div>
+              <span className="y-flow-hero__eyebrow">Supervisión</span>
+              <h2 style={{ margin: '2px 0 0', fontFamily: 'var(--font-d)', fontSize: 22 }}>Comprobante · venta {comprobanteAbierto.idVenta}</h2>
+            </div>
+            <button className="y-btn line y-btn sm" onClick={() => setComprobanteAbierto(null)}>Cerrar</button>
+          </div>
+          {comprobanteAbierto.tipoDocumento === '01' ? (
+            <ComprobanteFactura ventaId={comprobanteAbierto.idVenta} onClose={() => setComprobanteAbierto(null)} />
+          ) : (
+            <ComprobanteBoleta ventaId={comprobanteAbierto.idVenta} onClose={() => setComprobanteAbierto(null)} />
+          )}
+        </section>
       )}
       {mensaje && !seleccion && (
         <p className="caja-feedback" role="status">{mensaje}</p>
@@ -561,6 +636,34 @@ function CobroModal({
         </div>
 
         <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
+          <section style={{ display: 'grid', gap: 8, padding: 12, border: '1px solid var(--border)', borderRadius: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+              <strong>Detalle del pedido</strong>
+              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                {ticket.detalles.length} {ticket.detalles.length === 1 ? 'ítem' : 'ítems'}
+              </span>
+            </div>
+            <div style={{ display: 'grid', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
+              {ticket.detalles.map((detalle) => (
+                <div key={detalle.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13 }}>
+                  <span>{detalle.cantidad} × {detalle.producto}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {detalle.estadoPreparacion === 'P' ? 'Pendiente' :
+                      detalle.estadoPreparacion === 'E' ? 'En preparación' :
+                        detalle.estadoPreparacion === 'S' ? 'Servido' : 'Anulado'}
+                  </span>
+                </div>
+              ))}
+              {ticket.detalles.length === 0 && (
+                <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Este pedido no tiene ítems.</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+              <span>Total a cobrar</span>
+              <strong>{fmtPEN(ticket.total)}</strong>
+            </div>
+          </section>
+
           <label style={{ color: 'var(--text-muted)', fontSize: 12 }}>Caja</label>
           <select className="select" value={cajaId} onChange={(e) => setCaja(Number(e.target.value))}>
             {cajas.map((c) => (
