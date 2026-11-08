@@ -6,4 +6,4 @@ dist/
 authorize-gmail/
 .env
 .env.*
-.mcp.json
+.mcp.json   
