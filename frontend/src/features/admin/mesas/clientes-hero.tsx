@@ -45,30 +45,30 @@ export function ClientesHero({
   return (
     <section className="rounded-xl bg-white p-6 shadow-sm border border-[#F5F5F5]/50">
       {/* Hero header */}
-      <div className="relative rounded-xl p-6 mb-6 overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=') bg-repeat opacity-10 pointer-events-none" />
+      <div className="relative mb-6 overflow-hidden rounded-xl bg-gradient-to-br from-[#5b1014] via-[#8f191e] to-[#a61e22] p-5 text-[#fffaf0] sm:p-6">
+        <div className="pointer-events-none absolute -right-10 -top-24 h-56 w-56 rounded-full border border-[#ffdfa0]/20" />
         <div className="relative z-10">
-          <div className="flex items-center justify-between mb-3">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${esCuentaUnica ? 'bg-[#A61E22]/15 text-[#A61E22]' : 'bg-[#2563EB]/15 text-[#2563EB]'}`}>
+              <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-[10px] font-bold bg-[#fffaf0]/15 text-[#ffdfa0]`}>
                 <span className="material-symbols-outlined text-[10px]">payment</span>
                 {modoInfo.label}
               </span>
-              <span className="text-xs text-[#333333]/50 uppercase tracking-wider ml-2">
+              <span className="text-xs text-[#fffaf0]/70 uppercase tracking-wider ml-2">
                 Mesa {mesaNumero}
               </span>
             </div>
             <div className="text-right">
-              <span className="block text-3xl font-bold text-[#7F1518]">S/. {totalComanda.toFixed(2)}</span>
-              <span className="text-xs text-[#333333]/50 uppercase tracking-wider">
+              <span className="block text-2xl font-bold text-[#fffaf0] sm:text-3xl">S/. {totalComanda.toFixed(2)}</span>
+              <span className="text-xs text-[#fffaf0]/70 uppercase tracking-wider">
                 Total de la comanda
               </span>
             </div>
           </div>
-          <h2 className="text-xl font-bold text-[#7F1518]">
+          <h2 className="text-xl font-bold text-[#fffaf0]">
             {esCuentaUnica ? 'Un solo pago' : 'Pago repartido'}
           </h2>
-          <p className="text-[#333333]/60 mt-1">
+          <p className="text-[#fffaf0]/80 mt-1">
             {esCuentaUnica
               ? `${clientes.length} persona${clientes.length !== 1 ? 's' : ''} en la mesa, se cobra todo a una sola cuenta.`
               : `${clientes.length} persona${clientes.length !== 1 ? 's' : ''} comparten el consumo. Cada uno paga lo que consumió.`}
@@ -77,7 +77,7 @@ export function ClientesHero({
       </div>
 
       {/* Tarjetas de clientes */}
-      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${esCuentaUnica ? 2 : 3} gap-4`}>
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${esCuentaUnica ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} gap-4`}>
         {clientes.map((cliente) => {
           const esOrganizador = cliente.esOrganizador;
           const tipoDocIcon = ICON_POR_TIPO_DOC[cliente.tipoDocumento] || 'badge';

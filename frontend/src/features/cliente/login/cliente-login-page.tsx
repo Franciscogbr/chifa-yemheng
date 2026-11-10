@@ -9,7 +9,7 @@ import {
 } from './cliente-auth-service';
 import { codigoQrCanonico } from '../../../lib/utils';
 
-const FONDO_LOCAL = '/img/fachada-yemheng.png';
+const FONDO_LOCAL = '/img/fachada-yemheng.webp';
 const SELLO = '/img/sello-yemheng.svg';
 
 declare global {

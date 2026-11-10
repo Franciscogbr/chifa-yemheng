@@ -4,7 +4,7 @@ import { resumenDashboard } from './dashboard-service';
 import type { DashboardResumen, DonaItem, PuntoDia } from './dashboard-types';
 
 /** Foto del banner servida desde public/ (sin dependencia externa). */
-const HERO_IMG = '/img/fachada-yemheng.png';
+const HERO_IMG = '/img/fachada-yemheng.webp';
 
 /** /admin — Dashboard (dashboard.md + plantilla Stitch, gráficos SVG Opción A). */
 export function DashboardPage() {

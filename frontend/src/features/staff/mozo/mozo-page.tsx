@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ErrorBox, Loading, PageHeader } from '../../../components/ui';
 import { Ico } from '../../../components/Icon';
+import { PageHero } from '../../../components/PageHero';
 import { fmtPEN, timeAgo } from '../../../lib/format';
 import { listarMesas, listarOcupacion } from '../../admin/mesas/mesas-service';
 import { COLOR_POR_ESTADO, type Mesa, type OcupacionMesa } from '../../admin/mesas/mesas-types';
@@ -206,36 +207,20 @@ export function StaffMozoPage() {
         title="Atención del salón"
         sub="Consulta el estado de las mesas y sus pedidos."
       />
-      <section className="y-flow-hero y-mozo-hero" aria-label="Resumen de atención">
-        <div className="y-mozo-hero-top">
-          <div className="y-flow-hero__content">
-            <span className="y-flow-hero__eyebrow">Tu siguiente prioridad</span>
-            <h2 className="y-flow-hero__title">
-              {presenciales.length > 0 ? 'Hay mesas por atender.' : 'Mantén el salón en marcha.'}
-            </h2>
-            <p className="y-flow-hero__description">
-              Consulta las mesas y sus estados. Los pedidos digitales se muestran para seguimiento.
-            </p>
-          </div>
-        </div>
-        <div className="y-mozo-hero-stats" aria-label="Estado del salón">
-          <div className="y-mozo-hero-stat">
-            <span>Mesas ocupadas</span>
-            <strong>{mesas === null ? '—' : ocupadas.length}</strong>
-            <small>En atención</small>
-          </div>
-          <div className="y-mozo-hero-stat">
-            <span>Por cobrar</span>
-            <strong>{mesas === null ? '—' : porCobrar.length}</strong>
-            <small>Derivar a Caja</small>
-          </div>
-          <div className="y-mozo-hero-stat">
-            <span>Mesas libres</span>
-            <strong>{mesas === null ? '—' : libres.length}</strong>
-            <small>{reservadas.length} reservadas</small>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        className="y-mozo-hero"
+        ariaLabel="Resumen de atención"
+        headingAs="h2"
+        eyebrow="Tu siguiente prioridad"
+        title={presenciales.length > 0 ? 'Hay mesas por atender.' : 'Mantén el salón en marcha.'}
+        description="Consulta las mesas y sus estados. Los pedidos digitales se muestran para seguimiento."
+        statsLabel="Estado del salón"
+        stats={[
+          { label: 'Mesas ocupadas', value: mesas === null ? '—' : ocupadas.length, hint: 'En atención' },
+          { label: 'Por cobrar', value: mesas === null ? '—' : porCobrar.length, hint: 'Derivar a Caja', highlight: porCobrar.length > 0 },
+          { label: 'Mesas libres', value: mesas === null ? '—' : libres.length, hint: `${reservadas.length} reservadas` },
+        ]}
+      />
       <div className="y-search" style={{ marginBottom: 14 }}>
         <Ico n="search" size={18} />
         <input

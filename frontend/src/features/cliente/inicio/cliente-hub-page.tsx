@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CalendarDays, MapPin, QrCode, Truck, UtensilsCrossed } from 'lucide-react';
+import { PageHero } from '../../../components/PageHero';
 import { QrScannerModal } from '../../../components/QrScannerModal';
 import { useCart } from '../../../contexts/CartContext';
 import { guardarModoCliente, limpiarModoCliente, useModoCliente } from '../auth/cliente-mode';
@@ -59,35 +60,35 @@ export function ClienteHubPage() {
     <div className="y-shell">
       <main className="y-cliente-page">
         {modo && (
-          <section className="y-flow-hero y-cliente-flow-hero" aria-labelledby="cliente-home-title">
-            <div className="y-flow-hero__content">
-              <span className="y-flow-hero__eyebrow">Chifa Yemheng</span>
-              <h1 id="cliente-home-title" className="y-flow-hero__title">
-                {modo === 'local'
-                  ? (mesaId ? `Mesa ${mesaId} identificada` : 'Estoy en el local')
-                  : 'No estoy en el local'}
-              </h1>
-              <p className="y-flow-hero__description">
-                {modo === 'local'
-                  ? mesaId
-                    ? 'Consulta el menú, arma tu pedido y revisa la comanda de esta mesa.'
-                    : 'Escanea el QR de tu mesa para continuar.'
-                  : 'Pide delivery o gestiona una reserva desde casa.'}
-              </p>
-            </div>
-          </section>
+          <PageHero
+            className="y-cliente-flow-hero"
+            titleId="cliente-home-title"
+            eyebrow="Chifa Yemheng"
+            title={
+              modo === 'local'
+                ? (mesaId ? `Mesa ${mesaId} identificada` : 'Estoy en el local')
+                : 'No estoy en el local'
+            }
+            description={
+              modo === 'local'
+                ? mesaId
+                  ? 'Consulta el menú, arma tu pedido y revisa la comanda de esta mesa.'
+                  : 'Escanea el QR de tu mesa para continuar.'
+                : 'Pide delivery o gestiona una reserva desde casa.'
+            }
+          />
         )}
 
         {!modo && (
           <section aria-labelledby="cliente-secciones-title">
-            <div className="y-cliente-section-heading">
-              <div>
-                <span className="y-cliente-kicker">Elige tu experiencia</span>
-                <h2 id="cliente-secciones-title" className="font-d">
-                  ¿Dónde estás hoy?
-                </h2>
-              </div>
-            </div>
+            <PageHero
+              className="y-cliente-flow-hero"
+              image="/img/fachada-yemheng.webp"
+              titleId="cliente-secciones-title"
+              eyebrow="Elige tu experiencia"
+              title="¿Dónde estás hoy?"
+              description="Cuéntanos si estás en el local o en casa y te mostramos lo que puedes hacer."
+            />
             <div className="y-tiles y-cliente-tiles">
               <button
                 type="button"

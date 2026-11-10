@@ -4,6 +4,7 @@ import { Ico } from '../../components/Icon';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { ScanLine, ClipboardList, HandPlatter, ChefHat, Smile, ArrowRight, ShieldCheck, Zap, Flame, MapPin, Phone, Clock, MessageCircle } from 'lucide-react';
 
+const HERO_IMG = '/img/fachada-yemheng.webp';
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
 
 interface ProductoLanding {
@@ -61,17 +62,15 @@ export default function Landing() {
   }, []);
 
   const productosVisibles = platos.slice(0, 6);
-  const productosConImagen = platos.filter((producto) => producto.imagen);
-  const imagenHero = productosConImagen[0]?.imagen;
   const franjaProductos = [...platos.slice(0, 6), ...platos.slice(0, 6)];
 
   return (
     <div className="y-shell y-landing-page">
       {/* Hero */}
-      <section className={`y-hero${imagenHero ? '' : ' y-hero--without-image'}`}>
-        <motion.div className="bg" style={{ backgroundImage: imagenHero ? `url("${imagenHero}")` : undefined, y: bgY }} initial={{ scale: 1.18 }} animate={{ scale: 1.05 }} transition={{ duration: 2.4, ease: 'easeOut' }} />
-        <div className="fade" />
-        <div className="y-embers">
+      <section className="y-hero" aria-labelledby="landing-hero-title">
+        <motion.div className="bg" style={{ backgroundImage: `url("${HERO_IMG}")`, y: bgY }} aria-hidden="true" initial={{ scale: 1.18 }} animate={{ scale: 1.05 }} transition={{ duration: 2.4, ease: 'easeOut' }} />
+        <div className="fade" aria-hidden="true" />
+        <div className="y-embers" aria-hidden="true">
           {Array.from({ length: 22 }, (_, i) => (
             <span key={i} className="y-ember" style={{ left: `${(i * 37 + 11) % 100}%`, width: 2 + (i % 3) * 2, height: 2 + (i % 3) * 2, animationDuration: `${6 + (i % 5) * 1.7}s`, animationDelay: `${(i * 0.7) % 8}s` }} />
           ))}
@@ -80,7 +79,7 @@ export default function Landing() {
         <motion.div className="y-landing-hero-content" style={{ y: textY }}>
           <div style={{ maxWidth: 580 }}>
             <motion.span {...up(0)} className="y-chip" style={{ background: 'rgba(201,164,92,.12)', color: 'var(--gold2)', border: '1px solid var(--line)', marginBottom: 18 }}><Ico n="chop" /> CHIFA CONTEMPORÁNEO</motion.span>
-            <h1>
+            <h1 id="landing-hero-title">
               {lines.map((l, li) => (
                 <span key={li} style={{ display: 'block' }}>
                   {l.map((w) => <motion.span key={w + n} custom={n++} variants={word} initial="hidden" animate="show" style={{ display: 'inline-block', marginRight: '.26em' }}>{w}</motion.span>)}
