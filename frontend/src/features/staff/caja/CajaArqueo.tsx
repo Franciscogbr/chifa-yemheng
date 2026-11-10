@@ -1,19 +1,10 @@
-import { useMemo, useState } from 'react';
-import { registrarArqueo, type ArqueoResultado } from '../staff-service';
-
-const DENOMINACIONES: { valor: number; tipo: 'BILLETE' | 'MONEDA' }[] = [
-  { valor: 200, tipo: 'BILLETE' },
-  { valor: 100, tipo: 'BILLETE' },
-  { valor: 50, tipo: 'BILLETE' },
-  { valor: 20, tipo: 'BILLETE' },
-  { valor: 10, tipo: 'BILLETE' },
-  { valor: 5, tipo: 'MONEDA' },
-  { valor: 2, tipo: 'MONEDA' },
-  { valor: 1, tipo: 'MONEDA' },
-  { valor: 0.5, tipo: 'MONEDA' },
-  { valor: 0.2, tipo: 'MONEDA' },
-  { valor: 0.1, tipo: 'MONEDA' },
-];
+import { useCallback, useEffect, useState } from 'react';
+import {
+  registrarArqueo,
+  type ArqueoResultado,
+  verMovimientosResumen,
+  type MovimientoResumen,
+} from '../staff-service';
 
 const fmt = (n: number) => `S/ ${n.toFixed(2)}`;
 
@@ -24,43 +15,40 @@ interface Props {
   onHecho: (msg: string) => void;
 }
 
-type Nivel = 'CUADRADA' | 'MENOR' | 'MEDIA' | 'CRITICA';
-
 export function CajaArqueo({ cajaId, cajaNombre, saldoTeorico, onHecho }: Props) {
-  const [cantidades, setCantidades] = useState<Record<number, number>>({});
+  const [resumen, setResumen] = useState<MovimientoResumen | null>(null);
+  const [cargando, setCargando] = useState(true);
   const [observacion, setObservacion] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<ArqueoResultado | null>(null);
 
-  const contado = useMemo(
-    () => DENOMINACIONES.reduce((sum, d) => sum + d.valor * (cantidades[d.valor] ?? 0), 0),
-    [cantidades],
-  );
-  const dif = Math.round((contado - saldoTeorico) * 100) / 100;
-  const absDif = Math.abs(dif);
-  const nivel: Nivel = absDif === 0 ? 'CUADRADA' : absDif <= 10 ? 'MENOR' : absDif <= 50 ? 'MEDIA' : 'CRITICA';
-  const obsRequerida = nivel !== 'CUADRADA';
-  const observacionValida = !obsRequerida || observacion.trim().length >= 4;
+  useEffect(() => {
+    setCargando(true);
+    setError(null);
+    void verMovimientosResumen(cajaId)
+      .then((r) => {
+        setResumen(r);
+        setCargando(false);
+      })
+      .catch((e) => {
+        setError((e as Error).message);
+        setCargando(false);
+      });
+  }, [cajaId]);
 
-  const ESTILO_NIVEL: Record<Nivel, { chip: string; texto: string }> = {
-    CUADRADA: { chip: 'chip ok', texto: 'Cuadrada' },
-    MENOR: { chip: 'chip warn', texto: 'Diferencia menor (≤ S/ 10)' },
-    MEDIA: { chip: 'chip warn', texto: 'Incidencia MEDIA — supervisor será informado' },
-    CRITICA: { chip: 'chip bad', texto: 'CRÍTICA — requerirá confirmación de otro autorizado' },
-  };
+  const contadoDelSistema = resumen?.total ?? 0;
+  const totalTransacciones = resumen?.movimientos.reduce((sum, m) => sum + m.cantidad, 0) ?? 0;
+  const dif = Math.round((contadoDelSistema - saldoTeorico) * 100) / 100;
+  const cuadrada = dif === 0;
 
-  async function enviar() {
+  const enviar = useCallback(async () => {
     setError(null);
     setEnviando(true);
     try {
       const r = await registrarArqueo({
         cajaId,
-        denominaciones: DENOMINACIONES.map((d) => ({
-          valor: d.valor,
-          cantidad: cantidades[d.valor] ?? 0,
-          tipo: d.tipo,
-        })),
+        denominaciones: [],
         observacion,
       });
       setResultado(r);
@@ -74,7 +62,7 @@ export function CajaArqueo({ cajaId, cajaNombre, saldoTeorico, onHecho }: Props)
     } finally {
       setEnviando(false);
     }
-  }
+  }, [cajaId, cajaNombre, observacion, onHecho]);
 
   if (resultado) {
     return (
@@ -88,7 +76,9 @@ export function CajaArqueo({ cajaId, cajaNombre, saldoTeorico, onHecho }: Props)
         </p>
         <ul style={{ color: 'var(--text-muted)', fontSize: 13, margin: '8px 0 0', paddingLeft: 18 }}>
           <li>El turno queda pendiente de validación por otro usuario autorizado.</li>
-          {resultado.idIncidencia != null && <li>Incidencia #{resultado.idIncidencia} creada y visible en la bandeja.</li>}
+          {resultado.idIncidencia != null && (
+            <li>Incidencia #{resultado.idIncidencia} creada y visible en la bandeja.</li>
+          )}
         </ul>
       </div>
     );
@@ -97,82 +87,123 @@ export function CajaArqueo({ cajaId, cajaNombre, saldoTeorico, onHecho }: Props)
   return (
     <div className="caja-validaciones y-panel y-panel-card" aria-label="Arqueo del turno">
       <div className="caja-section-heading">
-        <h2>Arqueo del turno · {cajaNombre}</h2>
-        <span className="caja-count">🧮</span>
+        <h2>Arqueo automático del turno · {cajaNombre}</h2>
+        <span className="caja-count">🧾</span>
       </div>
 
-      <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 }}>
-        {DENOMINACIONES.map((d) => (
-          <label key={d.valor} style={{ display: 'grid', gap: 4, fontSize: 11, color: 'var(--text-muted)' }}>
-            <span>
-              {d.tipo === 'BILLETE' ? '💵' : '🪙'} {fmt(d.valor)}
+      {cargando ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 10 }}>
+          Cargando movimientos del turno…
+        </p>
+      ) : error ? (
+        <div className="y-chip bad" style={{ marginTop: 10 }}>
+          {error}
+        </div>
+      ) : (
+        <>
+          <table
+            style={{ width: '100%', borderCollapse: 'collapse', marginTop: 10, fontSize: 13 }}
+          >
+            <thead>
+              <tr
+                style={{
+                  textAlign: 'left',
+                  color: 'var(--text-muted)',
+                  fontSize: 11,
+                  borderBottom: '1px solid var(--border)',
+                }}
+              >
+                <th style={{ padding: '8px 4px' }}>Medio de pago</th>
+                <th style={{ padding: '8px 4px', textAlign: 'right' }}>Transacciones</th>
+                <th style={{ padding: '8px 4px', textAlign: 'right' }}>Monto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {resumen?.movimientos.map((m) => (
+                <tr
+                  key={m.medio}
+                  style={{ borderBottom: '1px solid var(--border)' }}
+                >
+                  <td style={{ padding: '8px 4px' }}>{m.medio}</td>
+                  <td style={{ padding: '8px 4px', textAlign: 'right' }}>
+                    {m.cantidad}
+                  </td>
+                  <td style={{ padding: '8px 4px', textAlign: 'right' }}>
+                    {fmt(m.monto)}
+                  </td>
+                </tr>
+              ))}
+              {resumen?.movimientos.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={3}
+                    style={{ padding: '8px 4px', color: 'var(--text-muted)' }}
+                  >
+                    No hay movimientos de ingreso registrados en este turno.
+                  </td>
+                </tr>
+              )}
+              <tr
+                style={{
+                  fontWeight: 'bold',
+                  borderTop: '2px solid var(--border)',
+                }}
+              >
+                <td style={{ padding: '8px 4px' }}>Total teórico del sistema</td>
+                <td style={{ padding: '8px 4px', textAlign: 'right' }}>
+                  {totalTransacciones}
+                </td>
+                <td style={{ padding: '8px 4px', textAlign: 'right' }}>
+                  {fmt(contadoDelSistema)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div
+            style={{
+              marginTop: 12,
+              fontSize: 13,
+              color: cuadrada ? 'var(--color-success)' : '#dc2626',
+            }}
+          >
+            <b>Saldo teórico: {fmt(saldoTeorico)}</b> ·
+            <b>Diferencia (sistema − teórico): {fmt(dif)}</b> {' '}
+            <span style={{ marginLeft: 6 }}>
+              {cuadrada ? '✔ Cuadrado' : '✖ Hay diferencia'}
             </span>
-            <input
-              type="number"
-              min={0}
-              step={1}
-              value={cantidades[d.valor] ?? ''}
-              onChange={(e) =>
-                setCantidades((prev) => ({ ...prev, [d.valor]: Math.max(0, Math.floor(Number(e.target.value || 0))) }))
-              }
+          </div>
+
+          <label
+            style={{
+              display: 'grid',
+              gap: 5,
+              marginTop: 14,
+              fontSize: 11,
+              color: 'var(--text-muted)',
+            }}
+          >
+            Observación (opcional)
+            <textarea
+              value={observacion}
+              onChange={(e) => setObservacion(e.target.value)}
+              rows={2}
+              maxLength={200}
               className="input"
-              autoComplete="off"
+              placeholder="Ej: observación del arqueo automático"
             />
           </label>
-        ))}
-      </div>
 
-      <div className="caja-arqueo-cifras" style={{ marginTop: 14 }}>
-        <span>
-          Contado <b style={{ fontSize: 18 }}>{fmt(contado)}</b>
-        </span>
-        <span>
-          Teórico <b style={{ fontSize: 18 }}>{fmt(saldoTeorico)}</b>
-        </span>
-        <span>
-          Diferencia{' '}
-          <b style={{ fontSize: 18, color: dif === 0 ? 'var(--color-success)' : 'var(--text)' }}>{fmt(dif)}</b>
-        </span>
-      </div>
-
-      <div className="y-banner" style={{ marginTop: 10 }}>
-        {ESTILO_NIVEL[nivel].texto}
-      </div>
-
-      {obsRequerida && (
-        <label style={{ display: 'grid', gap: 5, marginTop: 12, fontSize: 11, color: 'var(--text-muted)' }}>
-          Observación del arqueo (obligatoria con diferencia)
-          <textarea
-            value={observacion}
-            onChange={(e) => setObservacion(e.target.value)}
-            rows={2}
-            maxLength={200}
-            className="input"
-            placeholder="Ej: falta 1 billete de 50; revisar fondo de caja"
-          />
-        </label>
+          <button
+            className="y-btn primary"
+            style={{ width: '100%', marginTop: 14, minHeight: 42 }}
+            disabled={enviando}
+            onClick={() => void enviar()}
+          >
+            {enviando ? 'Registrando…' : 'Registrar arqueo automático y solicitar cierre'}
+          </button>
+        </>
       )}
-
-      {error && (
-        <div className="y-chip bad" style={{ display: 'inline-flex', marginTop: 10 }}>
-          {error === 'OBSERVACION_REQUERIDA'
-            ? 'La observación es obligatoria cuando hay diferencia.'
-            : error === 'ARQUEO_YA_SOLICITADO'
-              ? 'Ya hay un arqueo solicitado: espera la validación del supervisor.'
-              : error === 'MIGRACION_CAJA_ARQUEO_PENDIENTE'
-                ? 'El módulo de arqueo aún no está aplicado en el servidor.'
-                : error}
-        </div>
-      )}
-
-      <button
-        className="y-btn primary"
-        style={{ width: '100%', marginTop: 14, minHeight: 42 }}
-        disabled={enviando || !observacionValida}
-        onClick={() => void enviar()}
-      >
-        {enviando ? 'Registrando…' : 'Registrar arqueo y solicitar cierre'}
-      </button>
     </div>
   );
 }

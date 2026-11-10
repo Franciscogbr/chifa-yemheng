@@ -1,8 +1,10 @@
 import type { Request, Response } from 'express';
 import type { AuthenticatedRequest } from '../middlewares/auth-guard.js';
 import { z } from 'zod';
-import { listarSeguimientoService, iniciarRutaStaffService, confirmarEntregaStaffService, anularDeliveryService, getUbicacionSeguimientoService } from '../services/seguimiento-service.js';
+import { listarSeguimientoService, iniciarRutaStaffService, confirmarEntregaStaffService, anularDeliveryService, getUbicacionSeguimientoService, registrarVentaStaffService } from '../services/seguimiento-service.js';
 import { getPc } from '../utils/auditoria.js';
+import { registrarVentaDeliverySchema } from '../schemas/seguimiento.js';
+import { DeliveryError } from '../models/delivery.js';
 
 const seguimientoQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -44,6 +46,46 @@ export async function patchAnular(req: Request, res: Response): Promise<void> {
   const s = sesion(req);
   try { res.json(await anularDeliveryService(Number(req.params.id), parsed.data.motivo, s.logeo, s.pc)); }
   catch { res.status(404).json({ error: 'NOT_FOUND' }); }
+}
+
+export async function patchRegistrarVentaStaff(req: Request, res: Response): Promise<void> {
+  const parsed = registrarVentaDeliverySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.flatten() });
+    return;
+  }
+  const s = sesion(req);
+  try {
+    const resultado = await registrarVentaStaffService(
+      Number(req.params.id),
+      parsed.data.monto,
+      parsed.data.metodoPago,
+      parsed.data.referencia?.trim() ?? null,
+      s.logeo,
+      s.pc,
+    );
+    res.json(resultado);
+  } catch (error) {
+    if (error instanceof DeliveryError) {
+      if (error.code === 'NOT_FOUND') {
+        res.status(404).json({ error: 'NOT_FOUND' });
+        return;
+      }
+      if (error.code === 'INVALID_STATE') {
+        res.status(409).json({ error: 'INVALID_STATE' });
+        return;
+      }
+      if (error.code === 'MONTO_INVALIDO') {
+        res.status(409).json({ error: 'MONTO_INVALIDO' });
+        return;
+      }
+      if (error.code === 'VENTA_YA_EXISTE') {
+        res.status(409).json({ error: 'VENTA_YA_EXISTE' });
+        return;
+      }
+    }
+    throw error;
+  }
 }
 
 export async function getUbicacionSeguimiento(req: Request, res: Response): Promise<void> {

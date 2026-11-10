@@ -1,5 +1,5 @@
 import { supabase } from '../config/supabase.js';
-import { DeliveryError, type Delivery } from '../models/delivery.js';
+import { DeliveryError, type Delivery, type PedidoItem } from '../models/delivery.js';
 
 interface PedidoDeliveryRow {
   id_pedidodelivery: number;
@@ -20,9 +20,11 @@ interface PedidoDeliveryRow {
   lat_repartidor: number | null;
   lng_repartidor: number | null;
   f_ubicacion: string | null;
+  f_salida: string | null;
+  f_entrega: string | null;
 }
 
-const SELECT = 'id_pedidodelivery, id_pedido, id_distrito, distrito(d_distrito), direccion_entrega, referencia, telefono_contacto, id_empleado, repartidor:empleado(persona(nombre, ap_paterno)), costo_envio, costo_envio_confirmado, situacion, feccre, lat_cliente, lng_cliente, lat_repartidor, lng_repartidor, f_ubicacion';
+const SELECT = 'id_pedidodelivery, id_pedido, id_distrito, distrito(d_distrito), direccion_entrega, referencia, telefono_contacto, id_empleado, repartidor:empleado(persona(nombre, ap_paterno)), costo_envio, costo_envio_confirmado, situacion, feccre, lat_cliente, lng_cliente, lat_repartidor, lng_repartidor, f_ubicacion, f_salida, f_entrega';
 
 function mapRow(row: PedidoDeliveryRow): Delivery {
   return {
@@ -41,7 +43,73 @@ function mapRow(row: PedidoDeliveryRow): Delivery {
     costoConfirmado: row.costo_envio_confirmado ?? true,
     estado: (row.situacion ?? 'P') as Delivery['estado'],
     fechaCreacion: row.feccre,
+    fechaSalida: row.f_salida ?? null,
+    fechaEntrega: row.f_entrega ?? null,
   };
+}
+
+/** Mapea los ítems del pedido (detalle_pedido -> producto). */
+function mapPedidoItems(rows: Array<{
+  id_producto: number;
+  cantidad: number;
+  precio_unitario: number;
+  descuento: number;
+  nota_cocina: string | null;
+  producto: { n_producto: string } | { n_producto: string }[] | null;
+}>): PedidoItem[] {
+  return (rows ?? []).map((r) => {
+    const producto = Array.isArray(r.producto) ? r.producto[0] : r.producto;
+    return {
+      idProducto: r.id_producto,
+      nombre: producto?.n_producto ?? `Producto #${r.id_producto}`,
+      cantidad: Number(r.cantidad),
+      precioUnitario: Number(r.precio_unitario),
+      descuento: Number(r.descuento ?? 0),
+      subTotal: Number(r.cantidad) * Number(r.precio_unitario) - Number(r.descuento ?? 0),
+      nota: r.nota_cocina ?? null,
+    };
+  });
+}
+
+/** Obtiene totales y método de pago del pedido a través de venta/pago_venta/metodo_pago. */
+async function getPedidoPago(idPedido: number): Promise<{
+  totalPedido: number | undefined;
+  montoPagado: number | undefined;
+  metodoPago: string | null;
+}> {
+  const { data: venta } = await supabase
+    .from('venta')
+    .select('id_venta, total, total_pagado')
+    .eq('id_pedido', idPedido)
+    .eq('estado', 'A')
+    .maybeSingle();
+
+  if (!venta) {
+    return { totalPedido: undefined, montoPagado: undefined, metodoPago: null };
+  }
+
+  const totalPedido = Number((venta as any).total ?? 0);
+  const montoPagado = Number((venta as any).total_pagado ?? 0);
+
+  const { data: pagos } = await supabase
+    .from('pago_venta')
+    .select('id_metodopago, monto')
+    .eq('id_venta', (venta as any).id_venta)
+    .eq('estado', 'A');
+
+  let metodoPago: string | null = null;
+  if (pagos && pagos.length > 0) {
+    const idMetodoPago = Number((pagos[0] as any).id_metodopago);
+    const { data: mp } = await supabase
+      .from('metodo_pago')
+      .select('n_metodopago')
+      .eq('id_metodopago', idMetodoPago)
+      .eq('estado', 'A')
+      .maybeSingle();
+    metodoPago = (mp as any)?.n_metodopago ?? null;
+  }
+
+  return { totalPedido, montoPagado, metodoPago };
 }
 
 export interface ClienteDeliveryCreateInput {
@@ -132,7 +200,33 @@ export async function getDeliveryDetalle(id: number, clienteId: number): Promise
 
   if (error) throw new Error(`DB_GET_FAIL: ${error.message}`);
   if (!data) return null;
-  return mapRow(data as unknown as PedidoDeliveryRow);
+
+  const base = mapRow(data as unknown as PedidoDeliveryRow);
+
+  // Ítems del pedido (detalle_pedido -> producto)
+  const { data: itemsRows } = await supabase
+    .from('detalle_pedido')
+    .select('id_producto, cantidad, precio_unitario, descuento, nota_cocina, producto:n_producto(n_producto)')
+    .eq('id_pedido', pedidoId)
+    .eq('estado', 'A');
+  const items = mapPedidoItems(itemsRows ?? []);
+
+  // Totales y método de pago (venta -> pago_venta -> metodo_pago)
+  const pago = await getPedidoPago(pedidoId);
+  const totalP = pago.totalPedido ?? 0;
+  const montoP = pago.montoPagado ?? 0;
+  const montoPorCobrar = pago.totalPedido !== undefined && pago.montoPagado !== undefined
+    ? Math.max(0, totalP + base.costo - montoP)
+    : undefined;
+
+  return {
+    ...base,
+    items,
+    totalPedido: pago.totalPedido,
+    montoPagado: pago.montoPagado,
+    montoPorCobrar,
+    metodoPago: pago.metodoPago,
+  };
 }
 
 export async function getDeliveryActivoCliente(clienteId: number): Promise<number | null> {
@@ -148,6 +242,101 @@ export async function getDeliveryActivoCliente(clienteId: number): Promise<numbe
 
   if (error) throw new Error(`DB_LIST_FAIL: ${error.message}`);
   return data ? Number((data as unknown as { id_pedidodelivery: number }).id_pedidodelivery) : null;
+}
+
+export async function getDeliveryComprobante(id: number, clienteId: number) {
+  // Primero validar que el delivery pertenezca al cliente
+  const { data: delivery, error: deliveryError } = await supabase
+    .from('pedido_delivery')
+    .select('id_pedido')
+    .eq('id_pedidodelivery', id)
+    .eq('pedido.id_cliente', clienteId)
+    .eq('estado', 'A')
+    .maybeSingle();
+
+  if (deliveryError) throw new Error(`DB_GET_FAIL: ${deliveryError.message}`);
+  if (!delivery) return null;
+
+  // Obtener la venta asociada al pedido
+  const { data: venta, error: ventaError } = await supabase
+    .from('venta')
+    .select('id_venta, serie, numero, total, total_pagado, f_venta, tipodocumento')
+    .eq('id_pedido', delivery.id_pedido)
+    .eq('estado', 'A')
+    .maybeSingle();
+
+  if (ventaError) throw new Error(`DB_VENTA_FAIL: ${ventaError.message}`);
+  if (!venta) return null;
+
+  // Obtener método de pago
+  const { data: pagos, error: pagosError } = await supabase
+    .from('pago_venta')
+    .select('id_metodopago, monto, f_pago')
+    .eq('id_venta', venta.id_venta)
+    .eq('estado', 'A');
+
+  if (pagosError) throw new Error(`DB_PAGO_FAIL: ${pagosError.message}`);
+
+  let metodoPago: string | null = null;
+  if (pagos && pagos.length > 0) {
+    const { data: mp } = await supabase
+      .from('metodo_pago')
+      .select('n_metodopago')
+      .eq('id_metodopago', (pagos[0] as unknown as { id_metodopago: number }).id_metodopago)
+      .eq('estado', 'A')
+      .maybeSingle();
+    metodoPago = (mp as unknown as { n_metodopago: string })?.n_metodopago ?? null;
+  }
+
+  // Obtener datos del cliente
+  const { data: cliente, error: clienteError } = await supabase
+    .from('cliente')
+    .select('n_documento, nombre')
+    .eq('id_cliente', (venta as unknown as { id_cliente?: number }).id_cliente ?? 0)
+    .maybeSingle();
+
+  // Obtener los ítems del pedido (platos del delivery)
+  const { data: detalleRows, error: detalleError } = await supabase
+    .from('detalle_pedido')
+    .select('id_producto, cantidad, precio_unitario, descuento, sub_total, producto:n_producto(n_producto)')
+    .eq('id_pedido', delivery.id_pedido)
+    .eq('estado', 'A');
+
+  if (detalleError) throw new Error(`DB_DETALLE_FAIL: ${detalleError.message}`);
+
+  const items = ((detalleRows ?? []) as unknown[]).map((row: unknown) => {
+    const r = row as unknown as {
+      id_producto: number;
+      cantidad: number;
+      precio_unitario: number;
+      descuento: number;
+      sub_total: number;
+      producto: { n_producto: string } | null;
+    };
+    return {
+      idProducto: r.id_producto,
+      nombre: r.producto?.n_producto ?? `Producto #${r.id_producto}`,
+      cantidad: Number(r.cantidad),
+      precioUnitario: Number(r.precio_unitario),
+      descuento: Number(r.descuento ?? 0),
+      subTotal: Number(r.sub_total ?? 0),
+    };
+  });
+
+  return {
+    id_venta: venta.id_venta,
+    serie: venta.serie,
+    numero: venta.numero,
+    total: venta.total,
+    total_pagado: venta.total_pagado,
+    f_venta: venta.f_venta,
+    tipo_documento: venta.tipodocumento,
+    metodo_pago: metodoPago,
+    monto_pagado: venta.total_pagado,
+    cliente_documento: cliente?.n_documento ?? null,
+    cliente_nombre: cliente?.nombre ?? null,
+    items,
+  };
 }
 
 export async function getDeliveryUbicacion(id: number, clienteId: number) {
@@ -199,7 +388,8 @@ export async function getDeliveryUbicacion(id: number, clienteId: number) {
     id_empleado: number | null;
     repartidor: { persona: { nombre: string; ap_paterno: string | null } | null } | null;
   };
-  return {
+
+  const base = {
     id_pedidodelivery: row.id_pedidodelivery,
     id_pedido: row.id_pedido,
     id_distrito: row.id_distrito,
@@ -219,5 +409,30 @@ export async function getDeliveryUbicacion(id: number, clienteId: number) {
     repartidor: row.repartidor?.persona
       ? `${row.repartidor.persona.nombre} ${row.repartidor.persona.ap_paterno ?? ''}`.trim()
       : null,
+  };
+
+  // Ítems del pedido
+  const { data: itemsRows } = await supabase
+    .from('detalle_pedido')
+    .select('id_producto, cantidad, precio_unitario, descuento, nota_cocina, producto:n_producto(n_producto)')
+    .eq('id_pedido', row.id_pedido)
+    .eq('estado', 'A');
+  const items = mapPedidoItems(itemsRows ?? []);
+
+  // Totales y método de pago
+  const pago = await getPedidoPago(row.id_pedido);
+  const totalP = pago.totalPedido ?? 0;
+  const montoP = pago.montoPagado ?? 0;
+  const montoPorCobrar = pago.totalPedido !== undefined && pago.montoPagado !== undefined
+    ? Math.max(0, totalP + base.costo_envio - montoP)
+    : undefined;
+
+  return {
+    ...base,
+    items,
+    totalPedido: pago.totalPedido,
+    montoPagado: pago.montoPagado,
+    montoPorCobrar,
+    metodoPago: pago.metodoPago,
   };
 }

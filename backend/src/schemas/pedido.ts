@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const estadoPreparacionSchema = z.enum(['P', 'E', 'S', 'A']);
+const estadoPreparacionSchema = z.enum(['P', 'L', 'A']);
 
 export const pedidoQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

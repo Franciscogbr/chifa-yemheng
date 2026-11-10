@@ -1,5 +1,15 @@
-/** Tipos del módulo delivery (PEDIDO_DELIVERY). */
+﻿/** Tipos del mÃ³dulo delivery (PEDIDO_DELIVERY). */
 export type EstadoDelivery = 'P' | 'R' | 'E' | 'C';
+
+export interface PedidoItem {
+  idProducto: number;
+  nombre: string;
+  cantidad: number;
+  precioUnitario: number;
+  descuento: number;
+  subTotal: number;
+  nota?: string | null;
+}
 
 export interface Delivery {
   id: number;
@@ -27,6 +37,7 @@ export interface Delivery {
   montoPagado?: number;
   montoPorCobrar?: number;
   metodoPago?: string | null;
+  items?: PedidoItem[];
 }
 
 export interface DeliveryLista {
@@ -44,7 +55,12 @@ export type DeliveryErrorCode =
   | 'CLIENTE_NOT_FOUND'
   | 'DISTRITO_NOT_FOUND'
   | 'PRODUCTO_NO_DISPONIBLE'
-  | 'AUTOSERVICIO_USER_NOT_READY';
+  | 'AUTOSERVICIO_USER_NOT_READY'
+  | 'INVALID_STATE'
+  | 'MONTO_INVALIDO'
+  | 'VENTA_YA_EXISTE'
+  | 'CAJA_NO_ABIERTA'
+  | 'VENTA_NO_EXISTE';
 
 export class DeliveryError extends Error {
   readonly code: DeliveryErrorCode;
@@ -54,3 +70,4 @@ export class DeliveryError extends Error {
     this.code = code;
   }
 }
+

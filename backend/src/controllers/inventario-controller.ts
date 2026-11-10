@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import type { AuthenticatedRequest } from '../middlewares/auth-guard.js';
-import { movimientoCreateSchema, movimientoQuerySchema, recetaCreateSchema, recetaQuerySchema, recetaUpdateSchema } from '../schemas/inventario.js';
-import { actualizarRecetaService, crearMovimientoService, crearRecetaService, listarMovimientosService, listarRecetasService } from '../services/inventario-service.js';
+import { movimientoCreateSchema, movimientoQuerySchema, recetaCreateSchema, recetaCostoQuerySchema, recetaQuerySchema, recetaUpdateSchema, stockQuerySchema } from '../schemas/inventario.js';
+import { actualizarRecetaService, crearMovimientoService, crearRecetaService, getCostoRecetaService, getStockInsumosService, listarMovimientosService, listarRecetasService } from '../services/inventario-service.js';
 import { getPc } from '../utils/auditoria.js';
 
 function sesion(req: Request): { id: number; logeo: string; pc: string } {
@@ -46,6 +46,31 @@ export async function getRecetas(req: Request, res: Response): Promise<void> {
     return;
   }
   res.json(await listarRecetasService(parsed.data));
+}
+export async function getStock(req: Request, res: Response): Promise<void> {
+  const parsed = stockQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.flatten() });
+    return;
+  }
+  res.json(await getStockInsumosService(parsed.data));
+}
+export async function getStockBajo(req: Request, res: Response): Promise<void> {
+  const parsed = stockQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.flatten() });
+    return;
+  }
+  const stock = await getStockInsumosService({ ...parsed.data, soloBajoStock: true });
+  res.json(stock);
+}
+export async function getCostoReceta(req: Request, res: Response): Promise<void> {
+  const parsed = recetaCostoQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.flatten() });
+    return;
+  }
+  res.json(await getCostoRecetaService(parsed.data));
 }
 export async function postReceta(req: Request, res: Response): Promise<void> {
   const parsed = recetaCreateSchema.safeParse(req.body);

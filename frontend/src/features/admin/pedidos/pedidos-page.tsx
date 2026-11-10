@@ -13,8 +13,7 @@ const LIMITE = 50;
 const ESTADOS_PEDIDO = ['ABIERTO', 'EN PREPARACION', 'SERVIDO', 'FACTURADO', 'ANULADO'];
 const ESTADOS_PREPARACION: Record<EstadoPreparacion, string> = {
   P: 'Pendiente',
-  E: 'En preparación',
-  S: 'Servido',
+  L: 'Listo',
   A: 'Anulado',
 };
 const TONOS_PEDIDO: Record<string, string> = {
@@ -26,8 +25,7 @@ const TONOS_PEDIDO: Record<string, string> = {
 };
 const TONOS_PREPARACION: Record<EstadoPreparacion, string> = {
   P: '#f59e0b',
-  E: '#3b82f6',
-  S: '#22c55e',
+  L: '#22c55e',
   A: '#ef4444',
 };
 
@@ -44,7 +42,8 @@ function moneda(valor: number): string {
 }
 
 function puedeAnular(pedido: PedidoAdmin): boolean {
-  return pedido.anulado !== 'S' && pedido.facturado !== 'S' && pedido.estadoRegistro === 'A';
+  const deliveryCancelable = pedido.deliverySituacion == null || pedido.deliverySituacion === 'P';
+  return pedido.anulado !== 'S' && pedido.facturado !== 'S' && pedido.estadoRegistro === 'A' && deliveryCancelable;
 }
 
 function etiquetaCanal(canal: PedidoAdmin['canalOrigen']): string {
@@ -55,6 +54,7 @@ function etiquetaCanal(canal: PedidoAdmin['canalOrigen']): string {
 
 export function AdminPedidosPage() {
   const [pedidos, setPedidos] = useState<PedidoAdmin[]>([]);
+  const [noCancelablesIds, setNoCancelablesIds] = useState<Set<number>>(() => new Set());
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [estado, setEstado] = useState('');
@@ -143,7 +143,14 @@ export function AdminPedidosPage() {
       setActualizar((valor) => valor + 1);
       if (pedidoIdSeleccionado === pedido.id) setVersionDetalle((valor) => valor + 1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No fue posible anular la comanda.');
+      const err = e as Error & { error?: string; detail?: string };
+      const detailError = err.detail ?? err.message;
+      if (detailError.includes('DELIVERY_NO_CANCELABLE')) {
+        setNoCancelablesIds((actual) => new Set(actual).add(pedido.id));
+        setError('Esta comanda pertenece a un delivery que ya no se puede anular.');
+      } else {
+        setError(err.message || 'No fue posible anular la comanda.');
+      }
     } finally {
       setAccionPedidoId(null);
     }
@@ -244,7 +251,7 @@ export function AdminPedidosPage() {
                     <td style={cellStyle}>{pedido.facturado === 'S' ? 'Facturado' : 'Pendiente'}</td>
                     <td style={{ ...cellStyle, whiteSpace: 'nowrap' }}>
                       <button className="btn btn-ghost" onClick={() => setPedidoIdSeleccionado(pedido.id)}>Detalle</button>
-                      {puedeAnular(pedido) && (
+                      {puedeAnular(pedido) && !noCancelablesIds.has(pedido.id) && (
                         <button
                           className="btn btn-ghost"
                           style={{ color: '#ef4444', marginLeft: 4 }}
@@ -317,7 +324,7 @@ export function AdminPedidosPage() {
                   {detalle.igv > 0 && <span>IGV: {moneda(detalle.igv)}</span>}
                   <strong style={{ fontSize: 16 }}>Total: {moneda(detalle.total)}</strong>
                 </div>
-                {puedeAnular(detalle) && (
+                {puedeAnular(detalle) && !noCancelablesIds.has(detalle.id) && (
                   <div style={{ display: 'flex', justifyContent: 'end', marginTop: 18 }}>
                     <button className="btn btn-ghost" style={{ color: '#ef4444' }} disabled={accionPedidoId === detalle.id} onClick={() => void anular(detalle)}>
                       {accionPedidoId === detalle.id ? 'Anulando…' : 'Anular comanda'}

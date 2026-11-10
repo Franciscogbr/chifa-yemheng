@@ -1400,7 +1400,7 @@ export interface ActaCierre {
 export async function actaCierre(aperturaId: number): Promise<ActaCierre | null> {
   const { data, error } = await supabase
     .from('apertura_caja')
-    .select('id_aperturacaja, numero_turno, f_apertura, f_cierre, monto_inicial, total_ingresos, total_egresos, monto_sistema, monto_declarado, diferencia, situacion, observacion, caja(n_caja), usuario:personal(id_usuario, persona(nombre, ap_paterno, ap_materno))')
+    .select('id_aperturacaja, id_usuario, id_usuariocierre, numero_turno, f_apertura, f_cierre, monto_inicial, total_ingresos, total_egresos, monto_sistema, monto_declarado, diferencia, situacion, observacion, caja(n_caja), usuario:usuario!fk_aperturacaja_usuario(id_usuario, logeo, empleado:empleado!fk_usuario_empleado(id_persona, persona:persona!fk_empleado_persona(nombre, ap_paterno, ap_materno)))')
     .eq('id_aperturacaja', aperturaId)
     .maybeSingle();
   if (error) throw new Error(`DB_GET_FAIL: ${error.message}`);
@@ -1425,10 +1425,11 @@ export async function actaCierre(aperturaId: number): Promise<ActaCierre | null>
       : Promise.resolve(new Map<number, string>()),
   ]);
 
-  const conteoRows = ((conteo.data ?? []) as unknown as Record<string, unknown>[]);
-  const incidenciaRow = (incidenciaRes.data ?? null) as unknown as Record<string, unknown> | null;
+  const conteoRows = ((conteo?.data ?? []) as unknown as Record<string, unknown>[]);
+  const incidenciaRow = (incidenciaRes?.data ?? null) as unknown as Record<string, unknown> | null;
   const personal = (row['usuario'] ?? null) as Record<string, unknown> | null;
-  const persona = (personal?.['persona'] ?? null) as Record<string, unknown> | null;
+  const empleado = (personal?.['empleado'] ?? null) as Record<string, unknown> | null;
+  const persona = (empleado?.['persona'] ?? null) as Record<string, unknown> | null;
   const diferencia = Number(row['diferencia'] ?? 0);
   const caja = (row['caja'] ?? null) as Record<string, unknown> | null;
 

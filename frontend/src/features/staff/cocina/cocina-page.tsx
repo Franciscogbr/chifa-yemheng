@@ -13,7 +13,7 @@ import { EstadoBadge } from '../../../shared/ui/EstadoBadge';
 import { supabase } from '../../../shared/services/supabase';
 import { StaffFeedbackModal, type StaffFeedback } from '../staff-feedback-modal';
 
-const TONE: Record<string, string> = { P: '#f59e0b', E: '#3b82f6', S: '#22c55e', A: '#ef4444' };
+const TONE: Record<string, string> = { P: '#f59e0b', L: '#22c55e', A: '#ef4444' };
 
 function describirErrorCocina(error: unknown, fallback: string): string {
   const raw = error instanceof Error ? error.message : '';
@@ -84,15 +84,13 @@ export function StaffCocinaPage() {
 
   const conteo = useMemo(() => {
     const p = tickets?.filter((t) => t.detalles.some((d) => d.estadoPreparacion === 'P')).length ?? 0;
-    const e = tickets?.filter((t) => t.detalles.some((d) => d.estadoPreparacion === 'E')).length ?? 0;
-    const s = tickets?.filter((t) => t.detalles.some((d) => d.estadoPreparacion === 'S')).length ?? 0;
-    return { p, e, s };
+    const l = tickets?.filter((t) => t.detalles.some((d) => d.estadoPreparacion === 'L')).length ?? 0;
+    return { p, l };
   }, [tickets]);
 
   const grupos: { clave: EstadoPreparacion; titulo: string }[] = [
     { clave: 'P', titulo: 'Pendientes' },
-    { clave: 'E', titulo: 'En proceso' },
-    { clave: 'S', titulo: 'Servidos' },
+    { clave: 'L', titulo: 'Listos' },
   ];
 
   return (
@@ -103,8 +101,7 @@ export function StaffCocinaPage() {
         right={(
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <EstadoChip estado="P" texto={`${conteo.p} pend`} />
-            <EstadoChip estado="E" texto={`${conteo.e} proc`} />
-            <EstadoChip estado="S" texto={`${conteo.s} serv`} />
+            <EstadoChip estado="L" texto={`${conteo.l} listo`} />
             <button className="btn btn-ghost" onClick={() => void cargar()}>Refrescar</button>
           </div>
         )}
@@ -192,16 +189,11 @@ function DetalleLinea({
       {d.notaCocina && <p style={{ margin: 0, fontSize: 12, color: 'var(--gold-light)' }}>{d.notaCocina}</p>}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {estado === 'P' && (
-          <button className="btn btn-ghost" disabled={busy} onClick={() => void onMove(ticket.id, d.id, 'E')}>
-            En proceso
+          <button className="btn btn-gold" disabled={busy} onClick={() => void onMove(ticket.id, d.id, 'L')}>
+            Marcar listo
           </button>
         )}
-        {estado === 'E' && (
-          <button className="btn btn-gold" disabled={busy} onClick={() => void onMove(ticket.id, d.id, 'S')}>
-            Servir
-          </button>
-        )}
-        {estado !== 'S' && estado !== 'A' && (
+        {estado !== 'L' && estado !== 'A' && (
           <button
             className="btn btn-ghost"
             disabled={busy}

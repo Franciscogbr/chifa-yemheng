@@ -17,6 +17,7 @@ import {
   registrarEntregaMozo,
   recalcularPedido as repoRecalcular,
 } from '../repositories/pedidos-repository.js';
+import { descontarInsumosPorDetalle } from './inventario-service.js';
 
 export function listarService(q: PedidoQuery): Promise<PedidoLista> {
   return repoListar(q);
@@ -96,7 +97,7 @@ export async function entregasPendientesMozoService(): Promise<Pedido[]> {
       detalles: pedido.detalles?.filter(
         (detalle) =>
           detalle.estadoRegistro === 'A' &&
-          detalle.estadoPreparacion === 'S' &&
+          detalle.estadoPreparacion === 'L' &&
           detalle.fechaEntregaMozo === null,
       ),
     }))
@@ -119,7 +120,7 @@ export async function confirmarEntregaMozoService(
   if (
     !detalle ||
     detalle.estadoRegistro !== 'A' ||
-    detalle.estadoPreparacion !== 'S' ||
+    detalle.estadoPreparacion !== 'L' ||
     detalle.fechaEntregaMozo !== null
   ) {
     throw new PedidoError('ENTREGA_NO_DISPONIBLE');
@@ -208,10 +209,42 @@ export async function cambiarPreparacionService(
   detalleId: number,
   estado: string,
   idUsuario: number,
-  _pc = '',
+  usucre: string,
+  pc = '',
 ): Promise<void> {
   await repoCambiarPrep(detalleId, estado);
-  await auditar(idUsuario, 'CAMBIAR_PREPARACION', detalleId, estado);
+
+  // Cuando el plato pasa a Listo, descontar insumos de la receta automáticamente
+  if (estado === 'L') {
+    try {
+      const resultado = await descontarInsumosPorDetalle(detalleId, idUsuario, usucre, pc);
+      if (resultado.errores.length > 0) {
+        await auditar(
+          idUsuario,
+          'DESCUENTO_INSUMOS_PARCIAL',
+          detalleId,
+          `Insumos descontados: ${resultado.insumos.join(', ')}. Errores: ${resultado.errores.join('; ')}`,
+        );
+      } else if (resultado.descontado) {
+        await auditar(
+          idUsuario,
+          'DESCUENTO_INSUMOS',
+          detalleId,
+          `Insumos descontados: ${resultado.insumos.join(', ')}`,
+        );
+      }
+    } catch (err) {
+      // No bloquear el cambio de estado por error de inventario
+      await auditar(
+        idUsuario,
+        'DESCUENTO_INSUMOS_ERROR',
+        detalleId,
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  } else {
+    await auditar(idUsuario, 'CAMBIAR_PREPARACION', detalleId, estado);
+  }
 }
 
 export async function pedidosAbiertosPorMesaService(mesaId: number): Promise<Pedido[]> {

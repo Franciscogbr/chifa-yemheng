@@ -43,26 +43,36 @@ BEGIN
     RAISE EXCEPTION USING MESSAGE = 'ARQUEO_YA_SOLICITADO';
   END IF;
 
+  -- --- Obtener monto del sistema para arqueo automático (denominaciones vacías). ---
+  SELECT ac.monto_sistema INTO v_sistema
+  FROM public.apertura_caja ac
+  WHERE ac.id_aperturacaja = p_apertura AND ac.situacion = 'A';
+
   -- --- Conteo valido: cada denominacion con valor>0 y cantidad>=0. ---
-  IF jsonb_typeof(p_denominaciones) IS DISTINCT FROM 'array'
-     OR jsonb_array_length(p_denominaciones) = 0 THEN
+  -- Arreglo vacio = arqueo automático: contado = monto del sistema.
+  IF jsonb_typeof(p_denominaciones) IS DISTINCT FROM 'array' THEN
     RAISE EXCEPTION USING MESSAGE = 'DENOMINACIONES_INVALIDAS';
   END IF;
 
-  FOR elem IN SELECT value FROM jsonb_array_elements(p_denominaciones)
-  LOOP
-    IF NOT (elem ? 'valor') OR NOT (elem ? 'cantidad')
-       OR (elem ->> 'valor')::numeric <= 0
-       OR (elem ->> 'cantidad')::int < 0
-       OR COALESCE(elem ->> 'tipo', 'BILLETE') NOT IN ('BILLETE', 'MONEDA') THEN
-      RAISE EXCEPTION USING MESSAGE = 'DENOMINACIONES_INVALIDAS';
-    END IF;
-  END LOOP;
+  IF jsonb_array_length(p_denominaciones) = 0 THEN
+    -- Arqueo automático: el contado es exactamente lo que dice el sistema.
+    v_contado := v_sistema;
+  ELSE
+    FOR elem IN SELECT value FROM jsonb_array_elements(p_denominaciones)
+    LOOP
+      IF NOT (elem ? 'valor') OR NOT (elem ? 'cantidad')
+         OR (elem ->> 'valor')::numeric <= 0
+         OR (elem ->> 'cantidad')::int < 0
+         OR COALESCE(elem ->> 'tipo', 'BILLETE') NOT IN ('BILLETE', 'MONEDA') THEN
+        RAISE EXCEPTION USING MESSAGE = 'DENOMINACIONES_INVALIDAS';
+      END IF;
+    END LOOP;
 
-  -- --- Dinero contado = sumatoria del conteo fisico. Nunca se ajusta. ---
-  SELECT round(COALESCE(sum((e ->> 'valor')::numeric * (e ->> 'cantidad')::int), 0), 2)
-    INTO v_contado
-  FROM jsonb_array_elements(p_denominaciones) AS e;
+    -- --- Dinero contado = sumatoria del conteo fisico. Nunca se ajusta. ---
+    SELECT round(COALESCE(sum((e ->> 'valor')::numeric * (e ->> 'cantidad')::int), 0), 2)
+      INTO v_contado
+    FROM jsonb_array_elements(p_denominaciones) AS e;
+  END IF;
 
   -- --- Regla S5: el cierre SIEMPRE se puede solicitar, aunque difiera. ---
   -- (fn_solicitar_cierre_caja retorna solo sistema/declarado/diferencia; el

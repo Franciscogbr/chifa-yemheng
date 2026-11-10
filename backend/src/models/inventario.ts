@@ -32,6 +32,32 @@ export interface Receta {
   estado: 'A' | 'I' | 'E';
 }
 
+export interface StockInsumo {
+  idProducto: number;
+  producto: string;
+  tipoProducto: string;
+  stockActual: number;
+  stockMinimo: number;
+  unidadMedida: string | null;
+  estadoBajoStock: boolean;
+}
+
+export interface RecetaCostoDetalle {
+  insumoId: number;
+  insumo: string;
+  cantidad: number;
+  unidad: string;
+  costoUnitario: number;
+  subtotal: number;
+}
+
+export interface RecetaCostoResultado {
+  productoId: number;
+  producto: string;
+  costoTotal: number;
+  detalles: RecetaCostoDetalle[];
+}
+
 export type InventarioErrorCode = 'NOT_FOUND' | 'PRODUCTO_INVALIDO' | 'INSUMO_INVALIDO' | 'STOCK_INSUFICIENTE' | 'RECETA_DUPLICADA' | 'VALIDATION_ERROR';
 
 export class InventarioError extends Error {

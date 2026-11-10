@@ -196,7 +196,10 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'TURNO_NO_ABIERTO';
   END IF;
-  IF p_declarado < 0 THEN
+  -- Si no se declara monto (arqueo automático), usar el monto del sistema
+  IF p_declarado IS NULL THEN
+    p_declarado := v_sistema;
+  ELSIF p_declarado < 0 THEN
     RAISE EXCEPTION 'MONTO_INVALIDO';
   END IF;
   IF p_usuario <> v_usuario_apertura THEN

@@ -1,6 +1,6 @@
 import { api } from '../../../shared/services/api-client';
 
-export type EstadoPreparacion = 'P' | 'E' | 'S' | 'A';
+export type EstadoPreparacion = 'P' | 'L' | 'A';
 export type CanalOrigenPedido = 'QR' | 'WEB' | 'PRESENCIAL';
 
 export interface DetallePedidoAdmin {
@@ -48,6 +48,7 @@ export interface PedidoAdmin {
   motivoAnulacion: string | null;
   observacion: string | null;
   estadoRegistro: 'A' | 'I';
+  deliverySituacion?: 'P' | 'R' | 'E' | 'C' | null;
   detalles?: DetallePedidoAdmin[];
 }
 

@@ -1,5 +1,5 @@
 import { supabase } from '../config/supabase.js';
-import { DeliveryError, type Delivery, type DeliveryLista } from '../models/delivery.js';
+import { DeliveryError, type Delivery, type DeliveryLista, type PedidoItem } from '../models/delivery.js';
 import type { RepartidorEntregasQuery } from '../schemas/repartidor.js';
 import { updateAudit } from '../utils/auditoria.js';
 import { listarPendientesRendicion, type PendienteRendicionItem } from './rendicion-repository.js';
@@ -84,6 +84,29 @@ function mapRow(row: DeliveryRow): Delivery {
   };
 }
 
+/** Mapea los ítems del pedido (detalle_pedido -> producto). */
+function mapPedidoItemsRepartidor(rows: Array<{
+  id_producto: number;
+  cantidad: number;
+  precio_unitario: number;
+  descuento: number;
+  nota_cocina: string | null;
+  producto: { n_producto: string } | { n_producto: string }[] | null;
+}>): PedidoItem[] {
+  return (rows ?? []).map((r) => {
+    const producto = Array.isArray(r.producto) ? r.producto[0] : r.producto;
+    return {
+      idProducto: r.id_producto,
+      nombre: producto?.n_producto ?? `Producto #${r.id_producto}`,
+      cantidad: Number(r.cantidad),
+      precioUnitario: Number(r.precio_unitario),
+      descuento: Number(r.descuento ?? 0),
+      subTotal: Number(r.cantidad) * Number(r.precio_unitario) - Number(r.descuento ?? 0),
+      nota: r.nota_cocina ?? null,
+    };
+  });
+}
+
 export async function listarMisEntregas(
   empleadoId: number,
   estado: RepartidorEntregasQuery['estado'],
@@ -124,7 +147,18 @@ export async function getMiEntregaDetalle(id: number, empleadoId: number): Promi
 
   if (error) throw new Error(`DB_GET_FAIL: ${error.message}`);
   if (!data) return null;
-  return mapRepartidorRow(data as unknown as DeliveryRow);
+
+  const delivery = mapRepartidorRow(data as unknown as DeliveryRow);
+
+  // Ítems del pedido (solo en detalle individual, no en listado para evitar N+1)
+  const { data: itemsRows } = await supabase
+    .from('detalle_pedido')
+    .select('id_producto, cantidad, precio_unitario, descuento, nota_cocina, producto:n_producto(n_producto)')
+    .eq('id_pedido', delivery.pedidoId)
+    .eq('estado', 'A');
+  delivery.items = mapPedidoItemsRepartidor(itemsRows ?? []);
+
+  return delivery;
 }
 
 export async function iniciarRutaRepartidor(id: number, empleadoId: number, usumod: string, pc = ''): Promise<Delivery | null> {

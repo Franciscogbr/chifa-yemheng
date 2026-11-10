@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+﻿import type { Request, Response } from 'express';
 import {
   arqueoCajaSchema,
   confirmarCierreCajaSchema,
@@ -18,6 +18,7 @@ import {
   actaCierreService,
   reporteDiferenciasService,
   historialCajeroService,
+  historialCajaService,
   incidenciasService,
   rechazarCierreService,
   resolverIncidenciaService,
@@ -28,6 +29,7 @@ import {
   solicitarCierreCajaService,
   registrarMovimientoCajaService,
 } from '../services/caja-service.js';
+import { getMovimientosResumenService } from '../services/caja-resumen-service.js';
 import type { AuthenticatedRequest } from '../middlewares/auth-guard.js';
 
 function sesion(req: Request): { id: number } {
@@ -172,6 +174,14 @@ export async function postCajaConfirmarCierre(req: Request, res: Response): Prom
   const s = sesion(req);
   try {
     res.json(await confirmarCierreCajaService(parsed.data.aperturaId, s.id));
+  } catch (err) {
+    errorCaja(res, err);
+  }
+}
+
+export async function getCierresCerrados(_req: Request, res: Response): Promise<void> {
+  try {
+    res.json(await historialCajaService());
   } catch (err) {
     errorCaja(res, err);
   }
@@ -368,5 +378,20 @@ export async function postCajaMovimiento(req: Request, res: Response): Promise<v
     res.status(201).json(await registrarMovimientoCajaService({ ...parsed.data, usuarioId: s.id }));
   } catch (err) {
     errorCaja(res, err);
+  }
+}
+
+export async function getCajaMovimientosResumen(req: Request, res: Response): Promise<void> {
+  const aperturaId = Number(req.params['aperturaId']);
+  if (!Number.isInteger(aperturaId) || aperturaId <= 0) {
+    res.status(400).json({ error: 'VALIDATION_ERROR' });
+    return;
+  }
+  try {
+    const resumen = await getMovimientosResumenService(aperturaId);
+    res.json(resumen);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'INTERNAL_ERROR', detalle: msg });
   }
 }

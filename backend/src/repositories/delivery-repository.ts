@@ -18,11 +18,14 @@ interface DeliveryRow {
   costo_envio_confirmado: boolean;
   situacion: string;
   feccre: string;
+  f_salida: string | null;
+  f_entrega: string | null;
   lat_cliente: number | null;
   lng_cliente: number | null;
   lat_repartidor: number | null;
   lng_repartidor: number | null;
   f_ubicacion: string | null;
+  pedido: { total: number } | null;
 }
 
 interface DistritoGPSRow {
@@ -42,9 +45,10 @@ interface ConfiguracionNegocioRow {
   radio_cobertura_km: number | null;
 }
 
-const SELECT = 'id_pedidodelivery, id_pedido, id_distrito, distrito(d_distrito), direccion_entrega, referencia, telefono_contacto, id_empleado, repartidor:empleado(persona(nombre, ap_paterno)), costo_envio, costo_envio_confirmado, situacion, feccre';
+const SELECT = 'id_pedidodelivery, id_pedido, id_distrito, distrito(d_distrito), direccion_entrega, referencia, telefono_contacto, id_empleado, repartidor:empleado(persona(nombre, ap_paterno)), costo_envio, costo_envio_confirmado, situacion, feccre, f_salida, f_entrega, lat_cliente, lng_cliente, lat_repartidor, lng_repartidor, f_ubicacion, pedido:pedido!inner(total)';
 
 function mapRow(row: DeliveryRow): Delivery {
+  const pedidoRow = row as unknown as DeliveryRow & { pedido: { total: number } | null };
   return {
     id: row.id_pedidodelivery,
     pedidoId: row.id_pedido,
@@ -61,6 +65,13 @@ function mapRow(row: DeliveryRow): Delivery {
     costoConfirmado: row.costo_envio_confirmado ?? true,
     estado: (row.situacion ?? 'P') as Delivery['estado'],
     fechaCreacion: row.feccre,
+    fechaSalida: row.f_salida ?? null,
+    fechaEntrega: row.f_entrega ?? null,
+    latCliente: row.lat_cliente ?? null,
+    lngCliente: row.lng_cliente ?? null,
+    latRepartidor: row.lat_repartidor ?? null,
+    lngRepartidor: row.lng_repartidor ?? null,
+    totalPedido: pedidoRow.pedido ? Number(pedidoRow.pedido.total) : undefined,
   };
 }
 

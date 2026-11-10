@@ -118,7 +118,20 @@ export function ClienteDeliveryPage() {
 
   // Logged-in: seguimiento si ya hay un delivery creado, si no el wizard (único flujo).
   if (deliveryId !== null) {
-    return <DeliveryTracking deliveryId={deliveryId} />;
+    return (
+      <div className="y-shell y-responsive-page">
+        <div className="y-head">
+          <Link to="/cliente/inicio" className="y-icon-btn" aria-label="Volver"><ArrowLeft size={18} /></Link>
+          <h2 className="font-d" style={{ margin: 0, fontSize: 22 }}>Delivery</h2>
+        </div>
+        <DeliveryTracking deliveryId={deliveryId} />
+        <div style={{ padding: 16, display: 'flex', justifyContent: 'center' }}>
+          <Link to="/cliente/menu" className="y-btn y-btn-hero-secondary y-client-action-secondary">
+            Ver carta
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -138,6 +151,11 @@ export function ClienteDeliveryPage() {
       <section className="y-panel y-delivery-form-panel">
         <DeliveryWizard onCreated={(idPedidoDelivery) => setDeliveryId(idPedidoDelivery)} />
       </section>
+      <div style={{ padding: 16, display: 'flex', justifyContent: 'center' }}>
+        <Link to="/cliente/menu" className="y-btn y-btn-hero-secondary y-client-action-secondary">
+          Ver carta
+        </Link>
+      </div>
       </main>
     </div>
   );

@@ -9,8 +9,6 @@ import type { Producto } from '../../admin/productos/productos-types';
 import {
   abrirPedidoMesa,
   agregarLinea,
-  confirmarEntregaMozo,
-  listarEntregasMozo,
   listarPedidoPorMesa,
   pedirCuenta,
   type Ticket,
@@ -72,11 +70,6 @@ function describirError(error: unknown, fallback: string): Omit<MozoFeedback, 'o
       kind: 'warning',
       title: 'Producto no disponible',
       description: 'Ese producto ya no está disponible. Elige otro producto de la carta.',
-    },
-    ENTREGA_NO_DISPONIBLE: {
-      kind: 'info',
-      title: 'Entrega ya actualizada',
-      description: 'No se pudo confirmar la entrega. Puede que otro usuario ya la haya registrado; actualiza la bandeja.',
     },
     NOT_FOUND: {
       kind: 'warning',
@@ -141,9 +134,6 @@ export function StaffMozoPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [cargandoComanda, setCargandoComanda] = useState(false);
   const [feedback, setFeedback] = useState<MozoFeedback | null>(null);
-  const [entregas, setEntregas] = useState<Ticket[] | null>(null);
-  const [entregaError, setEntregaError] = useState<string | null>(null);
-  const [entregasAbiertas, setEntregasAbiertas] = useState(false);
   const [filtroMesa, setFiltroMesa] = useState<FiltroMesa>('TODAS');
 
   const mostrarError = useCallback(
@@ -170,21 +160,6 @@ export function StaffMozoPage() {
   useEffect(() => {
     void cargarMesas();
   }, [cargarMesas]);
-
-  const cargarEntregas = useCallback(async () => {
-    try {
-      setEntregas(await listarEntregasMozo());
-      setEntregaError(null);
-    } catch (e) {
-      setEntregaError(describirError(e, 'No se pudieron cargar los platos listos.').description);
-    }
-  }, []);
-
-  useEffect(() => {
-    void cargarEntregas();
-    const timer = window.setInterval(() => void cargarEntregas(), 15000);
-    return () => window.clearInterval(timer);
-  }, [cargarEntregas]);
 
   const cargarComanda = useCallback(async (mesa: Mesa) => {
     setCargandoComanda(true);
@@ -214,10 +189,6 @@ export function StaffMozoPage() {
   const porCobrar = useMemo(() => (mesas ?? []).filter((m) => m.estadoOperativo === 'POR COBRAR'), [mesas]);
   const reservadas = useMemo(() => (mesas ?? []).filter((m) => m.estadoOperativo === 'RESERVADA'), [mesas]);
   const presenciales = useMemo(() => (mesas ?? []).filter(esGestionablePorMozo), [mesas]);
-  const cantidadListos = useMemo(
-    () => (entregas ?? []).reduce((total, pedido) => total + (pedido.detalles?.length ?? 0), 0),
-    [entregas],
-  );
   const visibles = useMemo(() => {
     const q = buscar.trim().toUpperCase();
     return (mesas ?? []).filter((mesa) => {
@@ -233,48 +204,21 @@ export function StaffMozoPage() {
     <div className="y-shell" style={{ padding: '24px 16px 140px', maxWidth: 1240, margin: '0 auto' }}>
       <PageHeader
         title="Atención del salón"
-        sub="Organiza tu atención: primero entrega los platos listos, luego continúa con las mesas."
+        sub="Consulta el estado de las mesas y sus pedidos."
       />
       <section className="y-flow-hero y-mozo-hero" aria-label="Resumen de atención">
         <div className="y-mozo-hero-top">
           <div className="y-flow-hero__content">
             <span className="y-flow-hero__eyebrow">Tu siguiente prioridad</span>
             <h2 className="y-flow-hero__title">
-              {entregaError
-                ? 'No se pudo actualizar la bandeja.'
-                : entregas === null
-                ? 'Revisa las prioridades del salón.'
-                : cantidadListos > 0
-                  ? 'Hay platos listos para entregar.'
-                  : 'Mantén el salón en marcha.'}
+              {presenciales.length > 0 ? 'Hay mesas por atender.' : 'Mantén el salón en marcha.'}
             </h2>
             <p className="y-flow-hero__description">
-              {entregaError
-                ? 'Abre la bandeja de platos listos para ver el error y volver a intentar.'
-                : entregas === null
-                ? 'Estamos cargando la bandeja de cocina y el estado de las mesas.'
-                : cantidadListos > 0
-                ? `${cantidadListos} ${cantidadListos === 1 ? 'plato espera' : 'platos esperan'} en sus mesas. Atiéndelos antes de continuar.`
-                : 'Consulta las mesas y sus estados. Los pedidos digitales se muestran para seguimiento; el cliente administra su pedido.'}
+              Consulta las mesas y sus estados. Los pedidos digitales se muestran para seguimiento.
             </p>
           </div>
-          <button
-            className="btn btn-gold y-mozo-hero-action"
-            onClick={() => {
-              setEntregasAbiertas(true);
-              void cargarEntregas();
-            }}
-          >
-            <Ico n="waiter" size={18} />
-            Ver platos listos{entregas === null ? '' : ` · ${cantidadListos}`}
-          </button>
         </div>
         <div className="y-mozo-hero-stats" aria-label="Estado del salón">
-          <div className="y-mozo-hero-stat y-mozo-hero-stat--ready">
-            <span>Platos listos</span>
-            <strong>{entregaError ? '!' : entregas === null ? '—' : cantidadListos}</strong>
-            <small>{entregaError ? 'No disponible' : entregas === null ? 'Cargando bandeja' : 'Pendientes de entrega'}</small>
-          </div>
           <div className="y-mozo-hero-stat">
             <span>Mesas ocupadas</span>
             <strong>{mesas === null ? '—' : ocupadas.length}</strong>
@@ -442,21 +386,6 @@ export function StaffMozoPage() {
           })}
         />
       )}
-      {entregasAbiertas && (
-        <EntregasListasModal
-          pedidos={entregas}
-          error={entregaError}
-          onCerrar={() => setEntregasAbiertas(false)}
-          onRefrescar={cargarEntregas}
-          onConfirmar={async (pedidoId, detalleId) => {
-            await confirmarEntregaMozo(pedidoId, detalleId);
-            await cargarEntregas();
-            await cargarMesas();
-            if (abierta) await abrirComanda(abierta);
-          }}
-          onError={(err) => mostrarError(err, 'No se pudo registrar la entrega. Actualiza la bandeja e inténtalo nuevamente.', cargarEntregas)}
-        />
-      )}
       {feedback && (
         <StaffFeedbackModal
           feedback={feedback}
@@ -550,17 +479,11 @@ function MozoDetalles({
                   <div style={{ flex: 1 }}>
                     <b>{d.cantidad}x {d.producto}</b>
                     {d.notaCocina && <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 12 }}>{d.notaCocina}</p>}
-                    {d.fechaEntregaMozo && <p style={{ margin: 0, color: '#22c55e', fontSize: 11 }}>Entregado a la mesa</p>}
                   </div>
                   <EstadoBadge estado={d.estadoPreparacion} size="md" />
                 </div>
               ))}
             </div>
-            {pedidoDigital && (
-              <p style={{ margin: '12px 0 0', color: 'var(--text-muted)', fontSize: 12 }}>
-                El cliente administra su pedido digital. Desde aquí solo se consulta el avance y se registra la entrega.
-              </p>
-            )}
             <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {puedeAgregar && (
                 <button
@@ -703,106 +626,6 @@ function ProductosPicker({
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function EntregasListasModal({
-  pedidos,
-  error,
-  onCerrar,
-  onRefrescar,
-  onConfirmar,
-  onError,
-}: {
-  pedidos: Ticket[] | null;
-  error: string | null;
-  onCerrar: () => void;
-  onRefrescar: () => Promise<void>;
-  onConfirmar: (pedidoId: number, detalleId: number) => Promise<void>;
-  onError: (error: unknown) => void;
-}) {
-  const [procesando, setProcesando] = useState<number | null>(null);
-  const cantidad = (pedidos ?? []).reduce((total, pedido) => total + (pedido.detalles?.length ?? 0), 0);
-
-  return (
-    <div
-      className="ys-veil"
-      style={{ position: 'fixed', inset: 0, zIndex: 80, display: 'grid', placeItems: 'center', padding: 16, background: 'rgba(0,0,0,.58)' }}
-      onClick={onCerrar}
-    >
-      <section
-        className="card"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="mozo-entregas-title"
-        style={{ width: 'min(760px, 96vw)', maxHeight: '88vh', overflow: 'auto', padding: 22 }}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <div style={{ flex: 1 }}>
-            <span className="y-flow-hero__eyebrow">Despacho de cocina</span>
-            <h2 id="mozo-entregas-title" style={{ margin: '4px 0', fontSize: 22 }}>Listos para entregar</h2>
-            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 13 }}>
-              {cantidad} {cantidad === 1 ? 'plato espera' : 'platos esperan'} en sus mesas.
-            </p>
-          </div>
-          <button className="btn btn-ghost" onClick={() => void onRefrescar()} aria-label="Actualizar platos listos">
-            Actualizar
-          </button>
-          <button className="btn btn-ghost" onClick={onCerrar}>Cerrar</button>
-        </header>
-
-        {error && <ErrorBox msg={error} retry={onRefrescar} />}
-        {pedidos === null && !error && <Loading text="Buscando platos listos..." />}
-        {pedidos?.length === 0 && !error && (
-          <div className="card" style={{ textAlign: 'center', padding: 32, background: 'var(--surface-2)' }}>
-            <Ico n="ok" size={30} />
-            <h3 style={{ margin: '8px 0 4px' }}>Todo entregado</h3>
-            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Cuando cocina despache nuevos platos aparecerán aquí.</p>
-          </div>
-        )}
-
-        <div style={{ display: 'grid', gap: 12 }}>
-          {pedidos?.map((pedido) => (
-            <article key={pedido.id} className="card" style={{ padding: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <strong>Mesa {pedido.mesaNumero ?? pedido.mesaId ?? '—'}</strong>
-                  <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: 12 }}>
-                    Comanda {pedido.numero} · {pedido.canalOrigen === 'PRESENCIAL' ? 'Atención presencial' : `Pedido ${pedido.canalOrigen}`}
-                  </span>
-                </div>
-                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{timeAgo(pedido.fecha)}</span>
-              </div>
-              <div style={{ display: 'grid', gap: 8 }}>
-                {pedido.detalles?.map((detalle) => (
-                  <div key={detalle.id} className="y-line" style={{ gap: 12, padding: '10px 0' }}>
-                    <div style={{ flex: 1 }}>
-                      <strong>{detalle.cantidad} × {detalle.producto}</strong>
-                      {detalle.notaCocina && (
-                        <p style={{ margin: '3px 0 0', color: 'var(--text-muted)', fontSize: 12 }}>{detalle.notaCocina}</p>
-                      )}
-                    </div>
-                    <button
-                      className="btn btn-gold"
-                      disabled={procesando === detalle.id}
-                      onClick={() => {
-                        setProcesando(detalle.id);
-                        void onConfirmar(pedido.id, detalle.id)
-                          .catch((e: unknown) => onError(e))
-                          .finally(() => setProcesando(null));
-                      }}
-                    >
-                      {procesando === detalle.id ? 'Registrando…' : 'Confirmar entrega'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

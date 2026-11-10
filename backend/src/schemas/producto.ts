@@ -10,6 +10,7 @@ export const productoQuerySchema = z.object({
   categoria: z.coerce.number().int().optional(),
   estado: estadoSchema.optional(),
   disponible: z.enum(['S', 'N']).optional(),
+  tipo: tipoSchema.optional(),
 });
 
 export const productoCreateSchema = z.object({

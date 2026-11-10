@@ -1,9 +1,10 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import {
   getCajaMaestros,
   getCajaActa,
   getCajaIncidencias,
   getCajaHistorialCajero,
+  getCierresCerrados,
   getCajaReporteDiferencias,
   getCajaPendientes,
   getCierresPendientes,
@@ -17,6 +18,7 @@ import {
   postCajaMovimiento,
   postCajaTurno,
   getCajaComprobante,
+  getCajaMovimientosResumen,
 } from '../controllers/caja-controller.js';
 import { authGuard } from '../middlewares/auth-guard.js';
 import { requirePermisos } from '../middlewares/permission-guard.js';
@@ -59,6 +61,12 @@ cajaRouter.post(
   requirePermisos('CAJ_CERRAR', 'CAJ_VALIDAR_CIERRE', 'CAJ_APERTURAR', 'CAJA_APERTURA'),
   postCajaArqueo,
 );
+
+cajaRouter.get(
+  '/cierres/cerrados',
+  requirePermisos('CAJ_VALIDAR_CIERRE', 'VEN_COBRAR', 'CAJ_APERTURAR', 'CAJA_APERTURA'),
+  getCierresCerrados,
+);
 cajaRouter.get(
   '/incidencias',
   requirePermisos('CAJ_VALIDAR_CIERRE', 'CAJA_APERTURA', 'VEN_COBRAR', 'CAJ_APERTURAR'),
@@ -88,4 +96,9 @@ cajaRouter.get(
   '/comprobante/:id',
   requirePermisos('CAJ_VALIDAR_CIERRE', 'VEN_COBRAR', 'CAJ_APERTURAR', 'CAJA_APERTURA'),
   getCajaComprobante,
+);
+cajaRouter.get(
+  '/turno/:aperturaId/movimientos-resumen',
+  requirePermisos('CAJ_VALIDAR_CIERRE', 'VEN_COBRAR', 'CAJ_APERTURAR', 'CAJA_APERTURA'),
+  getCajaMovimientosResumen,
 );

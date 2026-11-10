@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase.js';
-import type { MovimientoCreate, MovimientoQuery, RecetaCreate, RecetaQuery, RecetaUpdate } from '../schemas/inventario.js';
-import type { MovimientoInventario, MovimientoLista, Receta } from '../models/inventario.js';
+import type { MovimientoCreate, MovimientoQuery, RecetaCreate, RecetaQuery, RecetaUpdate, StockQuery } from '../schemas/inventario.js';
+import type { MovimientoInventario, MovimientoLista, Receta, StockInsumo } from '../models/inventario.js';
 import { createAudit, updateAudit } from '../utils/auditoria.js';
 
 interface MovimientoRow {
@@ -23,6 +23,16 @@ interface RecetaRow {
   insumo: { n_producto: string; unidad_medida: { n_unidad: string } | null } | null;
   cantidad: number;
   estado: 'A' | 'I' | 'E';
+}
+
+interface StockRow {
+  id_producto: number;
+  n_producto: string;
+  tipo_producto: string;
+  stock_actual: number;
+  stock_minimo: number;
+  unidad_medida: { n_unidad: string } | null;
+  categoria_producto: { n_categoriaproducto: string } | null;
 }
 
 const MOV_SELECT = 'id_movimientoinv, id_producto, producto(n_producto), tipo_movimiento, cantidad, costo_unitario, observacion, f_movimiento, id_usuario';
@@ -86,6 +96,8 @@ export async function crearMovimiento(input: MovimientoCreate, usuarioId: number
     p_tipo: input.tipo,
     p_cantidad: input.cantidad,
     p_costo: input.costo,
+    p_documento: input.documento ?? null,
+    p_id_pedido: input.idPedido ?? null,
     p_observacion: input.motivo ?? null,
     p_usucre: usucre,
     p_pc: pc,
@@ -224,4 +236,71 @@ export async function actualizarReceta(
     .maybeSingle();
   if (error) throw new Error(`DB_UPDATE_FAIL: ${error.message}`);
   return data ? mapReceta(data as unknown as RecetaRow) : null;
+}
+
+export async function getStockInsumos(q: StockQuery): Promise<StockInsumo[]> {
+  let query = supabase
+    .from('producto')
+    .select('id_producto, n_producto, tipo_producto, stock_actual, stock_minimo, categoria_producto(n_categoriaproducto), unidad_medida(n_unidad)')
+    .eq('estado', 'A')
+    .eq('tipo_producto', 'I');
+
+  if (q.productoId) {
+    query = query.eq('id_producto', q.productoId);
+  }
+
+  if (q.nombre) {
+    query = query.ilike('n_producto', `%${q.nombre}%`);
+  }
+
+  if (q.categoriaId) {
+    query = query.eq('id_categoriaproducto', q.categoriaId);
+  }
+
+  if (q.unidadId) {
+    query = query.eq('id_unidad', q.unidadId);
+  }
+
+  if (q.stockMinimoDesde !== undefined) {
+    query = query.gte('stock_minimo', q.stockMinimoDesde);
+  }
+
+  if (q.stockMinimoHasta !== undefined) {
+    query = query.lte('stock_minimo', q.stockMinimoHasta);
+  }
+
+  if (q.stockActualDesde !== undefined) {
+    query = query.gte('stock_actual', q.stockActualDesde);
+  }
+
+  if (q.stockActualHasta !== undefined) {
+    query = query.lte('stock_actual', q.stockActualHasta);
+  }
+
+  if (q.soloBajoStock) {
+    query = query.lte('stock_actual', 'stock_minimo');
+  }
+
+  const ordenColumna = q.ordenarPor === 'stock_actual' ? 'stock_actual' : q.ordenarPor === 'stock_minimo' ? 'stock_minimo' : 'n_producto';
+  query = query.order(ordenColumna, { ascending: q.ordenDireccion === 'asc' });
+
+  const { data, error } = await query;
+  if (error) throw new Error(`DB_STOCK_FAIL: ${error.message}`);
+
+  const rows = (data ?? []) as unknown as StockRow[];
+
+  return rows.map((row) => {
+    const stockActual = Number(row.stock_actual ?? 0);
+    const stockMinimo = Number(row.stock_minimo ?? 0);
+    return {
+      idProducto: row.id_producto,
+      producto: row.n_producto,
+      tipoProducto: row.tipo_producto,
+      stockActual,
+      stockMinimo,
+      unidadMedida: row.unidad_medida?.n_unidad ?? null,
+      categoria: row.categoria_producto?.n_categoriaproducto ?? null,
+      estadoBajoStock: stockActual <= stockMinimo,
+    };
+  });
 }

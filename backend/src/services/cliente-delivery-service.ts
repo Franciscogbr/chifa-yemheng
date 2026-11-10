@@ -46,3 +46,9 @@ export async function getDeliveryUbicacionClienteService(id: number, clienteId: 
   if (!r) throw new DeliveryError('NOT_FOUND');
   return r;
 }
+
+export async function getDeliveryComprobanteClienteService(id: number, clienteId: number) {
+  const r = await getDeliveryComprobante(id, clienteId);
+  if (!r) throw new DeliveryError('NOT_FOUND');
+  return r;
+}

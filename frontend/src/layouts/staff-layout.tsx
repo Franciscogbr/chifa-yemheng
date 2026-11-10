@@ -31,9 +31,7 @@ const SECTIONS: { title: string; links: L[] }[] = [
    ] },
   { title: 'Gestión', links: [
     { to: '/admin/clientes', label: 'Clientes', roles: ADMIN_ROLES.customers, icon: Users },
-    { to: '/admin/personas', label: 'Personas', roles: ADMIN_ROLES.admin, icon: Users },
     { to: '/admin/personal', label: 'Personal', roles: ADMIN_ROLES.admin, icon: UserRound },
-    { to: '/admin/empleados', label: 'Empleados', roles: ADMIN_ROLES.admin, icon: UserRound },
     { to: '/admin/usuarios', label: 'Usuarios y Roles', roles: ADMIN_ROLES.adminSupervisor, permisos: ['SEG_USUARIO', 'SEG_ROL'], icon: ShieldCheck },
   ] },
   { title: 'Análisis', links: [

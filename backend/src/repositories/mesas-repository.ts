@@ -427,7 +427,7 @@ export async function ocupacionMesas(): Promise<OcupacionMesa[]> {
   for (const d of (det ?? []) as { id_pedido: number; estado_preparacion: string }[]) {
     const c = conteo.get(d.id_pedido) ?? { items: 0, pendientes: 0 };
     c.items += 1;
-    if (d.estado_preparacion === 'P' || d.estado_preparacion === 'E') {
+    if (d.estado_preparacion === 'P') {
       c.pendientes += 1;
     }
     conteo.set(d.id_pedido, c);

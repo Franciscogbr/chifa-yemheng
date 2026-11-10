@@ -15,6 +15,7 @@ import {
   registrarParticipanteMesa,
   listarParticipantesPedido,
   configurarModoPagoMesa,
+  actualizarModoPagoMesa,
 } from '../repositories/pedidos-repository.js';
 import { distribuirConsumoPedido } from '../utils/pedido-consumo.js';
 
@@ -52,10 +53,10 @@ function derivarEstadoComanda(pedido: Pedido): string {
   if (activos.length === 0) {
     return pedido.estado;
   }
-  if (activos.some((d) => d.estadoPreparacion === 'E')) {
+  if (activos.some((d) => d.estadoPreparacion === 'L')) {
     return 'EN PREPARACION';
   }
-  if (activos.every((d) => d.estadoPreparacion === 'S')) {
+  if (activos.every((d) => d.estadoPreparacion === 'L')) {
     return 'SERVIDO';
   }
   return pedido.estado;
@@ -192,6 +193,11 @@ export async function comandaActivaClienteService(
   const membresia = await registrarParticipanteMesa(pedido.id, clienteId);
   const participantes = await listarParticipantesPedido(pedido.id);
   const participantesConImportes = distribuirConsumoPedido(pedido, participantes);
+  // Modo de pago automático: 1 persona = CUENTA_UNICA, 2+ personas = POR_CONSUMO
+  const modoCalculado = participantes.length > 1 ? 'POR_CONSUMO' : 'CUENTA_UNICA';
+  if (pedido.modoPagoMesa !== modoCalculado) {
+    await actualizarModoPagoMesa(pedido.id, modoCalculado);
+  }
   return {
     id: pedido.id,
     numero: pedido.numero,
@@ -201,7 +207,7 @@ export async function comandaActivaClienteService(
     total: pedido.total,
     cantidadDetalles: (pedido.detalles ?? []).filter((d) => d.estadoRegistro === 'A').length,
     mesaEstado: mesa.descripcion,
-    modoPagoMesa: membresia.modoPagoMesa,
+    modoPagoMesa: modoCalculado,
     esOrganizador: membresia.esOrganizador,
     participantes: participantesConImportes,
   };
@@ -210,13 +216,16 @@ export async function comandaActivaClienteService(
 export async function configurarModoPagoClienteService(
   pedidoId: number,
   clienteId: number,
-  modo: ModoPagoMesa,
+  _modo: ModoPagoMesa,
 ): Promise<{ pedidoId: number; modoPagoMesa: ModoPagoMesa }> {
   const pedido = await repoObtener(pedidoId);
   if (!pedido) {
     throw new PedidoError('NOT_FOUND');
   }
-  const nuevoModo = await configurarModoPagoMesa(pedidoId, clienteId, modo);
+  const participantes = await listarParticipantesPedido(pedido.id);
+  // Modo de pago automático: 1 persona = CUENTA_UNICA, 2+ personas = POR_CONSUMO
+  const modoCalculado = participantes.length > 1 ? 'POR_CONSUMO' : 'CUENTA_UNICA';
+  const nuevoModo = await configurarModoPagoMesa(pedidoId, clienteId, modoCalculado);
   return { pedidoId, modoPagoMesa: nuevoModo };
 }
 

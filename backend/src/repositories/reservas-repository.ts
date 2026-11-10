@@ -208,7 +208,7 @@ export async function atenderReserva(id: number, usumod: string, pc = ''): Promi
   if (error) throw new Error(`DB_UPDATE_FAIL: ${error.message}`);
   if (!data) throw new Error('NOT_FOUND');
 
-  // Liberar mesa (ponemos a LIBRE)
+  // Ocupar mesa (ponemos a OCUPADA)
   // Obtener mesaId de la reserva atendida
   const { data: r, error: errR } = await supabase
     .from('reserva')
@@ -219,7 +219,7 @@ export async function atenderReserva(id: number, usumod: string, pc = ''): Promi
   if (r?.id_mesa) {
     const { error: mesaError } = await supabase
       .from('mesa')
-      .update({ id_estadomesa: 1, ...updateAudit(usumod, pc) }) // LIBRE
+      .update({ id_estadomesa: 2, ...updateAudit(usumod, pc) }) // OCUPADA
       .eq('id_mesa', r.id_mesa);
     if (mesaError) throw new Error(`DB_UPDATE_FAIL: ${mesaError.message}`);
   }

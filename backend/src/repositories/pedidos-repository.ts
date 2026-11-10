@@ -186,7 +186,26 @@ export async function listarPedidos(q: PedidoQuery): Promise<PedidoLista> {
     throw new Error(`DB_LIST_FAIL: ${error.message}`);
   }
   const rows = ((data ?? []) as unknown as PedidoRow[]).map((r) => mapPedido(r));
+  await adjuntarSituacionDelivery(rows);
   return { data: rows, page: q.page, limit: q.limit, total: count ?? 0 };
+}
+
+async function adjuntarSituacionDelivery(pedidos: Pedido[]): Promise<void> {
+  if (pedidos.length === 0) return;
+  const { data, error } = await supabase
+    .from('pedido_delivery')
+    .select('id_pedido, situacion')
+    .in('id_pedido', pedidos.map((pedido) => pedido.id))
+    .eq('estado', 'A');
+  if (error) throw new Error(`DB_DELIVERY_STATE_FAIL: ${error.message}`);
+
+  const estados = new Map<number, Pedido['deliverySituacion']>();
+  for (const row of (data ?? []) as { id_pedido: number; situacion: string }[]) {
+    estados.set(Number(row.id_pedido), row.situacion as Pedido['deliverySituacion']);
+  }
+  for (const pedido of pedidos) {
+    pedido.deliverySituacion = estados.get(pedido.id) ?? null;
+  }
 }
 
 export async function obtenerPedido(id: number): Promise<Pedido | null> {
@@ -198,6 +217,7 @@ export async function obtenerPedido(id: number): Promise<Pedido | null> {
     return null;
   }
   const pedido = mapPedido(data as unknown as PedidoRow);
+  await adjuntarSituacionDelivery([pedido]);
 
   const { data: det, error: detError } = await supabase
     .from('detalle_pedido')
@@ -327,7 +347,7 @@ export async function recalcularPedido(pedido: number): Promise<void> {
 }
 
 export async function anularPedido(pedido: number, usuario: number, motivo: string): Promise<void> {
-  const { error } = await supabase.rpc('usp_anular_pedido', {
+  const { error } = await supabase.rpc('fn_anular_pedido_rpc', {
     p_pedido: pedido,
     p_usuario: usuario,
     p_motivo: motivo,
@@ -343,13 +363,25 @@ export async function cambiarPreparacion(detalleId: number, estado: string): Pro
     usumod: 'SYSTEM',
     fecmod: new Date().toISOString(),
   };
-  if (estado === 'S' || estado === 'E') {
+  if (estado === 'L') {
     patch['f_atencion'] = new Date().toISOString();
   }
   const { error } = await supabase.from('detalle_pedido').update(patch).eq('id_detallepedido', detalleId);
   if (error) {
     throw new Error(`DB_PREP_FAIL: ${error.message}`);
   }
+}
+
+export async function obtenerDetallePorId(detalleId: number): Promise<DetalleRow | null> {
+  const { data, error } = await supabase
+    .from('detalle_pedido')
+    .select('id_detallepedido, id_pedido, id_producto, cantidad, estado_preparacion, estado')
+    .eq('id_detallepedido', detalleId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`DB_GET_FAIL: ${error.message}`);
+  }
+  return (data ?? null) as DetalleRow | null;
 }
 
 export async function auditar(
@@ -501,6 +533,7 @@ export async function listarParticipantesPedidos(
 /** S3: consulta la cuenta individual del participante (fn_saldo_participante). */
 export interface CuentaParticipanteSaldo {
   idCuenta: number;
+  idVenta: number | null;
   estadoCuenta: 'ABIERTA' | 'PAGADA';
   saldoPendiente: number;
   montoPagado: number;
@@ -529,9 +562,33 @@ export async function saldoParticipante(
   if (!row) {
     return null;
   }
+  const idCuenta = Number(row['id_cuenta']);
+  // Obtener id_venta vinculado a esta cuenta de participante (generado al cobrar individualmente)
+  let idVenta: number | null = null;
+  const { data: ppData, error: ppError } = await supabase
+    .from('pedido_participante')
+    .select('id_venta')
+    .eq('id_pedido', pedidoId)
+    .eq('id_cliente', clienteId)
+    .maybeSingle();
+  if (!ppError && ppData) {
+    idVenta = ppData.id_venta ? Number(ppData.id_venta) : null;
+  }
+  // Si no hay venta individual (CUENTA_UNICA), buscar venta completa vinculada al pedido
+  if (!idVenta) {
+    const { data: ventaData, error: ventaError } = await supabase
+      .from('venta')
+      .select('id_venta')
+      .eq('id_pedido', pedidoId)
+      .maybeSingle();
+    if (!ventaError && ventaData) {
+      idVenta = Number(ventaData.id_venta);
+    }
+  }
   const platosRaw = (row['platos'] ?? []) as unknown as CuentaParticipanteSaldo['platos'];
   return {
-    idCuenta: Number(row['id_cuenta']),
+    idCuenta,
+    idVenta,
     estadoCuenta: (row['estado_cuenta'] === 'PAGADA' ? 'PAGADA' : 'ABIERTA') as 'ABIERTA' | 'PAGADA',
     saldoPendiente: Number(row['consumo_abierto'] ?? 0),
     montoPagado: Number(row['monto_pagado'] ?? 0),
@@ -553,6 +610,20 @@ export async function configurarModoPagoMesa(
     lanzarErrorComanda(error, 'DB_PAYMENT_MODE_FAIL');
   }
   return data as ModoPagoMesa;
+}
+
+/** Actualiza el modo de pago de un pedido directamente en la tabla. */
+export async function actualizarModoPagoMesa(
+  pedidoId: number,
+  modo: ModoPagoMesa,
+): Promise<void> {
+  const { error } = await supabase
+    .from('pedido')
+    .update({ modo_pago_mesa: modo, ...updateAudit('SYSTEM', '') })
+    .eq('id_pedido', pedidoId);
+  if (error) {
+    throw new Error(`DB_PAYMENT_MODE_UPDATE_FAIL: ${error.message}`);
+  }
 }
 
 export async function pedirCuentaMesa(

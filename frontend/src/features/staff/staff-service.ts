@@ -1,4 +1,4 @@
-import { leerToken } from '../auth/login/auth-service';
+﻿import { leerToken } from '../auth/login/auth-service';
 
 const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}`;
 
@@ -19,7 +19,7 @@ async function lanzar<T>(res: Response): Promise<T> {
 
 /* ------------------------------- Tipos ------------------------------- */
 
-export type EstadoPreparacion = 'P' | 'E' | 'S' | 'A';
+export type EstadoPreparacion = 'P' | 'L' | 'A';
 
 export interface TicketLinea {
   id: number;
@@ -237,7 +237,7 @@ export function registrarMovimientoCaja(input: {
 
   export function solicitarCierreCaja(input: {
     cajaId: number;
-    montoDeclarado: number;
+    montoDeclarado: number | null;
     observacion: string;
   }): Promise<{ aperturaId: number; sistema: number; declarado: number; diferencia: number; resultado: string }> {
     return fetch(`${BASE}/caja/turno/cierre`, {
@@ -286,6 +286,23 @@ export interface IncidenciaCajaInfo {
   fecha: string;
 }
 
+export interface MovimientoResumenItem {
+  medio: string;
+  cantidad: number;
+  monto: number;
+  afectaEfectivo: boolean;
+}
+
+export interface MovimientoResumen {
+  movimientos: MovimientoResumenItem[];
+  total: number;
+}
+
+export function verMovimientosResumen(aperturaId: number): Promise<MovimientoResumen> {
+  return fetch(`${BASE}/caja/turno/${aperturaId}/movimientos-resumen`, { headers: headers() })
+    .then(lanzar<MovimientoResumen>);
+}
+
 export function registrarArqueo(input: {
   cajaId: number;
   denominaciones: DenominacionInput[];
@@ -296,6 +313,10 @@ export function registrarArqueo(input: {
     headers: headers(),
     body: JSON.stringify(input),
   }).then(lanzar<ArqueoResultado>);
+}
+
+export function historialCajaService(limite = 20): Promise<CierrePendiente[]> {
+  return fetch(`${BASE}/caja/cierres/cerrados`, { headers: headers() }).then(lanzar<CierrePendiente[]>);
 }
 
 export function listarIncidencias(pendientes = true): Promise<IncidenciaCajaInfo[]> {

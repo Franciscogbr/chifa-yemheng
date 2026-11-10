@@ -30,6 +30,8 @@ export interface Pedido {
   motivoAnulacion: string | null;
   observacion: string | null;
   estadoRegistro: EstadoPedido;
+  /** Situación del delivery asociado, null cuando el pedido no tiene delivery. */
+  deliverySituacion?: 'P' | 'R' | 'E' | 'C' | null;
   detalles?: DetallePedido[];
   participantes?: ParticipantePedido[];
 }
@@ -44,7 +46,7 @@ export interface DetallePedido {
   descuento: number;
   subTotal: number;
   notaCocina: string | null;
-  estadoPreparacion: 'P' | 'E' | 'S' | 'A';
+  estadoPreparacion: 'P' | 'L' | 'A';
   esCortesia: 'S' | 'N';
   fechaSolicitud: string;
   fechaAtencion: string | null;

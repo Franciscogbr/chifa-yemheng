@@ -89,7 +89,7 @@ export const arqueoCajaSchema = z.object({
     valor: z.number().positive(),
     cantidad: z.number().int().min(0),
     tipo: z.enum(['BILLETE', 'MONEDA']),
-  })).min(1),
+  })).min(0),
   observacion: z.string().max(200).default(''),
 });
 

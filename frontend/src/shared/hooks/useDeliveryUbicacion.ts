@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../services/api-client';
+import type { PedidoItemShared } from '../types/delivery';
 
 export type DeliverySituacion = 'P' | 'R' | 'E' | 'C';
 
@@ -21,6 +22,11 @@ export interface DeliveryUbicacion {
   f_ubicacion: string | null;
   id_repartidor: number | null;
   repartidor: string | null;
+  items?: PedidoItemShared[];
+  totalPedido?: number;
+  montoPagado?: number;
+  montoPorCobrar?: number;
+  metodoPago?: string | null;
 }
 
 /**

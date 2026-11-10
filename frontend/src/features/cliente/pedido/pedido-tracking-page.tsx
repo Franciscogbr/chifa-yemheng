@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ChefHat, ConciergeBell, PackageCheck, Receipt } from 'lucide-react';
+import { ChefHat, Receipt } from 'lucide-react';
 import { Loading } from '../../../components/ui';
 import DishImg from '../../../components/DishImg';
 import { useClienteAuth } from '../auth/cliente-auth-context';
@@ -10,17 +10,15 @@ import { useRealtimePedido } from '../../../shared/hooks/useRealtimePedido';
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
 
 const PASOS = [
-  { id: 'recibido', label: 'Recibido', icon: Receipt },
-  { id: 'preparacion', label: 'En preparación', icon: ChefHat },
-  { id: 'servido', label: 'Servido', icon: ConciergeBell },
-  { id: 'entregado', label: 'Entregado', icon: PackageCheck },
+  { id: 'pendiente', label: 'Pendiente', icon: Receipt },
+  { id: 'listo', label: 'Listo', icon: ChefHat },
 ];
 
 interface DetalleDTO {
   id: number;
   producto: string;
   cantidad: number;
-  estadoPreparacion: 'P' | 'E' | 'S' | 'A';
+  estadoPreparacion: 'P' | 'L' | 'A';
   estadoRegistro: 'A' | 'I';
   precioUnitario: number;
   subTotal: number;
@@ -40,12 +38,9 @@ interface PedidoDTO {
 }
 
 function pasoDeEstado(e: string): number {
-  switch (e) {
-    case 'EN PREPARACION': return 1;
-    case 'SERVIDO': return 2;
-    case 'FACTURADO': return 3;
-    default: return 0; // RECIBIDO / ABIERTO
-  }
+  const estado = (e ?? '').toUpperCase();
+  if (estado === 'LISTO' || estado === 'SERVIDO') return 1;
+  return 0; // ABIERTO / PENDIENTE / RECIBIDO
 }
 
 export function ClientePedidoTrackingPage() {
@@ -132,7 +127,7 @@ export function ClientePedidoTrackingPage() {
   const step = pedido.anulado === 'S' ? -1 : pasoDeEstado(pedido.estadoComandaDerivado);
   const activos = pedido.detalles.filter((d) => d.estadoRegistro === 'A' && d.estadoPreparacion !== 'A');
   const puedePedirCuenta = pedido.mesaId != null && pedido.anulado === 'N' && pedido.estadoComandaDerivado !== 'FACTURADO';
-  const porCobrar = pedido.mesaId != null && (step >= 2 || msgCuenta != null);
+  const porCobrar = pedido.mesaId != null && (step >= 1 || msgCuenta != null);
 
   return (
     <div className="y-shell" style={{ padding: '24px 16px 140px', maxWidth: 480, margin: '0 auto' }}>

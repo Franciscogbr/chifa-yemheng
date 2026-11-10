@@ -41,7 +41,6 @@ const GRUPOS: Grupo[] = [
     items: [
       { to: '/admin/personal', icono: 'badge', label: 'Personal', roles: ADMIN_ROLES.admin },
       { to: '/admin/clientes', icono: 'groups', label: 'Clientes', roles: ADMIN_ROLES.customers },
-      { to: '/admin/empleados', icono: 'people', label: 'Empleados', roles: ADMIN_ROLES.admin },
     ],
   },
   {

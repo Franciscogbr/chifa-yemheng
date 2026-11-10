@@ -1,4 +1,4 @@
-import type { CajaResponse } from '../repositories/caja-repository.js';
+﻿import type { CajaResponse } from '../repositories/caja-repository.js';
 import type { Pedido } from '../models/pedido.js';
 import {
   abrirCaja,
@@ -19,6 +19,7 @@ import {
   actaCierre, type ActaCierre,
   reporteDiferencias, type DiferenciaReporteRow,
   historialCajero, type HistorialCajeroRow,
+  historialCaja, type HistorialTurno,
   getComprobante, type ComprobanteData,
   type CierrePendiente,
 } from '../repositories/caja-repository.js';
@@ -278,6 +279,10 @@ export async function registrarMovimientoCajaService(args: {
 
 export async function cierresPendientesService(): Promise<CierrePendiente[]> {
   return listarCierresPendientes();
+}
+
+export async function historialCajaService(limite = 20): Promise<HistorialTurno[]> {
+  return historialCaja(limite);
 }
 
 export async function solicitarCierreCajaService(args: {

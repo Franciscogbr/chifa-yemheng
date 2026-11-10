@@ -1,5 +1,5 @@
 import { leerToken } from '../../auth/login/auth-service';
-import type { Producto, ProductoForm, ProductoLista } from './productos-types';
+import type { Producto, ProductoForm, ProductoLista, TipoProducto } from './productos-types';
 
 const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/productos`;
 const BASE_CAT = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/categorias`;
@@ -27,6 +27,7 @@ export interface FiltrosProductos {
   categoria: number | '';
   estado: '' | 'A' | 'I';
   disponible: '' | 'S' | 'N';
+  tipo: TipoProducto | '';
 }
 
 export function listarProductos(f: FiltrosProductos): Promise<ProductoLista> {
@@ -42,6 +43,9 @@ export function listarProductos(f: FiltrosProductos): Promise<ProductoLista> {
   }
   if (f.disponible) {
     q.set('disponible', f.disponible);
+  }
+  if (f.tipo) {
+    q.set('tipo', f.tipo);
   }
   return fetch(`${BASE}?${q.toString()}`, { headers: headers() }).then(lanzar<ProductoLista>);
 }

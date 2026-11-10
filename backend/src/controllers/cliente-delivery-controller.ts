@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import type { ClienteAuthenticatedRequest } from '../middlewares/cliente-auth-guard.js';
 import { z } from 'zod';
-import { crearDeliveryClienteService, sugerirCostoClienteService, getDeliveryDetalleClienteService, getDeliveryUbicacionClienteService, getCoberturaDeliveryClienteService, getDeliveryActivoClienteService } from '../services/cliente-delivery-service.js';
+import { crearDeliveryClienteService, sugerirCostoClienteService, getDeliveryDetalleClienteService, getDeliveryUbicacionClienteService, getDeliveryComprobanteClienteService, getCoberturaDeliveryClienteService, getDeliveryActivoClienteService } from '../services/cliente-delivery-service.js';
 import { DeliveryError } from '../models/delivery.js';
 import { getPc } from '../utils/auditoria.js';
 
@@ -130,6 +130,24 @@ export async function getClienteDeliveryUbicacion(req: Request, res: Response): 
   const s = sesion(req);
   try {
     res.json(await getDeliveryUbicacionClienteService(id, s.id));
+  } catch (e) {
+    if (e instanceof DeliveryError && e.code === 'NOT_FOUND') {
+      res.status(404).json({ error: 'NOT_FOUND' });
+      return;
+    }
+    throw e;
+  }
+}
+
+export async function getClienteDeliveryComprobante(req: Request, res: Response): Promise<void> {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) {
+    res.status(400).json({ error: 'VALIDATION_ERROR' });
+    return;
+  }
+  const s = sesion(req);
+  try {
+    res.json(await getDeliveryComprobanteClienteService(id, s.id));
   } catch (e) {
     if (e instanceof DeliveryError && e.code === 'NOT_FOUND') {
       res.status(404).json({ error: 'NOT_FOUND' });

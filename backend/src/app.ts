@@ -4,6 +4,7 @@ import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler.js';
 import { env } from './config/env.js';
+import { factilizaRouter } from './routes/factiliza.js';
 import { authRouter } from './routes/auth.js';
 import { auditoriaRouter } from './routes/auditoria.js';
 import { clienteAuthRouter } from './routes/cliente-auth.js';
@@ -51,6 +52,7 @@ export function createApp() {
   app.use('/api/v1/pedidos', pedidosRouter);
   app.use('/api/v1/caja', cajaRouter);
   app.use('/api/v1/auth', authRouter);
+  app.use('/api/v1/factiliza', factilizaRouter);
   app.use('/api/v1/cliente', clienteAuthRouter);
   app.use('/api/v1/cliente/pedidos', clientePedidosRouter);
   app.use('/api/v1/cliente/delivery', clienteDeliveryRouter);

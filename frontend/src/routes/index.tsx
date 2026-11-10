@@ -24,11 +24,11 @@ import { UnidadesPage } from '../features/admin/unidades/unidades-page';
 import { ClientesPage } from '../features/admin/clientes/clientes-page';
 import { PersonalPage } from '../features/admin/personal/personal-page';
 import { MesasPage } from '../features/admin/mesas/mesas-page';
+import { StaffSeguimientoPage } from '../features/staff/delivery/seguimiento-page';
 import { AdminReportesPage } from '../features/admin/reportes/reportes-page';
 import { AdminAuditoriaPage } from '../features/admin/auditoria/auditoria-page';
 import { AdminUsuariosPage } from '../features/admin/usuarios/usuarios-page';
 import { AdminInventarioPage } from '../features/admin/inventario/inventario-page';
-import { AdminEmpleadosPage } from '../features/admin/empleados/empleados-page';
 import { AdminCrudPage } from '../features/admin/crud/crud-page';
 import { AdminReservasPage } from '../features/admin/reservas-admin/reservas-admin-page';
 import { ParametrosDeliveryPage } from '../features/admin/parametros-delivery/parametros-delivery-page';
@@ -120,7 +120,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'cliente/menu',
-        element: <ClienteFlowGuard modoPermitido="local"><ClienteMenuPage /></ClienteFlowGuard>,
+        element: <ClienteFlowGuard modoPermitido="cualquiera"><ClienteMenuPage /></ClienteFlowGuard>,
       },
       {
         path: 'cliente/comanda',
@@ -213,6 +213,10 @@ export const router = createBrowserRouter([
         element: <RoleGuard roles={ADMIN_ROLES.delivery}><StaffDeliveryPage /></RoleGuard>,
       },
       {
+        path: 'delivery/seguimiento',
+        element: <RoleGuard roles={ADMIN_ROLES.delivery}><StaffSeguimientoPage /></RoleGuard>,
+      },
+      {
         path: 'pedidos',
         element: <RoleGuard roles={ADMIN_ROLES.orders}><AdminPedidosPage /></RoleGuard>,
       },
@@ -235,10 +239,6 @@ export const router = createBrowserRouter([
       {
         path: 'inventario',
         element: <RoleGuard roles={ADMIN_ROLES.inventory}><AdminInventarioPage /></RoleGuard>,
-      },
-      {
-        path: 'empleados',
-        element: <RoleGuard roles={ADMIN_ROLES.admin}><AdminEmpleadosPage /></RoleGuard>,
       },
       {
         path: 'crud',

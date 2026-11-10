@@ -12,6 +12,14 @@ const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
 const CLIENTE_TOKEN_KEY = 'chifa.cliente.token';
 const STAFF_TOKEN_KEY = 'chifa.token';
 
+export interface DeliveryComprobante {
+  venta: { id_venta: number; total: number; total_pagado: number; f_venta: string; tipodocumento: string };
+  comprobante: { serie: string; numero: string; f_emision: string; cliente_documento: string | null; cliente_nombre: string | null };
+  emisor: { razon_social: string; ruc: string; direccion_fiscal: string | null } | null;
+  items: { nombre: string; cantidad: number; precio_unitario: number; sub_total: number }[];
+  pagos: { metodo_pago: string; monto: number; referencia: string | null }[];
+}
+
 /** Resuelve el JWT desde localStorage según el guard del endpoint (cliente vs staff/repartidor). */
 function resolveToken(endpoint: string): string | null {
   return localStorage.getItem(endpoint.startsWith('/cliente') ? CLIENTE_TOKEN_KEY : STAFF_TOKEN_KEY);
@@ -46,7 +54,9 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'UNKNOWN_ERROR' }));
-      throw new Error(error.error || `HTTP ${response.status}`);
+      const err = new Error(error.error || `HTTP ${response.status}`);
+      Object.assign(err, error);
+      throw err;
     }
 
     if (response.status === 204) {
@@ -116,6 +126,10 @@ class ApiClient {
     return this.request<any>(`/cliente/delivery/${id}/ubicacion`);
   }
 
+  getDeliveryComprobante(id: number) {
+    return this.request<DeliveryComprobante>(`/cliente/delivery/${id}/comprobante`);
+  }
+
   // Repartidor
   getMisEntregas(params?: { estado?: Array<'P' | 'R' | 'E' | 'C'>; page?: number; limit?: number }) {
     const query = new URLSearchParams();
@@ -136,6 +150,42 @@ class ApiClient {
 
   confirmarEntrega(id: number) {
     return this.request<DeliveryShared>(`/repartidor/entregas/${id}/entregar`, { method: 'PATCH' });
+  }
+
+  registrarVentaDelivery(id: number, data: {
+    monto: number;
+    metodoPago: 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TARJETA' | 'TRANSFERENCIA';
+    referencia?: string;
+  }) {
+    return this.request<{
+      idVenta: number;
+      idPago: number;
+      montoPagado: number;
+      metodoPago: string;
+      estado: 'P' | 'R' | 'E' | 'C';
+      montoPorCobrar: number;
+    }>(`/repartidor/entregas/${id}/venta`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  registrarVentaDeliveryStaff(id: number, data: {
+    monto: number;
+    metodoPago: 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TARJETA' | 'TRANSFERENCIA';
+    referencia?: string;
+  }) {
+    return this.request<{
+      idVenta: number;
+      idPago: number;
+      montoPagado: number;
+      metodoPago: string;
+      estado: 'P' | 'R' | 'E' | 'C';
+      montoPorCobrar: number;
+    }>(`/delivery/seguimiento/${id}/venta`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
   }
 
   actualizarUbicacion(id: number, lat: number, lng: number) {
@@ -280,6 +330,12 @@ class ApiClient {
 
   getDelivery(id: number) {
     return this.request<any>(`/delivery/${id}`);
+  }
+
+  getRepartidores() {
+    return this.request<{ id: number; nombre: string; email: string }[]>(
+      '/seguridad/usuarios?tipo=REPARTIDOR'
+    ).then((r) => (Array.isArray(r) ? r : (r as any).data ?? []));
   }
 
   asignarRepartidor(deliveryId: number, repartidorId: number) {

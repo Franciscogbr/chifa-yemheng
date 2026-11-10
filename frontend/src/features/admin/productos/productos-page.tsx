@@ -45,6 +45,7 @@ export function ProductosPage() {
   const [error, setError] = useState<string | null>(null);
   const [categorias, setCategorias] = useState<CategoriaOpcion[]>([]);
   const [unidades, setUnidades] = useState<{ id: number; nombre: string }[]>([]);
+  const [filtroTipo, setFiltroTipo] = useState<TipoProducto | ''>('');
   const [modal, setModal] = useState<null | { editando: Producto | null }>(null);
   const [form, setForm] = useState<ProductoForm>(VACIO);
   const [formError, setFormError] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export function ProductosPage() {
     setError(null);
     try {
       const [res, cats, unis] = await Promise.all([
-        listarProductos({ page, limit: LIMITE, nombre: busqueda, categoria, estado, disponible }),
+        listarProductos({ page, limit: LIMITE, nombre: busqueda, categoria, estado, disponible, tipo: filtroTipo }),
         listarCategoriasActivas(),
         listarUnidadesActivas(),
       ]);
@@ -260,6 +261,21 @@ export function ProductosPage() {
           <option value="">En Carta: Todas</option>
           <option value="S">Disponible</option>
           <option value="N">Agotado</option>
+        </select>
+        <select
+          value={filtroTipo}
+          onChange={(e) => {
+            setFiltroTipo(e.target.value as TipoProducto | '');
+            setPage(1);
+          }}
+          className="cursor-pointer rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none lg:col-span-2"
+        >
+          <option value="">Tipo: Todos</option>
+          {TIPOS.map((t) => (
+            <option key={t.valor} value={t.valor}>
+              {t.label}
+            </option>
+          ))}
         </select>
       </div>
 

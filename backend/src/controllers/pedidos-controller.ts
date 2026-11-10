@@ -47,7 +47,17 @@ function errorPedido(res: Response, err: unknown): void {
     res.status(status).json({ error: err.code });
     return;
   }
-  throw err;
+
+  // Manejar errores de base de datos genéricos con mensaje útil en lugar de 500
+  const msg = err instanceof Error ? err.message : String(err);
+
+  if (msg.includes('DB_ANULAR_FAIL') || msg.includes('fn_anular_pedido_rpc') || msg.includes('usp_anular_pedido')) {
+    res.status(409).json({ error: 'ANULAR_FAIL', detail: msg });
+    return;
+  }
+
+  console.error('[PEDIDO_ERROR_UNHANDLED]', msg);
+  res.status(500).json({ error: 'INTERNAL_ERROR', detail: msg });
 }
 
 export async function getPedidos(req: Request, res: Response): Promise<void> {
@@ -128,7 +138,7 @@ export async function patchPreparacion(req: Request, res: Response): Promise<voi
   }
   try {
     const s = sesion(req);
-    await cambiarPreparacionService(Number(req.params['idDetalle']), parsed.data.estado, s.id, s.pc);
+    await cambiarPreparacionService(Number(req.params['idDetalle']), parsed.data.estado, s.id, s.logeo, s.pc);
     res.json({ ok: true });
   } catch (err) {
     errorPedido(res, err);

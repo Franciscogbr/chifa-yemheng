@@ -77,6 +77,10 @@ export async function listarProductos(q: ProductoQuery): Promise<ProductoLista> 
     query = query.eq('disponible', q.disponible);
   }
 
+  if (q.tipo) {
+    query = query.eq('tipo_producto', q.tipo);
+  }
+
   const { data, error, count } = await query;
   if (error) {
     throw new Error(`DB_LIST_FAIL: ${error.message}`);

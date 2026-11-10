@@ -2,8 +2,9 @@ import type { Request, Response } from 'express';
 import type { AuthenticatedRequest } from '../middlewares/auth-guard.js';
 import { z } from 'zod';
 import { DeliveryError } from '../models/delivery.js';
-import { listarMisEntregasService, getMiEntregaDetalleService, iniciarRutaRepartidorService, confirmarEntregaRepartidorService, actualizarUbicacionRepartidorService, getPorRendirService } from '../services/repartidor-service.js';
+import { listarMisEntregasService, getMiEntregaDetalleService, iniciarRutaRepartidorService, confirmarEntregaRepartidorService, actualizarUbicacionRepartidorService, getPorRendirService, registrarVentaRepartidorService } from '../services/repartidor-service.js';
 import { repartidorEntregasQuerySchema } from '../schemas/repartidor.js';
+import { registrarVentaDeliverySchema } from '../schemas/seguimiento.js';
 import { getPc } from '../utils/auditoria.js';
 
 const ubicacionSchema = z.object({
@@ -60,6 +61,10 @@ export async function postConfirmarEntrega(req: Request, res: Response): Promise
       res.status(404).json({ error: 'NOT_FOUND' });
       return;
     }
+    if (error instanceof DeliveryError && error.code === 'VENTA_NO_EXISTE') {
+      res.status(409).json({ error: 'VENTA_NO_EXISTE' });
+      return;
+    }
     throw error;
   }
 }
@@ -91,4 +96,92 @@ export async function postUbicacion(req: Request, res: Response): Promise<void> 
 export async function getPorRendir(req: Request, res: Response): Promise<void> {
   const s = sesion(req);
   res.json(await getPorRendirService(s.empleadoId));
+}
+
+export async function postRegistrarVenta(req: Request, res: Response): Promise<void> {
+  const parsed = registrarVentaDeliverySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.flatten() });
+    return;
+  }
+  const s = sesion(req);
+  try {
+    const resultado = await registrarVentaRepartidorService(
+      Number(req.params.id),
+      s.empleadoId,
+      parsed.data.monto,
+      parsed.data.metodoPago,
+      parsed.data.referencia?.trim() ?? null,
+      s.logeo,
+      s.pc,
+    );
+    res.json(resultado);
+  } catch (error) {
+    const err = error as Error;
+    console.error('[REGISTRAR_VENTA_FAIL]', { deliveryId: Number(req.params.id), error: err.message });
+
+    if (error instanceof DeliveryError) {
+      if (error.code === 'NOT_FOUND') {
+        res.status(404).json({ error: 'NOT_FOUND' });
+        return;
+      }
+      if (error.code === 'INVALID_STATE') {
+        res.status(409).json({ error: 'INVALID_STATE' });
+        return;
+      }
+      if (error.code === 'MONTO_INVALIDO') {
+        res.status(409).json({ error: 'MONTO_INVALIDO' });
+        return;
+      }
+      if (error.code === 'VENTA_YA_EXISTE') {
+        res.status(409).json({ error: 'VENTA_YA_EXISTE' });
+        return;
+      }
+      if (error.code === 'CAJA_NO_ABIERTA') {
+        res.status(409).json({ error: 'CAJA_NO_ABIERTA' });
+        return;
+      }
+      if (error.code === 'VENTA_NO_EXISTE') {
+        res.status(409).json({ error: 'VENTA_NO_EXISTE' });
+        return;
+      }
+    }
+
+    // Mapear errores comunes de base de datos a 409 en lugar de 500
+    const msg = err.message;
+    if (msg.includes('DB_SERIE_FAIL') || msg.includes('fn_incrementar_correlativo_serie')) {
+      res.status(409).json({ error: 'SERIE_BOLETA_FAIL' });
+      return;
+    }
+    if (msg.includes('DB_BOLETA_FAIL')) {
+      res.status(409).json({ error: 'BOLETA_FAIL' });
+      return;
+    }
+    if (msg.includes('DB_PAGO_FAIL')) {
+      res.status(409).json({ error: 'PAGO_FAIL' });
+      return;
+    }
+    if (msg.includes('DB_VENTA_FAIL')) {
+      res.status(409).json({ error: 'VENTA_FAIL' });
+      return;
+    }
+    if (msg.includes('DB_GET_FAIL')) {
+      res.status(409).json({ error: 'DB_GET_FAIL' });
+      return;
+    }
+    if (msg.includes('DB_CLIENTE_FAIL')) {
+      res.status(409).json({ error: 'CLIENTE_FAIL' });
+      return;
+    }
+    if (msg.includes('DB_METODO_PAGO_FAIL')) {
+      res.status(409).json({ error: 'METODO_PAGO_FAIL' });
+      return;
+    }
+    if (msg.includes('DB_ENTREGA_FAIL')) {
+      res.status(409).json({ error: 'ENTREGA_FAIL' });
+      return;
+    }
+
+    res.status(500).json({ error: 'INTERNAL_ERROR', detail: err.message });
+  }
 }

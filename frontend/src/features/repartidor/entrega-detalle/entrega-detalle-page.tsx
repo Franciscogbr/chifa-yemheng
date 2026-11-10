@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Bike, CheckCircle2, ExternalLink, MapPin, Phone } from 'lucide-react';
+import { ArrowLeft, Bike, CheckCircle2, ExternalLink, MapPin, Phone, ReceiptText } from 'lucide-react';
 import { fmtPEN } from '@/lib/format';
 import { MapLeaflet } from '@/shared/ui/MapLeaflet';
 import { useGpsTracking, type GpsPosition } from '@/shared/hooks/useGpsTracking';
@@ -9,6 +9,8 @@ import type { DeliveryShared, EstadoDelivery } from '@/shared/types/delivery';
 import { toast } from '@/shared/ui/use-toast';
 
 const GPS_MIN_INTERVAL_MS = 10000;
+type MetodoPagoDelivery = 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TARJETA' | 'TRANSFERENCIA';
+const METODOS_CON_REFERENCIA = new Set<MetodoPagoDelivery>(['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA']);
 
 const ESTADOS: Record<EstadoDelivery, string> = {
   P: 'Pendiente',
@@ -44,6 +46,23 @@ export function EntregaDetallePage() {
   const [error, setError] = useState<string | null>(null);
   const [gpsMessage, setGpsMessage] = useState<string | null>(null);
   const lastSentRef = useRef(0);
+
+  /* Modal de registro de venta (cobro al cliente) */
+  const [modalVenta, setModalVenta] = useState(false);
+  const [formVenta, setFormVenta] = useState<{
+    monto: number;
+    metodoPago: MetodoPagoDelivery;
+    referencia: string;
+  }>({
+    monto: 0,
+    metodoPago: 'EFECTIVO',
+    referencia: '',
+  });
+  const [guardandoVenta, setGuardandoVenta] = useState(false);
+
+  /* Modal de confirmación de venta realizada */
+  const [ventaConfirmada, setVentaConfirmada] = useState(false);
+  const [resultadoVenta, setResultadoVenta] = useState<{ idVenta: number; montoPagado: number; metodoPago: string } | null>(null);
 
   const cargar = useCallback(async () => {
     if (!deliveryId) {
@@ -121,21 +140,52 @@ export function EntregaDetallePage() {
     }
   };
 
-  const confirmarEntrega = async () => {
-    if (guardando || !entrega || entrega.estado !== 'R') return;
-    setGuardando(true);
+  const abrirModalCobro = () => {
+    if (guardandoVenta || !entrega || !['R', 'E'].includes(entrega.estado)) return;
+    setFormVenta({
+      monto: entrega.montoPorCobrar ?? entrega.totalPedido ?? 0,
+      metodoPago: 'EFECTIVO',
+      referencia: '',
+    });
+    setModalVenta(true);
+  };
+
+  const handleRegistrarVenta = async () => {
+    if (guardandoVenta || !entrega) return;
+    setGuardandoVenta(true);
     try {
-      const actualizada = await api.confirmarEntrega(deliveryId);
-      setEntrega(actualizada);
+      const resultado = await api.registrarVentaDelivery(deliveryId, {
+        monto: formVenta.monto,
+        metodoPago: formVenta.metodoPago,
+        referencia: formVenta.referencia.trim() || undefined,
+      });
+      setEntrega((actual) => actual ? {
+        ...actual,
+        estado: 'E' as const,
+        montoPagado: resultado.montoPagado,
+        metodoPago: resultado.metodoPago,
+        montoPorCobrar: resultado.montoPorCobrar,
+      } : actual);
       setCompartiendoGps(false);
-      setEnabled(false);
-      await toast({ title: 'Entrega completada', description: 'El pedido quedó marcado como entregado.' });
-      navigate('/repartidor/mis-entregas');
-    } catch (e) {
-      console.error('Error confirmando entrega:', e);
-      toast({ title: 'Error', description: 'No se pudo confirmar la entrega. Actualiza e inténtalo nuevamente.', variant: 'destructive' });
+      setModalVenta(false);
+      setFormVenta({ monto: 0, metodoPago: 'EFECTIVO', referencia: '' });
+      setResultadoVenta({
+        idVenta: resultado.idVenta,
+        montoPagado: resultado.montoPagado,
+        metodoPago: resultado.metodoPago,
+      });
+      setVentaConfirmada(true);
+    } catch (e: unknown) {
+      console.error('Error registrando venta:', e);
+      const msg = e instanceof Error ? e.message : 'No se pudo registrar el cobro.';
+      if ((e as { error?: string })?.error === 'VENTA_YA_EXISTE') {
+        toast({ title: 'Ya registrado', description: 'Esta entrega ya tiene una venta registrada.', variant: 'destructive' });
+        void cargar();
+      } else {
+        toast({ title: 'Error', description: msg, variant: 'destructive' });
+      }
     } finally {
-      setGuardando(false);
+      setGuardandoVenta(false);
     }
   };
 
@@ -223,6 +273,38 @@ export function EntregaDetallePage() {
                 <p className="mb-0 text-sm text-gray-500">No se registró un teléfono de contacto.</p>
               )}
             </div>
+
+            {entrega.items && entrega.items.length > 0 && (
+              <div className="col-span-full rounded-xl border p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="mb-0 flex items-center gap-2 text-base font-semibold">
+                    <ReceiptText size={16} /> Platos del pedido
+                  </h2>
+                  <span className="text-xs font-medium text-gray-500">{entrega.items.length} ítem(es)</span>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                  {entrega.items.map((item) => (
+                    <div key={item.idProducto} className="flex justify-between items-start text-sm border-b pb-2 last:border-b-0">
+                      <div className="flex-1">
+                        <p className="m-0 text-gray-700">{item.cantidad}× {item.nombre}</p>
+                        {item.nota && (
+                          <p className="m-0 text-[10px] text-gray-500 italic">Nota: {item.nota}</p>
+                        )}
+                      </div>
+                      <p className="m-0 font-medium text-gray-900 text-right">
+                        S/ {item.subTotal.toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+                  <div className="mt-2 pt-2 border-t flex justify-between text-sm font-bold">
+                    <span className="text-gray-600">Subtotal platos</span>
+                    <span className="text-gray-900">
+                      S/ {entrega.items.reduce((s, i) => s + i.subTotal, 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
@@ -254,13 +336,42 @@ export function EntregaDetallePage() {
                 <Bike size={18} /> {guardando ? 'Iniciando…' : 'Iniciar ruta'}
               </button>
             )}
-            {entrega.estado === 'R' && (
-              <button type="button" onClick={() => void confirmarEntrega()} disabled={guardando} className="y-btn red inline-flex items-center gap-2">
-                <CheckCircle2 size={18} /> {guardando ? 'Confirmando…' : 'Confirmar entrega'}
+            {entrega.estado === 'R' && !entrega.montoPagado && !entrega.metodoPago && (
+              <button type="button" onClick={abrirModalCobro} disabled={guardandoVenta} className="y-btn red inline-flex items-center gap-2">
+                <ReceiptText size={18} /> Registrar cobro
               </button>
             )}
-            {terminal && <p className="my-auto text-sm text-gray-600">Esta entrega ya está finalizada.</p>}
-            {entrega.estado === 'R' && <p className="my-auto text-sm text-gray-600">Compartir GPS es opcional; la ruta puede continuar si no está disponible.</p>}
+            {entrega.estado === 'E' && (
+              <div className="rounded-xl border p-4 flex flex-col items-start gap-2">
+                <CheckCircle2 size={20} className="text-green-600 mt-0.5" />
+                <div>
+                  <h3 className="m-0 text-sm font-bold text-green-800">Entrega completada</h3>
+                  <p className="m-0 text-xs text-green-700">El pedido fue entregado y cobrado al cliente.</p>
+                </div>
+                <Link
+                  to="/repartidor/mis-entregas"
+                  className="mt-3 inline-flex items-center gap-2 y-btn red"
+                >
+                  <ArrowLeft size={17} /> Regresar a mis entregas
+                </Link>
+              </div>
+            )}
+            {entrega.estado === 'C' && (
+              <div className="rounded-xl border p-4 flex flex-col items-start gap-2">
+                <span style={{ fontSize: 20 }} className="mt-0.5">❌</span>
+                <div>
+                  <h3 className="m-0 text-sm font-bold text-red-800">Entrega cancelada</h3>
+                  <p className="m-0 text-xs text-red-700">Esta entrega fue cancelada. No se pueden realizar más acciones.</p>
+                </div>
+                <Link
+                  to="/repartidor/mis-entregas"
+                  className="mt-3 inline-flex items-center gap-2 y-btn red"
+                >
+                  <ArrowLeft size={17} /> Regresar a mis entregas
+                </Link>
+              </div>
+            )}
+            {entrega.estado === 'R' && !terminal && <p className="my-auto text-sm text-gray-600">Compartir GPS es opcional; la ruta puede continuar si no está disponible.</p>}
           </div>
 
           {entrega.estado === 'R' && (
@@ -281,7 +392,134 @@ export function EntregaDetallePage() {
               )}
             </section>
           )}
+          {modalVenta && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 sm:p-6">
+              <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+                <h2 className="text-xl font-bold text-[#7F1518] mb-4">Registrar Cobro</h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Indique cuánto cobró al cliente y con qué método.
+                </p>
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-2">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs font-bold uppercase opacity-60">Monto cobrado *</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formVenta.monto}
+                        onChange={(e) => setFormVenta({ ...formVenta, monto: Number(e.target.value) || 0 })}
+                        className="rounded-lg bg-gray-50 px-3 py-2 text-sm"
+                        placeholder="0.00"
+                        required
+                      />
+                    </label>
+                    <p className="text-[10px] text-gray-500">
+                      Monto sugerido: {fmtPEN(entrega?.montoPorCobrar ?? entrega?.totalPedido ?? 0)}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs font-bold uppercase opacity-60">Método de pago *</span>
+                      <select
+                        value={formVenta.metodoPago}
+                        onChange={(e) =>
+                          setFormVenta({ ...formVenta, metodoPago: e.target.value as MetodoPagoDelivery })
+                        }
+                        className="rounded-lg bg-gray-50 px-3 py-2 text-sm"
+                      >
+                        <option value="EFECTIVO">Efectivo</option>
+                        <option value="YAPE">Yape</option>
+                        <option value="PLIN">Plin</option>
+                        <option value="TARJETA">Tarjeta</option>
+                        <option value="TRANSFERENCIA">Transferencia</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs font-bold uppercase opacity-60">Referencia</span>
+                      <input
+                        type="text"
+                        value={formVenta.referencia}
+                        onChange={(e) => setFormVenta({ ...formVenta, referencia: e.target.value })}
+                        className="rounded-lg bg-gray-50 px-3 py-2 text-sm"
+                        placeholder="Nro. operación (obligatorio para Yape/Plin/Tarjeta/Transferencia)"
+                      />
+                    </label>
+                    {METODOS_CON_REFERENCIA.has(formVenta.metodoPago) && !formVenta.referencia.trim() && (
+                      <p className="text-[10px] text-[#DC2626]">La referencia es obligatoria para este método.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setModalVenta(false)}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleRegistrarVenta()}
+                    disabled={
+                      guardandoVenta ||
+                      formVenta.monto <= 0 ||
+                      METODOS_CON_REFERENCIA.has(formVenta.metodoPago) &&
+                        !formVenta.referencia.trim()
+                    }
+                    className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#7F1518] hover:bg-[#A61E22] disabled:opacity-50"
+                  >
+                    {guardandoVenta ? 'Registrando…' : 'Registrar cobro'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
+
+        {/* Modal de confirmación de venta realizada */}
+        {ventaConfirmada && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 sm:p-6">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+              <div className="flex flex-col items-center justify-center text-center">
+                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 size={24} className="text-green-600" />
+                </div>
+                <h2 className="text-xl font-bold text-[#7F1518] mb-2">Venta registrada</h2>
+                <p className="text-gray-600 mb-6">
+                  La venta <strong>#{resultadoVenta?.idVenta}</strong> se registró correctamente y el pedido fue entregado al cliente.
+                </p>
+                <div className="space-y-2 mb-6">
+                  <div className="flex justify-between text-sm border-b pb-2">
+                    <span className="text-gray-500">Número de venta</span>
+                    <span className="text-gray-700 font-bold">#{resultadoVenta?.idVenta}</span>
+                  </div>
+                  <div className="flex justify-between text-sm border-b pb-2">
+                    <span className="text-gray-500">Monto cobrado</span>
+                    <span className="text-gray-700 font-bold">S/ {resultadoVenta?.montoPagado?.toFixed(2) ?? '0.00'}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Método de pago</span>
+                    <span className="text-gray-700">{resultadoVenta?.metodoPago ?? '—'}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVentaConfirmada(false);
+                    setResultadoVenta(null);
+                    navigate('/repartidor/mis-entregas');
+                  }}
+                  className="w-full px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#7F1518] hover:bg-[#A61E22]"
+                >
+                  Cerrar y volver a mis entregas
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

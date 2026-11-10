@@ -1,5 +1,15 @@
 export type EstadoDelivery = 'P' | 'R' | 'E' | 'C';
 
+export interface PedidoItemShared {
+  idProducto: number;
+  nombre: string;
+  cantidad: number;
+  precioUnitario: number;
+  descuento: number;
+  subTotal: number;
+  nota?: string | null;
+}
+
 export const ESTADO_LABELS: Record<EstadoDelivery, string> = {
   P: 'Pendiente', R: 'En ruta', E: 'Entregado', C: 'Cancelado'
 };
@@ -19,6 +29,7 @@ export interface DeliveryShared {
   referencia: string | null;
   telefono: string | null;
   repartidor: string | null;
+  repartidorId: number | null;
   costo: number;
   costoConfirmado?: boolean;
   estado: EstadoDelivery;
@@ -35,6 +46,7 @@ export interface DeliveryShared {
   montoPagado?: number;
   montoPorCobrar?: number;
   metodoPago?: string | null;
+  items?: PedidoItemShared[];
 }
 
 export interface DeliveryListaShared {

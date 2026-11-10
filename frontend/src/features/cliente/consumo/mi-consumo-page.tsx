@@ -5,7 +5,15 @@ import { QrScannerModal } from '../../../components/QrScannerModal';
 import { Loading } from '../../../components/ui';
 import { useClienteAuth } from '../auth/cliente-auth-context';
 import { useCart } from '../../../contexts/CartContext';
-import { miCuentaClienteService } from '../../staff/staff-service';
+interface MiCuentaResponse {
+  cuenta: {
+    idCuenta: number;
+    idVenta: number | null;
+    estadoCuenta: 'ABIERTA' | 'PAGADA';
+    saldoPendiente: number;
+    montoPagado: number;
+  };
+}
 import { ComprobanteBoleta } from '../../staff/caja/ComprobanteBoleta';
 import { ComprobanteFactura } from '../../staff/caja/ComprobanteFactura';
 
@@ -30,23 +38,13 @@ interface ComandaActiva {
   }[];
 }
 
-interface PedidoDetalleCliente {
-  id: number;
-  numero: string;
-  total: number;
-  detalles: {
-    id: number;
-    clienteId: number | null;
-    producto: string;
-    cantidad: number;
-    subTotal: number;
-    notaCocina: string | null;
-    estadoPreparacion: 'P' | 'E' | 'S' | 'A';
-    estadoRegistro: 'A' | 'I';
-  }[];
+interface MiCuentaEstado {
+  estadoCuenta: 'ABIERTA' | 'PAGADA';
+  saldoPendiente: number;
+  montoPagado: number;
 }
 
-type ModalInfo = 'pedido' | 'mesa' | null;
+type ModalInfo = 'mesa' | null;
 
 const ESTUDIOS: Record<string, string> = {
   'EN PREPARACION': 'f59e0b',
@@ -60,17 +58,18 @@ export function ClienteMiConsumoPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [comanda, setComanda] = useState<ComandaActiva | null>(null);
-  const [pedidoDetalle, setPedidoDetalle] = useState<PedidoDetalleCliente | null>(null);
   const [modalInfo, setModalInfo] = useState<ModalInfo>(null);
-  const [cargandoDetalle, setCargandoDetalle] = useState(false);
-  const [errorDetalle, setErrorDetalle] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [pidiendo, setPidiendo] = useState(false);
   const [msgCuenta, setMsgCuenta] = useState<string | null>(null);
-  const [guardandoModo, setGuardandoModo] = useState(false);
-  const [errModo, setErrModo] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [comprobanteAbierto, setComprobanteAbierto] = useState<{ idVenta: number; tipoDocumento: string } | null>(null);
+  const [miEstadoCuenta, setMiEstadoCuenta] = useState<MiCuentaEstado | null>(null);
+
+  const miConsumoPropio = useCallback(() => {
+    if (!cliente || !comanda?.participantes) return null;
+    return comanda.participantes.find((p) => p.clienteId === cliente.id) ?? null;
+  }, [cliente, comanda]);
 
   const cargar = useCallback(async () => {
     if (!mesaId || !token) return;
@@ -91,9 +90,27 @@ export function ClienteMiConsumoPage() {
       const data = (await res.json()) as ComandaActiva | null;
       setComanda(data && 'id' in data ? data : null);
 
-  if (data && 'id' in data && data.id) {
-        const cuentaData = await miCuentaClienteService(data.id);
-        setComprobanteAbierto({ idVenta: cuentaData.cuenta.idCuenta, tipoDocumento: '03' });
+      if (data && 'id' in data && data.id) {
+        const cuentaRes = await fetch(`${API_URL}/cliente/pedidos/${data.id}/mi-cuenta`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (cuentaRes.status === 401) {
+          void logoutCliente();
+          return;
+        }
+        if (!cuentaRes.ok) {
+          setErr('No se pudo cargar el estado de tu cuenta.');
+          return;
+        }
+        const cuentaData = (await cuentaRes.json()) as MiCuentaResponse;
+        if (cuentaData.cuenta.idVenta) {
+          setComprobanteAbierto({ idVenta: cuentaData.cuenta.idVenta, tipoDocumento: '03' });
+        }
+        setMiEstadoCuenta({
+          estadoCuenta: cuentaData.cuenta.estadoCuenta,
+          saldoPendiente: cuentaData.cuenta.saldoPendiente,
+          montoPagado: cuentaData.cuenta.montoPagado,
+        });
       }
     } finally {
       setLoading(false);
@@ -115,39 +132,16 @@ export function ClienteMiConsumoPage() {
     return () => window.removeEventListener('keydown', cerrarConEscape);
   }, [modalInfo]);
 
-  async function abrirDetallePedido() {
-    if (!comanda || !token || cargandoDetalle) return;
-    setModalInfo('pedido');
-    setCargandoDetalle(true);
-    setErrorDetalle(null);
-    try {
-      const response = await fetch(`${API_URL}/cliente/pedidos/${comanda.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.status === 401) {
-        await logoutCliente();
-        return;
-      }
-      if (!response.ok) {
-        throw new Error('No se pudo cargar el detalle de tu pedido.');
-      }
-      setPedidoDetalle((await response.json()) as PedidoDetalleCliente);
-    } catch (error) {
-      setErrorDetalle(error instanceof Error ? error.message : 'No se pudo cargar el detalle de tu pedido.');
-    } finally {
-      setCargandoDetalle(false);
-    }
-  }
-
   async function pedirLaCuenta() {
-    if (!mesaId || !token || pidiendo) return;
+    const mesaParaCuenta = comanda?.mesaId ?? mesaId;
+    if (!mesaParaCuenta || !token || pidiendo) return;
     setPidiendo(true);
     setMsgCuenta(null);
     try {
       const res = await fetch(`${API_URL}/cliente/pedidos/cuenta`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ mesaId: Number(mesaId) }),
+        body: JSON.stringify({ mesaId: Number(mesaParaCuenta) }),
       });
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
@@ -155,7 +149,7 @@ export function ClienteMiConsumoPage() {
           body.error === 'YA_POR_COBRAR'
             ? 'La solicitud de cuenta ya figura para esta mesa.'
             : body.error === 'NO_COMANDA_ACTIVA'
-              ? 'No hay comanda activa en tu mesa.'
+              ? 'No hay comanda activa en esta mesa.'
               : body.error ?? 'No se pudo pedir la cuenta.',
         );
         return;
@@ -167,30 +161,11 @@ export function ClienteMiConsumoPage() {
     }
   }
 
-  async function cambiarModoPago(modo: ComandaActiva['modoPagoMesa']) {
-    if (!comanda || !token || !comanda.esOrganizador || guardandoModo || porCobrar) return;
-    setGuardandoModo(true);
-    setErrModo(null);
-    try {
-      const res = await fetch(`${API_URL}/cliente/pedidos/${comanda.id}/modo-pago`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ modo }),
-      });
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) {
-        setErrModo(body.error === 'NO_ES_ORGANIZADOR'
-          ? 'Solo quien inició la comanda puede cambiar el modo de pago.'
-          : body.error ?? 'No se pudo actualizar el modo de pago.');
-        return;
-      }
-      await cargar();
-    } finally {
-      setGuardandoModo(false);
-    }
-  }
-
   const porCobrar = comanda?.mesaEstado === 'POR COBRAR' || msgCuenta != null;
+  const miConsumo = miConsumoPropio();
+  const miSaldoPendiente = miEstadoCuenta?.saldoPendiente ?? miConsumo?.consumoEstimado ?? 0;
+  const cuentaYaPagada = miEstadoCuenta?.estadoCuenta === 'PAGADA';
+  const cuentaAbierta = miEstadoCuenta?.estadoCuenta === 'ABIERTA' || miEstadoCuenta === null;
 
   if (!mesaId) {
     return (
@@ -251,13 +226,7 @@ export function ClienteMiConsumoPage() {
                   className="y-btn y-btn-hero-secondary y-client-action-secondary"
                   onClick={() => setModalInfo('mesa')}
                 >
-                  Resumen de mesa
-                </button>
-                <button
-                  className="y-btn y-btn-hero-secondary y-client-action-secondary"
-                  onClick={() => void abrirDetallePedido()}
-                >
-                  Ver mi pedido
+                  Ver mi comanda
                 </button>
                 <button className="y-btn y-btn-hero-secondary y-client-action-secondary" onClick={() => navigate(`/cliente/pedido/${comanda.id}`)}>
                   Ver seguimiento
@@ -276,229 +245,128 @@ export function ClienteMiConsumoPage() {
             ) : null}
           </div>
         </div>
-      </section>
+        </section>
 
-      {err && <div className="y-banner" style={{ borderColor: '#ba1a1a', background: '#ffdad6', color: '#93000a' }}>{err}</div>}
-      {msgCuenta && <div className="y-banner">{msgCuenta}</div>}
+        {err && <div className="y-banner" style={{ borderColor: '#ba1a1a', background: '#ffdad6', color: '#93000a' }}>{err}</div>}
+        {msgCuenta && <div className="y-banner">{msgCuenta}</div>}
 
-      {comanda ? (
-        <div className="y-panel" style={{ padding: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <b className="font-d" style={{ fontSize: 16 }}>{comanda.numero}</b>
-            <span style={{ fontSize: 12, color: 'var(--muted)' }}>Mesa {comanda.mesaId}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: ESTUDIOS[comanda.estadoComandaDerivado] ?? '#6c757d', display: 'inline-block' }} />
-            <b style={{ fontSize: 13 }}>{comanda.estadoComandaDerivado}</b>
-          </div>
-          {comanda.mesaEstado === 'POR COBRAR' && (
-            <div className="y-banner" style={{ marginTop: 12 }}>La solicitud de cuenta está registrada para esta mesa.</div>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 14 }}>
-            <span>{comanda.cantidadDetalles} ítems enviados</span>
-            <b className="y-price">S/ {comanda.total.toFixed(2)}</b>
-          </div>
-          <section style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-            <label htmlFor="modo-pago-mesa" style={{ display: 'block', fontSize: 12, color: 'var(--muted)' }}>
-              Forma de liquidar la cuenta
-            </label>
-            <select
-              id="modo-pago-mesa"
-              className="select"
-              style={{ width: '100%', marginTop: 6 }}
-              value={comanda.modoPagoMesa}
-              disabled={!comanda.esOrganizador || porCobrar || guardandoModo}
-              onChange={(event) => void cambiarModoPago(event.target.value as ComandaActiva['modoPagoMesa'])}
-            >
-              <option value="CUENTA_UNICA">Cuenta completa en un solo pago</option>
-              <option value="POR_CONSUMO">Cada integrante paga su consumo</option>
-            </select>
-            <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--muted)' }}>
-              {comanda.esOrganizador
-                ? 'El modo se define antes de pedir la cuenta.'
-                : 'Solo el organizador puede elegir la forma de pago.'}
-            </p>
-            {errModo && <p role="alert" style={{ color: '#93000a', fontSize: 12 }}>{errModo}</p>}
-            {comanda.modoPagoMesa === 'POR_CONSUMO' && (
-              <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
-                {comanda.participantes.map((participante) => (
-                  <div key={participante.clienteId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                    <span>{participante.nombre}{participante.clienteId === cliente?.id ? ' · Tú' : ''}</span>
-                    <b>S/ {participante.consumoEstimado.toFixed(2)}</b>
-                  </div>
-                ))}
-                <small style={{ color: 'var(--muted)' }}>
-                  Importes estimados; los platos compartidos se distribuyen entre los participantes.
-                </small>
-              </div>
+        {comanda ? (
+          <div className="y-panel" style={{ padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <b className="font-d" style={{ fontSize: 16 }}>{comanda.numero}</b>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>Mesa {comanda.mesaId}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: ESTUDIOS[comanda.estadoComandaDerivado] ?? '#6c757d', display: 'inline-block' }} />
+              <b style={{ fontSize: 13 }}>{comanda.estadoComandaDerivado}</b>
+            </div>
+            {comanda.mesaEstado === 'POR COBRAR' && (
+              <div className="y-banner" style={{ marginTop: 12 }}>La solicitud de cuenta está registrada para esta mesa.</div>
             )}
-          </section>
-        </div>
-      ) : (
-        <div className="y-panel" style={{ padding: 24, textAlign: 'center' }}>
-          <p style={{ color: 'var(--muted)', margin: 0 }}>No hay una comanda activa para esta mesa.</p>
-        </div>
-      )}
-
-      {modalInfo && (
-        <div
-          role="presentation"
-          onClick={() => setModalInfo(null)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 80,
-            display: 'grid',
-            placeItems: 'center',
-            padding: 16,
-            background: 'rgba(0,0,0,.58)',
-          }}
-        >
-          <section
-            className="y-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="cliente-info-modal-title"
-            onClick={(event) => event.stopPropagation()}
-            style={{ width: 'min(560px, 100%)', maxHeight: '85vh', overflow: 'auto', padding: 20 }}
-          >
-            <header style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
-              <div style={{ flex: 1 }}>
-                <span className="y-flow-hero__eyebrow">{modalInfo === 'mesa' ? `Mesa ${mesaId}` : 'Detalle personal'}</span>
-                <h2 id="cliente-info-modal-title" className="font-d" style={{ margin: '4px 0', fontSize: 24 }}>
-                  {modalInfo === 'mesa' ? 'Resumen de la mesa' : 'Productos de tu pedido'}
-                </h2>
-                <p style={{ margin: 0, color: 'var(--muted)', fontSize: 13 }}>
-                  {modalInfo === 'mesa'
-                    ? 'Estado y participantes registrados en la comanda actual.'
-                    : `Pedido ${pedidoDetalle?.numero ?? comanda?.numero ?? ''}`}
-                </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 14 }}>
+              <span>{comanda.cantidadDetalles} ítems enviados</span>
+              <b className="y-price">S/ {comanda.total.toFixed(2)}</b>
+            </div>
+            <section style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--muted)' }}>Forma de liquidar la cuenta</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                <span className="y-chip" style={{ background: 'var(--surface-lowest)', border: '1px solid var(--border)', color: 'var(--ink)' }}>
+                  {comanda.modoPagoMesa === 'POR_CONSUMO' ? 'Cada quien paga su parte' : 'Pago único de la mesa'}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>Modo automático según participantes en la mesa</span>
               </div>
-              <button type="button" className="y-btn line" onClick={() => setModalInfo(null)}>Cerrar</button>
-            </header>
-
-            {modalInfo === 'mesa' && comanda && (
-              <div style={{ display: 'grid', gap: 12 }}>
-                <div className="y-panel" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, padding: 14 }}>
-                  <div>
-                    <small style={{ color: 'var(--muted)' }}>Estado</small>
-                    <strong style={{ display: 'block' }}>{comanda.estadoComandaDerivado}</strong>
-                  </div>
-                  <div>
-                    <small style={{ color: 'var(--muted)' }}>Total actual</small>
-                    <strong style={{ display: 'block' }}>S/ {comanda.total.toFixed(2)}</strong>
-                  </div>
-                  <div>
-                    <small style={{ color: 'var(--muted)' }}>Productos enviados</small>
-                    <strong style={{ display: 'block' }}>{comanda.cantidadDetalles}</strong>
-                  </div>
-                  <div>
-                    <small style={{ color: 'var(--muted)' }}>Personas en la comanda</small>
-                    <strong style={{ display: 'block' }}>{comanda.participantes.length}</strong>
-                  </div>
-                </div>
-                {comanda.mesaEstado === 'POR COBRAR' && (
-                  <div className="y-banner">La mesa ya solicitó la cuenta.</div>
-                )}
-                <div style={{ display: 'grid', gap: 8 }}>
-                  <h3 style={{ margin: 0, fontSize: 15 }}>Participantes</h3>
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--muted)' }}>
+                Se ajusta solo: si hay varios en la mesa, cada uno paga su consumo. Si estás solo, pagas la cuenta completa.
+              </p>
+              {comanda.modoPagoMesa === 'POR_CONSUMO' && (
+                <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
                   {comanda.participantes.map((participante) => (
-                    <div
-                      key={participante.clienteId}
-                      className="y-line"
-                      style={{ justifyContent: 'space-between', padding: '10px 0' }}
-                    >
-                      <span>{participante.nombre}{participante.clienteId === cliente?.id ? ' · Tú' : ''}</span>
-                      <span style={{ color: 'var(--muted)', fontSize: 12 }}>
-                        {comanda.modoPagoMesa === 'POR_CONSUMO'
-                          ? `Consumo estimado S/ ${participante.consumoEstimado.toFixed(2)}`
-                          : 'Participante'}
-                      </span>
+                    <div key={participante.clienteId} className="y-comanda-item" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface-lowest)' }}>
+                      <div className="participante-info" style={{ flex: 1 }}>
+                        <div className="participante-nombre">
+                          {participante.nombre}{participante.clienteId === cliente?.id ? ' (Tú)' : ''}
+                        </div>
+                        <small style={{ color: 'var(--muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          {participante.esOrganizador ? 'Organizador' : 'Participante'}
+                        </small>
+                      </div>
+                      <div className="participante-consumo">
+                        <span className={`consumo-estimado ${participante.esOrganizador ? 'organizador' : ''}`}>
+                          S/ {participante.consumoEstimado.toFixed(2)}
+                        </span>
+                        <span className={`consumo-estado ${cuentaYaPagada ? 'pagado' : 'pendiente'}`}>
+                          {cuentaYaPagada ? 'PAGADO' : 'Pendiente'}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
-              </div>
+              )}
+            </section>
+
+            {comanda.modoPagoMesa === 'POR_CONSUMO' && cliente && miConsumo && miConsumo.consumoEstimado > 0 && cuentaAbierta && !cuentaYaPagada && (
+              <button
+                className="y-btn y-btn-hero"
+                style={{ width: '100%', marginTop: 16 }}
+                onClick={() => void pedirLaCuenta()}
+              >
+                Pagar mi cuenta · S/ {miSaldoPendiente.toFixed(2)}
+              </button>
             )}
 
-            {modalInfo === 'pedido' && (
-              <div style={{ display: 'grid', gap: 10 }}>
-                {cargandoDetalle && <Loading text="Cargando tus productos…" />}
-                {errorDetalle && (
-                  <div className="y-banner" role="alert">
-                    {errorDetalle}
-                    <button type="button" className="y-btn line" onClick={() => void abrirDetallePedido()} style={{ marginLeft: 8 }}>
-                      Reintentar
-                    </button>
-                  </div>
-                )}
-                {!cargandoDetalle && !errorDetalle && pedidoDetalle && (() => {
-                  const misDetalles = pedidoDetalle.detalles.filter(
-                    (detalle) => detalle.estadoRegistro === 'A' && detalle.clienteId === cliente?.id,
-                  );
-                  return (
-                    <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                        <span>Subtotal de tus {misDetalles.length === 1 ? 'producto' : 'productos'}</span>
-                        <strong>S/ {misDetalles.reduce((sum, detalle) => sum + detalle.subTotal, 0).toFixed(2)}</strong>
-                      </div>
-                      {misDetalles.length === 0 ? (
-                        <p style={{ color: 'var(--muted)', margin: 0 }}>
-                          Aún no hay productos asociados a tu cuenta en esta comanda.
-                        </p>
-                      ) : misDetalles.map((detalle) => (
-                        <article key={detalle.id} className="y-panel" style={{ padding: 12 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                            <strong>{detalle.cantidad} × {detalle.producto}</strong>
-                            <strong>S/ {detalle.subTotal.toFixed(2)}</strong>
-                          </div>
-                          {detalle.notaCocina && (
-                            <p style={{ margin: '5px 0', color: 'var(--muted)', fontSize: 12 }}>
-                              Nota: {detalle.notaCocina}
-                            </p>
-                          )}
-                          <small style={{ color: 'var(--muted)' }}>
-                            {detalle.estadoPreparacion === 'P' ? 'Pendiente' :
-                              detalle.estadoPreparacion === 'E' ? 'En preparación' :
-                                detalle.estadoPreparacion === 'S' ? 'Servido' : 'Anulado'}
-                          </small>
-                        </article>
-                      ))}
-                    </>
-                  );
-                })()}
-              </div>
+            {comanda.modoPagoMesa === 'POR_CONSUMO' && cliente && cuentaYaPagada && comprobanteAbierto && (
+              <button
+                className="y-btn y-btn-hero y-btn-hero-secondary"
+                style={{ width: '100%', marginTop: 16 }}
+                onClick={() => setComprobanteAbierto(comprobanteAbierto)}
+              >
+                🧾 Ver mi boleta · S/ {miEstadoCuenta?.montoPagado.toFixed(2)}
+              </button>
             )}
-          </section>
-        </div>
-      )}
 
-      <QrScannerModal
-        open={scannerOpen}
-        onClose={() => setScannerOpen(false)}
-        onScan={(codigo) => {
-          setMesaId(codigo);
-          setScannerOpen(false);
-        }}
-      />
-
-      {comprobanteAbierto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-[280mm] w-full overflow-y-auto max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-brown-800 tracking-tighter uppercase">YEMHENG</h2>
-                <p className="text-xs text-gray-600">Comprobante de Pago Individual</p>
-              </div>
-              <button className="y-btn line" onClick={() => setComprobanteAbierto(null)}>Cerrar</button>
-            </div>
-            {comprobanteAbierto.tipoDocumento === '01' ? (
-              <ComprobanteFactura ventaId={comprobanteAbierto.idVenta} onClose={() => setComprobanteAbierto(null)} />
-            ) : (
-              <ComprobanteBoleta ventaId={comprobanteAbierto.idVenta} onClose={() => setComprobanteAbierto(null)} />
+            {comanda.modoPagoMesa === 'CUENTA_UNICA' && cliente && cuentaYaPagada && comprobanteAbierto && (
+              <button
+                className="y-btn y-btn-hero y-btn-hero-secondary"
+                style={{ width: '100%', marginTop: 16 }}
+                onClick={() => setComprobanteAbierto(comprobanteAbierto)}
+              >
+                🧾 Ver comprobante de la mesa · S/ {miEstadoCuenta?.montoPagado.toFixed(2)}
+              </button>
             )}
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
+        ) : (
+          <div className="y-panel" style={{ padding: 24, textAlign: 'center' }}>
+            <p style={{ color: 'var(--muted)', margin: 0 }}>No hay una comanda activa para esta mesa.</p>
+          </div>
+        )}
+
+        {comprobanteAbierto && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <div className="bg-white p-6 rounded-lg shadow-lg max-w-[280mm] w-full overflow-y-auto max-h-[85vh]">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold text-brown-800 tracking-tighter uppercase">YEMHENG</h2>
+                  <p className="text-xs text-gray-600">Comprobante de Pago Individual</p>
+                </div>
+                <button className="y-btn line" onClick={() => setComprobanteAbierto(null)}>Cerrar</button>
+              </div>
+              {comprobanteAbierto.tipoDocumento === '01' ? (
+                <ComprobanteFactura ventaId={comprobanteAbierto.idVenta} onClose={() => setComprobanteAbierto(null)} />
+              ) : (
+                <ComprobanteBoleta ventaId={comprobanteAbierto.idVenta} onClose={() => setComprobanteAbierto(null)} />
+              )}
+            </div>
+          </div>
+        )}
+
+        <QrScannerModal
+          open={scannerOpen}
+          onClose={() => setScannerOpen(false)}
+          onScan={(codigo) => {
+            setMesaId(codigo);
+            setScannerOpen(false);
+          }}
+        />
+      </div>
+    );
+  }

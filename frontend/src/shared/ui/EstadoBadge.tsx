@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type EstadoPrep = 'P' | 'E' | 'S' | 'A';
+export type EstadoPrep = 'P' | 'L' | 'A';
 
 export interface EstadoBadgeProps {
   estado: EstadoPrep;
@@ -10,15 +10,13 @@ export interface EstadoBadgeProps {
 
 const TONE: Record<EstadoPrep, string> = {
   P: '#f59e0b',
-  E: '#3b82f6',
-  S: '#22c55e',
+  L: '#22c55e',
   A: '#ef4444',
 };
 
 const LABEL: Record<EstadoPrep, string> = {
   P: 'Pendiente',
-  E: 'Preparando',
-  S: 'Servido',
+  L: 'Listo',
   A: 'Anulado',
 };
 

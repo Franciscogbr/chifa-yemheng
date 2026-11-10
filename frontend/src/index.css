@@ -1997,6 +1997,44 @@ body {
   color: var(--text-muted);
 }
 
+.y-section {
+  margin-bottom: 28px;
+}
+
+.y-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.y-section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.y-section-eyebrow::before {
+  width: 16px;
+  height: 1px;
+  content: "";
+  background: var(--border);
+}
+
+.y-section-title {
+  margin: 0;
+  font-family: var(--font-d);
+  font-size: 17px;
+  color: var(--text);
+  font-weight: 600;
+}
+
 .y-rcard {
   display: flex;
   gap: 12px;

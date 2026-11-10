@@ -9,6 +9,7 @@ const envSchema = z.object({
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
   GOOGLE_CLIENT_ID: z.string().min(10).optional(),
   DATABASE_URL: z.string().min(1).optional(),
+  FACTILIZA_TOKEN: z.string().min(10).optional(),
 });
 
 export const env = envSchema.parse(process.env);
