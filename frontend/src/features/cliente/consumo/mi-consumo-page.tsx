@@ -17,7 +17,7 @@ interface MiCuentaResponse {
 import { ComprobanteBoleta } from '../../staff/caja/ComprobanteBoleta';
 import { ComprobanteFactura } from '../../staff/caja/ComprobanteFactura';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
+import { API_URL } from '../../../lib/api-url';
 
 interface ComandaActiva {
   id: number;

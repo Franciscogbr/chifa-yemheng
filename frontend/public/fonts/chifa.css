@@ -1,0 +1,19 @@
+/* Chifa Yemheng · Fuentes locales (sin dependencias externas) */
+
+/* Fuente sans-serif para texto general */
+@font-face {
+  font-family: 'Chifa Sans';
+  src: local('Segoe UI'), local('Roboto'), local('Ubuntu'), local('Cantarell'), local('Helvetica Neue'), local('Arial'), local('sans-serif');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Fuente serif para títulos y display */
+@font-face {
+  font-family: 'Chifa Display';
+  src: local('Georgia'), local('Times New Roman'), local('Liberation Serif'), local('serif');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}

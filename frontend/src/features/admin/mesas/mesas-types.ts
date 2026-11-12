@@ -7,6 +7,8 @@ export interface ClienteMesa {
   documento: string;
   esOrganizador: boolean;
   consumoEstimado: number;
+  estadoCuenta: 'ABIERTA' | 'PAGADA' | null;
+  montoPagado: number;
 }
 
 /** Respuesta del endpoint de clientes por mesa. */
@@ -26,7 +28,6 @@ export interface OcupacionMesa {
   items: number;
   pendientes: number;
   platos: string[];
-  clientes: ClienteMesa[];
 }
 
 export interface Mesa {

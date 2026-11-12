@@ -100,7 +100,6 @@ export function ClientesPage() {
   const [guardando, setGuardando] = useState(false);
   const [consultandoDocumento, setConsultandoDocumento] = useState<'dni' | 'ruc' | null>(null);
   const [consultaFeedback, setConsultaFeedback] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
-  const [documentoConsultado, setDocumentoConsultado] = useState<{ tipo: 'dni' | 'ruc'; numero: string } | null>(null);
   const [distritos, setDistritos] = useState<Maestro[]>([]);
   const [cargandoDistritos, setCargandoDistritos] = useState(true);
   const [errorDistritos, setErrorDistritos] = useState<string | null>(null);
@@ -152,7 +151,6 @@ export function ClientesPage() {
   const abrirNuevo = () => {
     setForm(VACIO);
     setFormError(null);
-    setDocumentoConsultado(null);
     setConsultaFeedback(null);
     setModal({ editando: null });
   };
@@ -177,7 +175,6 @@ export function ClientesPage() {
       codigoCliente: c.codigoCliente ?? '',
     });
     setFormError(null);
-    setDocumentoConsultado(null);
     setConsultaFeedback(null);
     setModal({ editando: c });
   };
@@ -264,15 +261,14 @@ export function ClientesPage() {
     setConsultaFeedback(null);
     try {
       const datos = await consultarDni(dni);
-      setDocumentoConsultado({ tipo: 'dni', numero: dni });
       setForm((actual) => ({
         ...actual,
-        nombres: datos.nombres,
-        apPaterno: datos.apPaterno,
-        apMaterno: datos.apMaterno,
-        fNacimiento: datos.fNacimiento ?? actual.fNacimiento,
-        genero: datos.genero ?? actual.genero,
-        direccion: datos.direccion ?? actual.direccion,
+        nombres: actual.nombres.trim() ? actual.nombres : datos.nombres,
+        apPaterno: actual.apPaterno.trim() ? actual.apPaterno : datos.apPaterno,
+        apMaterno: actual.apMaterno.trim() ? actual.apMaterno : datos.apMaterno,
+        fNacimiento: actual.fNacimiento || datos.fNacimiento || '',
+        genero: actual.genero || datos.genero || '',
+        direccion: actual.direccion.trim() ? actual.direccion : datos.direccion ?? '',
       }));
       setConsultaFeedback({ tipo: 'ok', texto: 'Datos encontrados. Revisa y completa los campos restantes.' });
     } catch (error) {
@@ -292,11 +288,10 @@ export function ClientesPage() {
     setConsultaFeedback(null);
     try {
       const datos = await consultarRuc(ruc);
-      setDocumentoConsultado({ tipo: 'ruc', numero: ruc });
       setForm((actual) => ({
         ...actual,
-        razonSocial: datos.razonSocial,
-        direccion: datos.direccion ?? actual.direccion,
+        razonSocial: actual.razonSocial.trim() ? actual.razonSocial : datos.razonSocial,
+        direccion: actual.direccion.trim() ? actual.direccion : datos.direccion ?? '',
       }));
       setConsultaFeedback({ tipo: 'ok', texto: 'Datos encontrados. Revisa y completa los campos restantes.' });
     } catch (error) {
@@ -647,18 +642,6 @@ export function ClientesPage() {
               )}
               {form.tipo === 'N' ? (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
-                  <label className="flex flex-col gap-1.5 md:col-span-8">
-                    <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">
-                      Nombres y Apellidos *
-                    </span>
-                    <input
-                      value={form.nombres}
-                      maxLength={80}
-                      onChange={(e) => setForm({ ...form, nombres: e.target.value })}
-                      placeholder="Ej. Eduardo Chang Navarro"
-                      className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none focus:bg-white focus:ring-1 focus:ring-[#A61E22]"
-                    />
-                  </label>
                   <label className="flex flex-col gap-1.5 md:col-span-4">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">Tipo Doc.</span>
                     <select
@@ -684,23 +667,7 @@ export function ClientesPage() {
                       inputMode={form.tipoDoc === 'PASAPORTE' ? 'text' : 'numeric'}
                       disabled={!!modal.editando || consultandoDocumento !== null}
                       onChange={(e) => {
-                        const limpiarDatosConsultados =
-                          documentoConsultado?.tipo === 'dni' && documentoConsultado.numero !== e.target.value;
-                        setForm({
-                          ...form,
-                          dni: e.target.value,
-                          ...(limpiarDatosConsultados
-                            ? {
-                                nombres: '',
-                                apPaterno: '',
-                                apMaterno: '',
-                                fNacimiento: '',
-                                genero: '',
-                                direccion: '',
-                              }
-                            : {}),
-                        });
-                        if (limpiarDatosConsultados) setDocumentoConsultado(null);
+                        setForm({ ...form, dni: e.target.value });
                         setConsultaFeedback(null);
                       }}
                       placeholder={form.tipoDoc === 'DNI' ? '48291049' : form.tipoDoc === 'CE' ? '001234567' : 'AB123456'}
@@ -713,9 +680,44 @@ export function ClientesPage() {
                         disabled={!/^\d{8}$/.test(form.dni.trim()) || consultandoDocumento !== null}
                         className="mt-2 rounded-lg border border-[#A61E22]/30 px-3 py-2 text-xs font-bold text-[#A61E22] disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {consultandoDocumento === 'dni' ? 'Consultando…' : 'Consultar DNI'}
+                        {consultandoDocumento === 'dni' ? 'Buscando…' : 'Buscar DNI'}
                       </button>
                     )}
+                    {!modal.editando && form.tipoDoc === 'DNI' && !/^\d{8}$/.test(form.dni.trim()) && (
+                      <span className="mt-1 text-xs text-[#333333]/60">Ingresa los 8 dígitos para habilitar la búsqueda.</span>
+                    )}
+                  </label>
+                  <label className="flex flex-col gap-1.5 md:col-span-12">
+                    <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">Nombres *</span>
+                    <input
+                      value={form.nombres}
+                      maxLength={80}
+                      onChange={(e) => setForm({ ...form, nombres: e.target.value })}
+                      placeholder="Nombres"
+                      className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none focus:bg-white focus:ring-1 focus:ring-[#A61E22]"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1.5 md:col-span-6">
+                    <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">
+                      Ap. Paterno
+                    </span>
+                    <input
+                      value={form.apPaterno}
+                      maxLength={80}
+                      onChange={(e) => setForm({ ...form, apPaterno: e.target.value })}
+                      className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1.5 md:col-span-6">
+                    <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">
+                      Ap. Materno
+                    </span>
+                    <input
+                      value={form.apMaterno}
+                      maxLength={80}
+                      onChange={(e) => setForm({ ...form, apMaterno: e.target.value })}
+                      className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none"
+                    />
                   </label>
                   <label className="flex flex-col gap-1.5 md:col-span-4">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">F. Nacimiento</span>
@@ -741,43 +743,9 @@ export function ClientesPage() {
                       ))}
                     </select>
                   </label>
-                  <label className="flex flex-col gap-1.5 md:col-span-6">
-                    <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">
-                      Ap. Paterno
-                    </span>
-                    <input
-                      value={form.apPaterno}
-                      maxLength={80}
-                      onChange={(e) => setForm({ ...form, apPaterno: e.target.value })}
-                      className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1.5 md:col-span-6">
-                    <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">
-                      Ap. Materno
-                    </span>
-                    <input
-                      value={form.apMaterno}
-                      maxLength={80}
-                      onChange={(e) => setForm({ ...form, apMaterno: e.target.value })}
-                      className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none"
-                    />
-                  </label>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
-                  <label className="flex flex-col gap-1.5 md:col-span-7">
-                    <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">
-                      Razón Social *
-                    </span>
-                    <input
-                      value={form.razonSocial}
-                      maxLength={140}
-                      onChange={(e) => setForm({ ...form, razonSocial: e.target.value })}
-                      placeholder="Ej. Inversiones Cantón S.A.C."
-                      className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none focus:bg-white focus:ring-1 focus:ring-[#A61E22]"
-                    />
-                  </label>
                   <label className="flex flex-col gap-1.5 md:col-span-5">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">RUC (11) *</span>
                     <input
@@ -786,14 +754,7 @@ export function ClientesPage() {
                       inputMode="numeric"
                       disabled={!!modal.editando || consultandoDocumento !== null}
                       onChange={(e) => {
-                        const limpiarDatosConsultados =
-                          documentoConsultado?.tipo === 'ruc' && documentoConsultado.numero !== e.target.value;
-                        setForm({
-                          ...form,
-                          ruc: e.target.value,
-                          ...(limpiarDatosConsultados ? { razonSocial: '', direccion: '' } : {}),
-                        });
-                        if (limpiarDatosConsultados) setDocumentoConsultado(null);
+                        setForm({ ...form, ruc: e.target.value });
                         setConsultaFeedback(null);
                       }}
                       placeholder="20601928371"
@@ -806,9 +767,22 @@ export function ClientesPage() {
                         disabled={!/^\d{11}$/.test(form.ruc.trim()) || consultandoDocumento !== null}
                         className="mt-2 rounded-lg border border-[#A61E22]/30 px-3 py-2 text-xs font-bold text-[#A61E22] disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {consultandoDocumento === 'ruc' ? 'Consultando…' : 'Consultar RUC'}
+                        {consultandoDocumento === 'ruc' ? 'Buscando…' : 'Buscar RUC'}
                       </button>
                     )}
+                    {!modal.editando && !/^\d{11}$/.test(form.ruc.trim()) && (
+                      <span className="mt-1 text-xs text-[#333333]/60">Ingresa los 11 dígitos para habilitar la búsqueda.</span>
+                    )}
+                  </label>
+                  <label className="flex flex-col gap-1.5 md:col-span-7">
+                    <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">Razón Social *</span>
+                    <input
+                      value={form.razonSocial}
+                      maxLength={140}
+                      onChange={(e) => setForm({ ...form, razonSocial: e.target.value })}
+                      placeholder="Ej. Inversiones Cantón S.A.C."
+                      className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none focus:bg-white focus:ring-1 focus:ring-[#A61E22]"
+                    />
                   </label>
                   <label className="flex flex-col gap-1.5 md:col-span-12">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">

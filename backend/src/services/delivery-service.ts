@@ -27,9 +27,8 @@ async function getDeliveryInfoForPush(id: number) {
 }
 
 export async function listarDeliveryService(q: DeliveryQuery) { return listarDelivery(q); }
-export async function crearDeliveryService(input: DeliveryCreate, usucre: string, pc?: string) {
-  try { return await crearDelivery(input, usucre, pc); }
-  catch (err) { throw err; }
+export async function crearDeliveryService(input: DeliveryCreate, usuarioId: number, usucre: string, pc?: string) {
+  return crearDelivery(input, usuarioId, usucre, pc);
 }
 export async function asignarRepartidorService(id: number, input: DeliveryAsignar, usumod: string, pc?: string) {
   const r = await asignarRepartidor(id, input.repartidorId, usumod, pc, input.costoEnvio);

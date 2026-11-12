@@ -10,12 +10,13 @@ const fmt = (n: number) => `S/ ${n.toFixed(2)}`;
 
 interface Props {
   cajaId: number;
+  aperturaId: number;
   cajaNombre: string;
   saldoTeorico: number;
   onHecho: (msg: string) => void;
 }
 
-export function CajaArqueo({ cajaId, cajaNombre, saldoTeorico, onHecho }: Props) {
+export function CajaArqueo({ cajaId, aperturaId, cajaNombre, saldoTeorico, onHecho }: Props) {
   const [resumen, setResumen] = useState<MovimientoResumen | null>(null);
   const [cargando, setCargando] = useState(true);
   const [observacion, setObservacion] = useState('');
@@ -26,7 +27,7 @@ export function CajaArqueo({ cajaId, cajaNombre, saldoTeorico, onHecho }: Props)
   useEffect(() => {
     setCargando(true);
     setError(null);
-    void verMovimientosResumen(cajaId)
+    void verMovimientosResumen(aperturaId)
       .then((r) => {
         setResumen(r);
         setCargando(false);
@@ -35,7 +36,7 @@ export function CajaArqueo({ cajaId, cajaNombre, saldoTeorico, onHecho }: Props)
         setError((e as Error).message);
         setCargando(false);
       });
-  }, [cajaId]);
+  }, [aperturaId]);
 
   const contadoDelSistema = resumen?.total ?? 0;
   const totalTransacciones = resumen?.movimientos.reduce((sum, m) => sum + m.cantidad, 0) ?? 0;

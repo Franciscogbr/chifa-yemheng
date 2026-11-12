@@ -6,10 +6,12 @@ import {
   detalleAddSchema,
   modoPagoMesaSchema,
   pedidoAbrirSchema,
+  tandaSchema,
 } from '../schemas/pedido.js';
 import {
   agregarDetalleClienteService,
   abrirClienteService,
+  abrirPedidoTandaService,
   comandaActivaClienteService,
   detalleClienteService,
   miCuentaClienteService,
@@ -55,6 +57,25 @@ export async function postClientePedido(req: Request, res: Response): Promise<vo
   }
   try {
     const pedido = await abrirClienteService(parsed.data, user.sub);
+    res.status(201).json(pedido);
+  } catch (err) {
+    errorPedido(res, err);
+  }
+}
+
+export async function postClienteTanda(req: Request, res: Response): Promise<void> {
+  const parsed = tandaSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.flatten() });
+    return;
+  }
+  const user = (req as Request & { user?: { sub: number } }).user;
+  if (!user) {
+    res.status(401).json({ error: 'CREDENCIALES_INVALIDAS' });
+    return;
+  }
+  try {
+    const pedido = await abrirPedidoTandaService(parsed.data, user.sub);
     res.status(201).json(pedido);
   } catch (err) {
     errorPedido(res, err);

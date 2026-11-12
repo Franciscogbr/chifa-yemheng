@@ -7,7 +7,7 @@ import { useClienteAuth } from '../auth/cliente-auth-context';
 import { EstadoBadge } from '../../../shared/ui/EstadoBadge';
 import { useRealtimePedido } from '../../../shared/hooks/useRealtimePedido';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
+import { API_URL } from '../../../lib/api-url';
 
 const PASOS = [
   { id: 'pendiente', label: 'Pendiente', icon: Receipt },

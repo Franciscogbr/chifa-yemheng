@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { leerToken } from '../../auth/login/auth-service';
 
-const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/auditoria`;
+import { API_URL } from '../../../lib/api-url';
+
+const BASE = `${API_URL}/auditoria`;
 
 interface Auditoria {
   id: number;

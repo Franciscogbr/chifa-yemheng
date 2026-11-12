@@ -7,6 +7,11 @@ export const movimientoQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   productoId: z.coerce.number().int().positive().optional(),
   tipo: tipoMovimientoSchema.optional(),
+  desde: z.iso.date().optional(),
+  hasta: z.iso.date().optional(),
+}).refine((value) => !value.desde || !value.hasta || value.desde <= value.hasta, {
+  path: ['hasta'],
+  message: 'La fecha hasta debe ser igual o posterior a la fecha desde.',
 });
 
 export const movimientoCreateSchema = z.object({
@@ -38,7 +43,7 @@ export const recetaUpdateSchema = z.object({
 
 export const stockQuerySchema = z.object({
   productoId: z.coerce.number().int().positive().optional(),
-  soloBajoStock: z.coerce.boolean().optional(),
+  soloBajoStock: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
   nombre: z.string().max(100).optional(),
   categoriaId: z.coerce.number().int().positive().optional(),
   unidadId: z.coerce.number().int().positive().optional(),

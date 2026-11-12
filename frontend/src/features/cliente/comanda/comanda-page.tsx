@@ -1,97 +1,79 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../contexts/CartContext';
 import { Ico } from '../../../components/Icon';
 import { QrScannerModal } from '../../../components/QrScannerModal';
 import { useClienteAuth } from '../auth/cliente-auth-context';
+import { mensajeError } from '../../../shared/errors';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
+import { API_URL } from '../../../lib/api-url';
 const PLACEHOLDER_IMG = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"%3E%3Crect width="96" height="96" fill="%23f0eded"/%3E%3Ctext x="48" y="54" text-anchor="middle" font-family="system-ui" font-size="28" fill="%238e706d"%3E🍽️%3C/text%3E%3C/svg%3E';
 
 export function ClienteComandaPage() {
   const { items, mesaId, setMesaId, setQty, remove, clear, subtotal, igv, total } = useCart();
   const { cliente } = useClienteAuth();
+  const navigate = useNavigate();
   const [enviando, setEnviando] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [pedidoId, setPedidoId] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [necesitaLogin, setNecesitaLogin] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
 
   useEffect(() => {
     if (!mesaId) {
       setErr(null);
-      setNecesitaLogin(false);
     }
   }, [mesaId]);
 
-  const MENSAJES_ERR: Record<string, string> = {
-    MESA_POR_COBRAR: 'Tu mesa ya pidió la cuenta; no se pueden agregar más productos.',
-    LA_MESA_NO_ADMITE_NUEVOS_PARTICIPANTES: 'La mesa no admite nuevos participantes.',
-    PEDIDO_FACTURADO: 'El pedido ya está facturado.',
-    PEDIDO_ANULADO: 'El pedido fue anulado.',
-    PRODUCTO_NO_DISPONIBLE: 'Uno de los productos ya no está disponible.',
-    NEEDS_LOGIN: 'Inicia sesión con Google para enviar tu pedido a cocina.',
-  };
-
   async function enviarTanda() {
     if (!mesaId || items.length === 0) return;
+
     const token = localStorage.getItem('chifa.cliente.token');
     if (!token) {
-      setNecesitaLogin(true);
-      setErr('Inicia sesión con Google para enviar tu pedido a cocina.');
+      sessionStorage.setItem('chifa.cliente.pending_mesa', mesaId);
+      navigate(`/cliente/login?redirect=comanda&mesa=${encodeURIComponent(mesaId)}`);
       return;
     }
+
     setEnviando(true);
     setMsg(null);
     setPedidoId(null);
     setErr(null);
-    setNecesitaLogin(false);
-    const lanzar = async (path: string, init: RequestInit) => {
-      const r = await fetch(`${API_URL}${path}`, {
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        ...init,
+
+    const detalles = items.map((it) => ({
+      producto: it.producto.id_producto,
+      cantidad: it.cantidad,
+      nota: it.nota || '',
+      descuento: 0,
+    }));
+
+    try {
+      const r = await fetch(`${API_URL}/cliente/pedidos/tanda`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          mesa: Number(mesaId),
+          comensales: 1,
+          obs: '',
+          detalles,
+        }),
       });
       if (!r.ok) {
         const b = (await r.json().catch(() => ({}))) as { error?: string };
         throw new Error(b.error ?? `API ${r.status}`);
       }
-      return r.json();
-    };
-    try {
-      let pedidoActual: { id: number } | null = null;
-      const activosRes = await fetch(`${API_URL}/cliente/pedidos/activos?mesaId=${mesaId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (activosRes.ok) {
-        const activos = (await activosRes.json()) as { data?: { id: number }[] };
-        pedidoActual = activos.data?.[0] ?? null;
-      } else if (activosRes.status === 401) {
-        setNecesitaLogin(true);
-        setErr('Tu sesión expiró. Inicia sesión con Google de nuevo.');
-        return;
-      }
-      if (!pedidoActual) {
-        pedidoActual = (await lanzar('/cliente/pedidos', {
-          method: 'POST',
-          body: JSON.stringify({ tipo: 1, mesa: Number(mesaId), comensales: 1, obs: '' }),
-        })) as { id: number };
-      }
-      const pedidoIdNum = pedidoActual.id;
-
-      for (const it of items) {
-        await lanzar(`/cliente/pedidos/${pedidoIdNum}/detalles`, {
-          method: 'POST',
-          body: JSON.stringify({ producto: it.producto.id_producto, cantidad: it.cantidad, nota: it.nota, descuento: 0 }),
-        });
-      }
-      await lanzar(`/cliente/pedidos/${pedidoIdNum}/recalcular`, { method: 'POST' });
+      const data = (await r.json()) as { id?: number; pedidoId?: number };
+      const pedidoIdNum = data.id ?? data.pedidoId ?? null;
       setMsg('Comanda enviada. Sigue el estado en tiempo real.');
-      setPedidoId(pedidoIdNum);
+      setPedidoId(pedidoIdNum ?? null);
       clear();
+      sessionStorage.removeItem('chifa.cliente.pending_mesa');
     } catch (e) {
       const code = (e as Error).message;
-      setErr(MENSAJES_ERR[code] ?? code ?? 'No se pudo enviar el pedido.');
+      setErr(mensajeError(code) || 'No se pudo enviar el pedido.');
     } finally {
       setEnviando(false);
     }
@@ -119,13 +101,13 @@ export function ClienteComandaPage() {
                 {/* Cuerpo del celular */}
                 <rect x="20" y="10" width="160" height="340" rx="32" fill="var(--cocoa)" />
                 <rect x="30" y="24" width="140" height="312" rx="22" fill="var(--surface-lowest)" />
-                
+
                 {/* Pantalla del celular */}
                 <rect x="38" y="42" width="124" height="276" rx="16" fill="var(--surface-low)" />
-                
+
                 {/* Marco QR en la pantalla */}
                 <rect x="62" y="88" width="76" height="76" rx="8" fill="var(--surface-lowest)" stroke="var(--primary)" strokeWidth="2" />
-                
+
                 {/* Patrón QR simulado */}
                 <g fill="var(--primary)">
                   <rect x="66" y="92" width="8" height="8" />
@@ -150,13 +132,13 @@ export function ClienteComandaPage() {
                   <rect x="102" y="152" width="8" height="8" />
                   <rect x="114" y="152" width="8" height="8" />
                 </g>
-                
+
                 {/* Línea de escaneo animada */}
                 <rect x="62" y="88" width="76" height="2" className="y-qr-scanline-svg" fill="url(#scanGradient)" />
-                
+
                 {/* Cámara superior */}
                 <circle cx="100" cy="20" r="6" fill="var(--cocoa)" opacity="0.6" />
-                
+
                 {/* Botón inferior */}
                 <rect x="90" y="318" width="20" height="4" rx="2" fill="var(--cocoa)" opacity="0.3" />
                 <defs>
@@ -183,14 +165,13 @@ export function ClienteComandaPage() {
                 <button
                   className="y-btn y-btn-qr-primary"
                   onClick={() => {
-                    window.location.href = `/cliente/login?redirect=comanda`;
+                    navigate(`/cliente/login?redirect=comanda`);
                   }}
                   style={{ width: '100%', maxWidth: 320, padding: '16px 24px', fontSize: 15 }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" style={{ marginRight: 10, flex: 'none' }}>
                     <path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                     <path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                     <path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                   </svg>
                   Iniciar sesión primero para escanear mesa
@@ -239,23 +220,6 @@ export function ClienteComandaPage() {
               {err && (
                 <div className="y-banner" style={{ marginBottom: 12, borderColor: '#ba1a1a', background: '#ffdad6', color: '#93000a' }}>
                   <Ico n="err" /> {err}
-                </div>
-              )}
-
-              {necesitaLogin && (
-                <div className="y-panel" style={{ padding: 16, marginBottom: 12, textAlign: 'center' }}>
-                  <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 0 10px' }}>
-                    Inicia sesión con Google para enviar tu pedido a cocina.
-                  </p>
-                  <button
-                    onClick={() => {
-                      window.location.href = `/cliente/login?mesa=${encodeURIComponent(mesaId)}`;
-                    }}
-                    className="y-btn red"
-                    style={{ padding: '10px 20px' }}
-                  >
-                    Iniciar sesión con Google
-                  </button>
                 </div>
               )}
 
@@ -338,13 +302,11 @@ export function ClienteComandaPage() {
               <button
                 className="y-btn y-btn-hero"
                 style={{ width: '100%', marginTop: 12 }}
-                disabled={enviando || necesitaLogin || items.length === 0}
+                disabled={enviando || items.length === 0}
                 onClick={() => void enviarTanda()}
               >
                 {enviando
                   ? <> <span className="y-spin"><Ico n="hourglass" size={18} /></span> Enviando… </>
-                  : necesitaLogin
-                  ? 'Inicia sesión primero'
                   : <> <Ico n="chef" size={18} /> Enviar a cocina </>}
               </button>
             </aside>}

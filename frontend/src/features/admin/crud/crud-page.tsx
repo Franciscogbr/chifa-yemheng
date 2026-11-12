@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { PageHeader } from '../../../components/ui';
 import { leerToken } from '../../auth/login/auth-service';
+import { mensajeError } from '../../../shared/errors';
+import { useToast } from '../../../shared/ui/use-toast';
 
 type Estado = 'A' | 'I';
 type ResourceKey = 'categorias' | 'unidades' | 'tipos-mesa';
@@ -22,7 +24,9 @@ type Recurso = {
   campos: Campo[];
 };
 
-const API = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}`;
+import { API_URL } from '../../../lib/api-url';
+
+const API = API_URL;
 const LIMIT = 20;
 const RECURSOS: Record<ResourceKey, Recurso> = {
   categorias: {
@@ -152,6 +156,8 @@ export function AdminCrudPage() {
   const [modal, setModal] = useState(false);
   const [edicion, setEdicion] = useState<CrudRecord | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
+  const { toast } = useToast();
+  const [filaParaCambiarEstado, setFilaParaCambiarEstado] = useState<CrudRecord | null>(null);
   const recurso = RECURSOS[recursoKey];
   const totalPaginas = Math.max(1, Math.ceil(total / LIMIT));
 
@@ -227,11 +233,18 @@ export function AdminCrudPage() {
     }
   };
 
-  const cambiarEstado = async (fila: CrudRecord) => {
+  const abrirCambiarEstado = (fila: CrudRecord) => {
+    setFilaParaCambiarEstado(fila);
+  };
+
+  const cerrarCambiarEstado = () => {
+    setFilaParaCambiarEstado(null);
+  };
+
+  const ejecutarCambiarEstado = async () => {
+    if (!filaParaCambiarEstado) return;
+    const fila = filaParaCambiarEstado;
     const nuevoEstado: Estado = fila['estado'] === 'A' ? 'I' : 'A';
-    const nombre = String(fila['nombre'] ?? `#${fila.id}`);
-    const accion = nuevoEstado === 'I' ? 'desactivar' : 'activar';
-    if (!window.confirm(`¿Deseas ${accion} “${nombre}”?`)) return;
     setError(null);
     try {
       await fetch(`${API}/${recurso.endpoint}/${fila.id}/estado`, {
@@ -241,12 +254,53 @@ export function AdminCrudPage() {
       }).then(leerRespuesta<unknown>);
       setAviso(`Registro ${nuevoEstado === 'A' ? 'activado' : 'desactivado'} correctamente.`);
       await cargar();
+      cerrarCambiarEstado();
+      toast({
+        title: 'Estado actualizado',
+        description: `Registro ${nuevoEstado === 'A' ? 'activado' : 'desactivado'} correctamente.`,
+        variant: 'success',
+      });
     } catch (e) {
-      setError((e as Error).message || 'No se pudo cambiar el estado.');
+      const err = e as Error & { error?: string };
+      setError(mensajeError(err.error) || 'No se pudo cambiar el estado.');
+    } finally {
+      cerrarCambiarEstado();
     }
   };
 
   return (
+    <>
+      {filaParaCambiarEstado && (
+        <div
+          role="presentation"
+          onMouseDown={(event) => { if (event.target === event.currentTarget) cerrarCambiarEstado(); }}
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.65)', display: 'grid', placeItems: 'center', padding: 16 }}
+        >
+          <section role="dialog" aria-modal="true" aria-labelledby="cambiar-estado-titulo" className="y-panel" style={{ width: 'min(420px, 90%)', padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 12, marginBottom: 16 }}>
+              <div>
+                <h2 id="cambiar-estado-titulo" style={{ margin: 0 }}>Cambiar estado</h2>
+                <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 13 }}>
+                  {String(filaParaCambiarEstado['nombre'] ?? '#' + filaParaCambiarEstado.id)}
+                </p>
+              </div>
+              <button className="btn btn-ghost" onClick={cerrarCambiarEstado} aria-label="Cerrar">Cerrar</button>
+            </div>
+            <p style={{ margin: '0 0 16px', color: 'var(--muted)' }}>
+              ¿Estás seguro de que quieres {filaParaCambiarEstado['estado'] === 'A' ? 'desactivar' : 'activar'} este registro?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button type="button" onClick={cerrarCambiarEstado} className="btn btn-ghost">
+                Cancelar
+              </button>
+              <button type="button" onClick={ejecutarCambiarEstado} className="btn" style={{ background: '#ef4444', color: '#fff' }}>
+                {filaParaCambiarEstado['estado'] === 'A' ? 'Desactivar' : 'Activar'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
     <div className="y-shell mx-auto max-w-7xl px-4 py-8 pb-32">
       <PageHeader title="CRUD Genérico" sub="Gestiona datos maestros desde una vista unificada." />
 
@@ -366,7 +420,7 @@ export function AdminCrudPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => void cambiarEstado(fila)}
+                          onClick={() => void abrirCambiarEstado(fila)}
                           className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${fila['estado'] === 'A' ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
                         >
                           {fila['estado'] === 'A' ? 'Desactivar' : 'Activar'}
@@ -458,5 +512,6 @@ export function AdminCrudPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

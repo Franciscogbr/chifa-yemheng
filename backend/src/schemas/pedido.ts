@@ -42,6 +42,20 @@ export const cuentaSchema = z.object({
   mesaId: z.number().int().positive(),
 });
 
+export const detalleTandaSchema = z.object({
+  producto: z.number().int().positive(),
+  cantidad: z.number().positive(),
+  nota: z.string().max(150).optional().default(''),
+  descuento: z.number().min(0).optional().default(0),
+});
+
+export const tandaSchema = z.object({
+  mesa: z.number().int().positive(),
+  comensales: z.number().int().min(1).max(99).optional().default(1),
+  obs: z.string().max(200).optional().default(''),
+  detalles: z.array(detalleTandaSchema).min(1, 'Debe incluir al menos un plato'),
+});
+
 export const modoPagoMesaSchema = z.object({
   modo: z.enum(['CUENTA_UNICA', 'POR_CONSUMO']),
 });

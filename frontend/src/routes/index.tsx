@@ -60,6 +60,7 @@ import { ClientePedidoTrackingPage } from '../features/cliente/pedido/pedido-tra
 import { ClienteMiConsumoPage } from '../features/cliente/consumo/mi-consumo-page';
 import { ClienteResetClavePage } from '../features/cliente/reset/reset-clave-page';
 import MesaQrPage from '../features/cliente/mesa/mesa-qr-page';
+import { NotFoundPage } from '../shared/ui/NotFoundPage';
 
 function AdminHomeRoute() {
   const { usuario } = useAuth();
@@ -273,5 +274,5 @@ export const router = createBrowserRouter([
     ],
   },
 
-  { path: '*', element: <Navigate to="/auth/login" replace /> },
+  { path: '*', element: <NotFoundPage /> },
 ])

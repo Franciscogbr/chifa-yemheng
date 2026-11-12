@@ -1,4 +1,10 @@
-import type { Ambiente, Mesa, MesaLista, OcupacionMesa } from '../models/mesa.js';
+import type {
+  Ambiente,
+  ClientesMesaResponse,
+  Mesa,
+  MesaLista,
+  OcupacionMesa,
+} from '../models/mesa.js';
 import { MesaError } from '../models/mesa.js';
 import type {
   AmbienteCreate,
@@ -19,6 +25,7 @@ import {
   crearMesa,
   existeNumero,
   listarAmbientes,
+  listarClientesMesa,
   listarMesas,
   obtenerMesa,
   obtenerPorQr,
@@ -32,6 +39,10 @@ export function listarService(q: MesaQuery): Promise<MesaLista> {
 
 export function ocupacionService(): Promise<OcupacionMesa[]> {
   return ocupacionMesas();
+}
+
+export function clientesMesaService(mesaId: number): Promise<ClientesMesaResponse> {
+  return listarClientesMesa(mesaId);
 }
 
 export async function obtenerService(id: number): Promise<Mesa> {

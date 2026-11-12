@@ -1,16 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   clienteGoogleLogin,
   clientePasswordLogin,
   clienteRegistrarCorreo,
   clienteSolicitarRestablecimiento,
-  guardarSesionCliente,
 } from './cliente-auth-service';
 import { codigoQrCanonico } from '../../../lib/utils';
+import { useClienteAuth } from '../auth/cliente-auth-context';
 
 const FONDO_LOCAL = '/img/fachada-yemheng.webp';
 const SELLO = '/img/sello-yemheng.svg';
+type GoogleCredentialResponse = { credential?: string };
+type GoogleCredentialCallback = (resp: GoogleCredentialResponse) => void;
+
+// GIS mantiene su inicialización global aunque React StrictMode repita efectos.
+let googleClienteClientIdInicializado: string | null = null;
+let googleClienteCallbackActual: GoogleCredentialCallback | null = null;
 
 declare global {
   interface Window {
@@ -25,7 +31,7 @@ declare global {
     };
   }
 }
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
+import { API_URL } from '../../../lib/api-url';
 
 type EstadoQr = 'sin-mesa' | 'validando' | 'valida' | 'invalida' | 'sin-conexion';
 
@@ -48,6 +54,8 @@ export function ClienteLoginPage() {
   const [params] = useSearchParams();
   const mesa = (params.get('mesa') ?? '').trim();
   const numMesa = numeroMesa(mesa);
+  const navigate = useNavigate();
+  const { establecerSesion } = useClienteAuth();
   const [verClave, setVerClave] = useState(false);
   const [camAbierta, setCamAbierta] = useState(false);
   const [errorCam, setErrorCam] = useState<string | null>(null);
@@ -80,7 +88,7 @@ export function ClienteLoginPage() {
     const destino = mesaParam
       ? `/cliente/inicio?mesa=${encodeURIComponent(mesaParam)}`
       : '/cliente/inicio';
-    window.location.href = destino;
+    navigate(destino);
   }
 
   async function enviarFormularioCorreo(event: React.FormEvent<HTMLFormElement>) {
@@ -100,7 +108,7 @@ export function ClienteLoginPage() {
       }
 
       const session = await clientePasswordLogin(email, clave);
-      guardarSesionCliente(session);
+      establecerSesion(session);
       redirigirCliente();
     } catch (error) {
       setErrorCorreo(error instanceof Error ? error.message : 'No se pudo completar la solicitud. Inténtalo nuevamente.');
@@ -169,28 +177,36 @@ export function ClienteLoginPage() {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
     if (!clientId) return;
     let cancelado = false;
+    googleClienteCallbackActual = async (resp) => {
+      if (!resp.credential) {
+        setErrorGoogle('No se pudo obtener la credencial de Google.');
+        return;
+      }
+      setCargandoGoogle(true);
+      setErrorGoogle(null);
+      try {
+        const sesion = await clienteGoogleLogin(resp.credential);
+        establecerSesion(sesion);
+        redirigirCliente();
+      } catch (e) {
+        setErrorGoogle((e as Error)?.message ?? 'No fue posible validar con Google. Reintente.');
+      } finally {
+        setCargandoGoogle(false);
+      }
+    };
+
     function init() {
       if (cancelado || !window.google?.accounts?.id || !googleBtnRef.current) return;
-      window.google.accounts.id.initialize({
-        client_id: clientId!,
-        callback: async (resp: { credential?: string }) => {
-          if (!resp.credential) {
-            setErrorGoogle('No se pudo obtener la credencial de Google.');
-            return;
-          }
-          setCargandoGoogle(true);
-          setErrorGoogle(null);
-          try {
-            const sesion = await clienteGoogleLogin(resp.credential);
-            guardarSesionCliente(sesion);
-            redirigirCliente();
-          } catch (e) {
-            setErrorGoogle((e as Error)?.message ?? 'No fue posible validar con Google. Reintente.');
-          } finally {
-            setCargandoGoogle(false);
-          }
-        },
-      });
+      if (googleClienteClientIdInicializado !== clientId) {
+        window.google.accounts.id.initialize({
+          client_id: clientId!,
+          callback: async (resp: GoogleCredentialResponse) => {
+            if (!googleClienteCallbackActual) return;
+            await googleClienteCallbackActual(resp);
+          },
+        });
+        googleClienteClientIdInicializado = clientId!;
+      }
       window.google.accounts.id.renderButton(googleBtnRef.current, {
         type: 'standard',
         theme: 'outline',
@@ -200,20 +216,28 @@ export function ClienteLoginPage() {
         width: 360,
       });
     }
+
     if (window.google?.accounts?.id) {
       init();
-      return;
+    } else {
+      const existente = document.querySelector<HTMLScriptElement>('script[data-google-gsi]');
+      if (existente) {
+        existente.addEventListener('load', init, { once: true });
+      } else {
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.dataset.googleGsi = 'true';
+        script.onload = init;
+        document.head.appendChild(script);
+      }
     }
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => init();
-    document.head.appendChild(script);
     return () => {
       cancelado = true;
+      googleClienteCallbackActual = null;
     };
-  }, [params]);
+  }, []);
 
   /** Móvil = táctil o UA móvil. PC nunca muestra el aviso de escaneo (CLI-LOGIN-P8). */
   const esMovil =

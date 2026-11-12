@@ -29,8 +29,10 @@ interface StockRow {
   id_producto: number;
   n_producto: string;
   tipo_producto: string;
+  id_categoriaproducto: number | null;
   stock_actual: number;
   stock_minimo: number;
+  id_unidad: number | null;
   unidad_medida: { n_unidad: string } | null;
   categoria_producto: { n_categoriaproducto: string } | null;
 }
@@ -78,6 +80,12 @@ export async function listarMovimientos(q: MovimientoQuery): Promise<MovimientoL
 
   if (q.productoId) query = query.eq('id_producto', q.productoId);
   if (q.tipo) query = query.eq('tipo_movimiento', q.tipo);
+  if (q.desde) query = query.gte('f_movimiento', `${q.desde}T00:00:00`);
+  if (q.hasta) {
+    const hastaExclusivo = new Date(`${q.hasta}T00:00:00.000Z`);
+    hastaExclusivo.setUTCDate(hastaExclusivo.getUTCDate() + 1);
+    query = query.lt('f_movimiento', `${hastaExclusivo.toISOString().slice(0, 10)}T00:00:00`);
+  }
 
   const { data, error, count } = await query;
   if (error) throw new Error(`DB_LIST_FAIL: ${error.message}`);
@@ -241,7 +249,7 @@ export async function actualizarReceta(
 export async function getStockInsumos(q: StockQuery): Promise<StockInsumo[]> {
   let query = supabase
     .from('producto')
-    .select('id_producto, n_producto, tipo_producto, stock_actual, stock_minimo, categoria_producto(n_categoriaproducto), unidad_medida(n_unidad)')
+    .select('id_producto, n_producto, tipo_producto, id_categoriaproducto, stock_actual, stock_minimo, id_unidad, categoria_producto(n_categoriaproducto), unidad_medida(n_unidad)')
     .eq('estado', 'A')
     .eq('tipo_producto', 'I');
 
@@ -277,17 +285,21 @@ export async function getStockInsumos(q: StockQuery): Promise<StockInsumo[]> {
     query = query.lte('stock_actual', q.stockActualHasta);
   }
 
-  if (q.soloBajoStock) {
-    query = query.lte('stock_actual', 'stock_minimo');
-  }
-
   const ordenColumna = q.ordenarPor === 'stock_actual' ? 'stock_actual' : q.ordenarPor === 'stock_minimo' ? 'stock_minimo' : 'n_producto';
   query = query.order(ordenColumna, { ascending: q.ordenDireccion === 'asc' });
 
   const { data, error } = await query;
   if (error) throw new Error(`DB_STOCK_FAIL: ${error.message}`);
 
-  const rows = (data ?? []) as unknown as StockRow[];
+  let rows = (data ?? []) as unknown as StockRow[];
+
+  if (q.soloBajoStock !== undefined) {
+    rows = rows.filter((row) => {
+      const stockActual = Number(row.stock_actual ?? 0);
+      const stockMinimo = Number(row.stock_minimo ?? 0);
+      return q.soloBajoStock ? stockActual <= stockMinimo : stockActual > stockMinimo;
+    });
+  }
 
   return rows.map((row) => {
     const stockActual = Number(row.stock_actual ?? 0);
@@ -296,8 +308,10 @@ export async function getStockInsumos(q: StockQuery): Promise<StockInsumo[]> {
       idProducto: row.id_producto,
       producto: row.n_producto,
       tipoProducto: row.tipo_producto,
+      categoriaId: row.id_categoriaproducto,
       stockActual,
       stockMinimo,
+      unidadId: row.id_unidad,
       unidadMedida: row.unidad_medida?.n_unidad ?? null,
       categoria: row.categoria_producto?.n_categoriaproducto ?? null,
       estadoBajoStock: stockActual <= stockMinimo,

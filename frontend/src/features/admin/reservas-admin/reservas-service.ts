@@ -1,7 +1,9 @@
 import { leerToken } from '../../auth/login/auth-service';
 import type { Reserva, ReservaLista, EstadoReserva } from './reservas-types';
 
-const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/reservas`;
+import { API_URL } from '../../../lib/api-url';
+
+const BASE = `${API_URL}/reservas`;
 
 function headers(): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${leerToken() ?? ''}` };

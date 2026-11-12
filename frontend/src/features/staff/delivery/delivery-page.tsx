@@ -19,6 +19,8 @@ interface Delivery {
   fechaSalida: string | null;
   fechaEntrega: string | null;
   totalPedido?: number;
+  montoPagado?: number;
+  metodoPago?: string | null;
 }
 
 const LIMITE = 20;
@@ -52,7 +54,7 @@ export function StaffDeliveryPage() {
   /* Modal registro de venta (staff) */
   const [modalVenta, setModalVenta] = useState(false);
   const [deliveryVentaId, setDeliveryVentaId] = useState<number | null>(null);
-  const [formVenta, setFormVenta] = useState({ monto: 0, metodoPago: 'EFECTIVO' as const, referencia: '' });
+  const [formVenta, setFormVenta] = useState<{ monto: number; metodoPago: 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TARJETA' | 'TRANSFERENCIA'; referencia: string }>({ monto: 0, metodoPago: 'EFECTIVO', referencia: '' });
   const [guardandoVenta, setGuardandoVenta] = useState(false);
 
   const cargar = async () => {
@@ -529,7 +531,7 @@ export function StaffDeliveryPage() {
                   required
                 />
               </label>
-              <p className="text-[10px] text-gray-500">Máximo sugerido: S/ {(deliveryVentaId ? deliveries.find(d => d.id === deliveryVentaId)?.totalPedido ?? 0 + deliveries.find(d => d.id === deliveryVentaId)?.costo ?? 0 : 0).toFixed(2)}</p>
+              <p className="text-[10px] text-gray-500">Máximo sugerido: S/ {(deliveryVentaId ? (deliveries.find(d => d.id === deliveryVentaId)?.totalPedido ?? 0) + (deliveries.find(d => d.id === deliveryVentaId)?.costo ?? 0) : 0).toFixed(2)}</p>
             </div>
             <div className="flex flex-col gap-2">
               <label className="flex flex-col gap-1">
@@ -560,7 +562,7 @@ export function StaffDeliveryPage() {
                   placeholder="Nro. operación (obligatorio para Yape/Plin/Tarjeta/Transferencia)"
                 />
               </label>
-              {(['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'] as const).includes(formVenta.metodoPago) && !formVenta.referencia.trim() && (
+              {(['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'] as string[]).includes(formVenta.metodoPago) && !formVenta.referencia.trim() && (
                 <p className="text-[10px] text-[#DC2626]">La referencia es obligatoria para este método.</p>
               )}
             </div>
@@ -579,7 +581,7 @@ export function StaffDeliveryPage() {
               disabled={
                 guardandoVenta ||
                 formVenta.monto <= 0 ||
-                (['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'] as const).includes(formVenta.metodoPago) &&
+                (['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'] as string[]).includes(formVenta.metodoPago) &&
                   !formVenta.referencia.trim()
               }
               className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#7F1518] hover:bg-[#A61E22] disabled:opacity-50"

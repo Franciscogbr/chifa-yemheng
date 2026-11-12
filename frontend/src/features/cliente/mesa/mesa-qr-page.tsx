@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { QRCodeSVG } from 'qrcode.react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../contexts/CartContext';
 import { useClienteAuth } from '../auth/cliente-auth-context';
+import { mensajeError } from '../../../shared/errors';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
+import { API_URL } from '../../../lib/api-url';
 
 interface MesaInfo {
   id: number;
@@ -19,9 +19,11 @@ export default function MesaQrPage() {
   const { id } = useParams();
   const { setMesaId } = useCart();
   const { cliente } = useClienteAuth();
+  const navigate = useNavigate();
   const [mesa, setMesa] = useState<MesaInfo | null>(null);
   const [err, setErr] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [mostrarDecision, setMostrarDecision] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -32,55 +34,32 @@ export default function MesaQrPage() {
     let cancelado = false;
     setLoading(true);
     setErr('');
-    
-    // Always show an alert when fetch starts
-    console.log('QR: Starting fetch for', id);
-    
+
     fetch(`${API_URL}/mesas/by-qr?codigo=${encodeURIComponent(id)}`)
       .then(async (res) => {
-        console.log('QR: Response', res.status);
         if (!res.ok) {
           const errBody = await res.text();
           throw new Error('QR Error ' + res.status + ': ' + errBody);
         }
         const data = await res.json();
-        console.log('QR: Data', data);
-        
+
         if (cancelado) return;
-        
+
         setMesa(data);
-        
-        // If there are customers and no logged in client, join existing order
+
         if (data?.comensales > 0 && !cliente && !cancelado) {
-          console.log('QR: Joining existing order');
-          window.location.href = '/cliente/mi-consumo?mesa=' + (data.qr ?? id ?? '');
+          navigate('/cliente/mi-consumo?mesa=' + (data.qr ?? id ?? ''));
         } else if (!cliente && !cancelado) {
-          // First client - ask decision
-          console.log('QR: First client, showing decision');
-          const tomarPedido = window.confirm(
-            'Yo tomare el pedido.\n\n¿Qué modo deseas?\n1. Repartir comanda de nombres\n2. Modo pensamiento'
-          );
-          
-          if (tomarPedido) {
-            // Take order only
-            setMesaId(String(data.id));
-          } else {
-            // Share order
-            window.location.href = '/cliente/mi-consumo?mesa=' + (data.qr ?? id ?? '');
-          }
-        } else if (!cliente && !cancelado) {
-          // Join automatically
-          window.location.href = '/cliente/mi-consumo?mesa=' + (data.qr ?? id ?? '');
+          // Primera vez: mostrar tarjeta con decisión clara
+          setMostrarDecision(true);
         } else {
           // Already has session
           setMesaId(String(data.id));
+          navigate('/cliente/menu');
         }
       })
-      .catch((e) => {
-        console.error('QR: Fetch error', e);
-        setErr('Error al cargar mesa: ' + e.message);
-        // Show alert so user sees something
-        try { window.alert('Error cargando mesa: ' + e.message); } catch(e2) {}
+      .catch((err) => {
+        setErr(mensajeError(err.error) || 'Error al cargar la mesa. Inténtalo de nuevo.');
       })
       .finally(() => {
         if (!cancelado) setLoading(false);
@@ -88,7 +67,7 @@ export default function MesaQrPage() {
     return () => {
       cancelado = true;
     };
-  }, [id]);
+  }, [id, cliente, navigate]);
 
   if (loading) {
     return (
@@ -108,29 +87,65 @@ export default function MesaQrPage() {
     );
   }
 
+  // Tarjeta de decisión para primera vez en la mesa
+  if (mostrarDecision && !cliente) {
+    return (
+      <div style={{padding: '24px 16px 140px', maxWidth: 420, margin: '0 auto'}}>
+        <div style={{padding: 26, textAlign: 'center', background: 'radial-gradient(300px 200px at 50% 0,rgba(166,30,34,0.12),transparent),var(--surface-lowest)'}}>
+          <h1 style={{fontSize: 32, margin: '0 0 12px'}}>¿Cómo quieres pedir?</h1>
+          <p style={{color: 'var(--muted)', fontSize: 14, margin: '0 0 24px'}}>
+            Selecciona cómo quieres gestionar tu comanda en la mesa {mesa.numero}.
+          </p>
+          <div style={{display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24}}>
+            <button
+              onClick={() => {
+                setMesaId(String(mesa.id));
+                setMostrarDecision(false);
+                navigate('/cliente/menu');
+              }}
+              className="w-full flex items-center justify-center gap-8 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-lg font-bold text-[#7F1518] shadow-sm transition hover:bg-amber-500/20"
+            >
+              <span style={{fontSize: 24}}>🍽️</span>
+              <span>Pedir yo por toda la mesa</span>
+            </button>
+            <button
+              onClick={() => {
+                navigate('/cliente/login?mesa=' + encodeURIComponent(mesa.qr ?? id ?? ''));
+                setMostrarDecision(false);
+              }}
+              className="w-full flex items-center justify-center gap-8 rounded-lg border border-gray-300 bg-white px-4 py-4 text-lg font-bold text-gray-700 shadow-sm transition hover:bg-gray-50"
+            >
+              <span style={{fontSize: 24}}>👤</span>
+              <span>Cada uno pide lo suyo</span>
+            </button>
+          </div>
+          <p style={{color: 'var(--muted)', fontSize: 12, marginTop: 16}}>
+            Si eliges "Cada uno pide lo suyo", se te pedirá iniciar sesión con tu cuenta.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{padding: '24px 16px 140px', maxWidth: 420, margin: '0 auto'}}>
       <div style={{padding: 26, textAlign: 'center', background: 'radial-gradient(300px 200px at 50% 0,rgba(166,30,34,0.12),transparent),var(--surface-lowest)'}}>
-        <p style={{margin: '0 0 18px', fontSize: 14, color: 'var(--text-muted)'}}>Escanea el QR de tu mesa</p>
-        <div>
-          <QRCodeSVG value={mesa?.qr ?? ''} size={168} />
-        </div>
-        <h1 style={{fontSize: 34, margin: '16px 0 4px'}}>Mesa {mesa?.numero}</h1>
+        <h1 style={{fontSize: 34, margin: '0 0 4px'}}>Mesa {mesa?.numero}</h1>
         <p style={{color: 'var(--muted)', fontSize: 12, margin: 0}}>
           {mesa?.ambiente} · Capacidad {mesa?.capacidad} · {mesa?.estadoOperativo}
         </p>
         <p style={{color: 'var(--muted)', fontSize: 12, margin: '14px 0'}}>
-          Abre la cámara de tu celular y escanea el código. Tus acompañantes comparten esta misma comanda.
+          Mesa identificada. Tus acompañantes pueden compartir la comanda desde sus teléfonos.
         </p>
         <div style={{margin: '16px 0'}}>
           <Link
-            style={{display: 'inline-block', background: '#0066cc', color: 'white', padding: '10px 16px', borderRadius: '6px', textDecoration: 'none'}}
+            style={{display: 'inline-block', background: '#7F1518', color: 'white', padding: '10px 16px', borderRadius: '6px', textDecoration: 'none'}}
             to={cliente ? '/cliente/menu' : '/cliente/login?mesa=' + (mesa?.qr ?? id ?? '')}
           >
             Ver carta y pedir
           </Link>
           <Link
-            style={{display: 'inline-block', background: '#6c757d', color: 'white', padding: '10px 16px', borderRadius: '6px', textDecoration: 'none', marginLeft: '10px'}}
+            style={{display: 'inline-block', background: 'var(--line2)', color: 'var(--text)', padding: '10px 16px', borderRadius: '6px', textDecoration: 'none', marginLeft: '10px'}}
             to={cliente ? '/cliente/mi-consumo' : '/cliente/login?mesa=' + (mesa?.qr ?? id ?? '')}
           >
             Mi comanda

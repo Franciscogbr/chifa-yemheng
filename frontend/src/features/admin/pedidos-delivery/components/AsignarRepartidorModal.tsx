@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/shared/services/api-client';
 import { Button } from '@/shared/ui/Button';
 import { Badge } from '@/shared/ui/Badge';
+import { useToast } from '@/shared/ui/use-toast';
 
 interface Repartidor {
   id: number;
@@ -37,6 +38,7 @@ interface AsignarRepartidorModalProps {
 }
 
 export function AsignarRepartidorModal({ abierto, delivery, onCerrar, onExito }: AsignarRepartidorModalProps) {
+  const { toast } = useToast();
   const [repartidores, setRepartidores] = useState<Repartidor[]>([]);
   const [repartidorId, setRepartidorId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -103,11 +105,11 @@ export function AsignarRepartidorModal({ abierto, delivery, onCerrar, onExito }:
         method: 'PATCH',
         body: JSON.stringify({ repartidorId, costoEnvio: costo }),
       });
-      alert('Costo confirmado y repartidor asignado. El pedido permanece pendiente hasta iniciar la ruta.');
+      toast({ title: 'Repartidor asignado', description: 'El pedido permanece pendiente hasta iniciar la ruta.', variant: 'success' });
       onExito();
       onCerrar();
     } catch (error: any) {
-      alert(error.message || 'Error asignando repartidor');
+      toast({ title: 'Error asignando repartidor', description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }

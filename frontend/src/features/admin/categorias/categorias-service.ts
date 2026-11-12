@@ -1,7 +1,9 @@
 import { leerToken } from '../../auth/login/auth-service';
 import type { Categoria, CategoriaForm, CategoriaLista } from './categorias-types';
 
-const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/categorias`;
+import { API_URL } from '../../../lib/api-url';
+
+const BASE = `${API_URL}/categorias`;
 
 function headers(): HeadersInit {
   return {

@@ -1,6 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import { supabase } from '../config/supabase.js';
-import type { Ambiente, Mesa, MesaLista, OcupacionMesa } from '../models/mesa.js';
+import type {
+  Ambiente,
+  ClientesMesaResponse,
+  Mesa,
+  MesaLista,
+  OcupacionMesa,
+} from '../models/mesa.js';
 import type {
   AmbienteCreate,
   AmbienteUpdate,
@@ -474,6 +480,169 @@ export async function ocupacionMesas(): Promise<OcupacionMesa[]> {
       platos: platosPorPedido.get(r.id_pedido) ?? [],
     };
   });
+}
+
+interface ParticipanteMesaRow {
+  id_cliente: number;
+  es_organizador: boolean;
+  cliente: ClienteMesaRelation | ClienteMesaRelation[] | null;
+}
+
+interface ClienteMesaRelation {
+  tipo_cliente: string;
+  persona: {
+    n_documento: string;
+    nombre: string;
+    ap_paterno: string | null;
+    ap_materno: string | null;
+    tipo_identidad: { n_tipoidentidad: string } | null;
+  } | null;
+  empresa: {
+    ruc: string;
+    razon_social: string;
+    nombre_comercial: string | null;
+  } | null;
+}
+
+/** Clientes y consumos atribuidos a la comanda abierta de una mesa. */
+export async function listarClientesMesa(mesaId: number): Promise<ClientesMesaResponse> {
+  const { data: pedido, error: pedidoError } = await supabase
+    .from('pedido')
+    .select('id_pedido, total, modo_pago_mesa')
+    .eq('id_mesa', mesaId)
+    .eq('facturado', 'N')
+    .eq('anulado', 'N')
+    .eq('estado', 'A')
+    .order('f_pedido', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (pedidoError) {
+    throw new Error(`DB_MESA_CLIENTES_FAIL: ${pedidoError.message}`);
+  }
+  if (!pedido) {
+    return { modoPagoMesa: 'CUENTA_UNICA', totalComanda: 0, clientes: [] };
+  }
+
+  const { data: participantes, error: participantesError } = await supabase
+    .from('pedido_participante')
+    .select(
+      'id_cliente, es_organizador, cliente:cliente(tipo_cliente, persona(n_documento, nombre, ap_paterno, ap_materno, tipo_identidad(n_tipoidentidad)), empresa(ruc, razon_social, nombre_comercial))',
+    )
+    .eq('id_pedido', pedido.id_pedido)
+    .order('es_organizador', { ascending: false })
+    .order('id_cliente', { ascending: true });
+
+  if (participantesError) {
+    throw new Error(`DB_MESA_CLIENTES_FAIL: ${participantesError.message}`);
+  }
+
+  const modoPagoMesa = pedido.modo_pago_mesa === 'POR_CONSUMO' ? 'POR_CONSUMO' : 'CUENTA_UNICA';
+  const consumos = new Map<number, number>();
+  const estadosCuenta = new Map<number, 'ABIERTA' | 'PAGADA' | null>();
+  const montosPagados = new Map<number, number>();
+
+  if (modoPagoMesa === 'POR_CONSUMO') {
+    const saldos = await Promise.all(
+      ((participantes ?? []) as unknown as ParticipanteMesaRow[]).map(async (participante) => {
+        const { data, error } = await supabase.rpc('fn_saldo_participante', {
+          p_pedido: pedido.id_pedido,
+          p_cliente: participante.id_cliente,
+        });
+        if (error) {
+          throw new Error(`DB_MESA_CLIENTES_FAIL: ${error.message}`);
+        }
+        const filas = (Array.isArray(data) ? data : data ? [data] : []) as {
+          consumo_abierto?: number | string | null;
+          estado_cuenta?: string;
+          monto_pagado?: number | string | null;
+        }[];
+        const cuentaAbierta = filas.find((fila) => fila.estado_cuenta === 'ABIERTA');
+        const montoPagado = filas.reduce(
+          (total, fila) => total + Number(fila.monto_pagado ?? 0),
+          0,
+        );
+        const estado: 'ABIERTA' | 'PAGADA' | null = cuentaAbierta
+          ? 'ABIERTA'
+          : filas.length > 0
+            ? 'PAGADA'
+            : null;
+        return {
+          clienteId: participante.id_cliente,
+          consumo: Number(cuentaAbierta?.consumo_abierto ?? 0),
+          estado,
+          montoPagado,
+        };
+      }),
+    );
+    for (const saldo of saldos) {
+      consumos.set(saldo.clienteId, saldo.consumo);
+      estadosCuenta.set(saldo.clienteId, saldo.estado);
+      montosPagados.set(saldo.clienteId, saldo.montoPagado);
+    }
+  } else {
+    const { data: detalles, error: detallesError } = await supabase
+      .from('detalle_pedido')
+      .select('id_cliente, sub_total')
+      .eq('id_pedido', pedido.id_pedido)
+      .eq('estado', 'A')
+      .neq('estado_preparacion', 'A');
+
+    if (detallesError) {
+      throw new Error(`DB_MESA_CLIENTES_FAIL: ${detallesError.message}`);
+    }
+
+    for (const detalle of (detalles ?? []) as {
+      id_cliente: number | null;
+      sub_total: number | string | null;
+    }[]) {
+      if (detalle.id_cliente === null) {
+        continue;
+      }
+      consumos.set(
+        detalle.id_cliente,
+        (consumos.get(detalle.id_cliente) ?? 0) + Number(detalle.sub_total ?? 0),
+      );
+    }
+  }
+
+  const clientes = ((participantes ?? []) as unknown as ParticipanteMesaRow[]).map((fila) => {
+    const cliente = Array.isArray(fila.cliente) ? fila.cliente[0] : fila.cliente;
+    const persona = cliente?.persona;
+    const empresa = cliente?.empresa;
+
+    if (cliente?.tipo_cliente === 'J' && empresa) {
+      return {
+        clienteId: fila.id_cliente,
+        nombre: empresa.nombre_comercial || empresa.razon_social,
+        tipoDocumento: 'RUC',
+        documento: empresa.ruc,
+        esOrganizador: fila.es_organizador,
+        consumoEstimado: consumos.get(fila.id_cliente) ?? 0,
+        estadoCuenta: estadosCuenta.get(fila.id_cliente) ?? null,
+        montoPagado: montosPagados.get(fila.id_cliente) ?? 0,
+      };
+    }
+
+    return {
+      clienteId: fila.id_cliente,
+      nombre: persona
+        ? [persona.nombre, persona.ap_paterno, persona.ap_materno].filter(Boolean).join(' ')
+        : `Cliente ${fila.id_cliente}`,
+      tipoDocumento: persona?.tipo_identidad?.n_tipoidentidad ?? 'DNI',
+      documento: persona?.n_documento ?? '',
+      esOrganizador: fila.es_organizador,
+      consumoEstimado: consumos.get(fila.id_cliente) ?? 0,
+      estadoCuenta: estadosCuenta.get(fila.id_cliente) ?? null,
+      montoPagado: montosPagados.get(fila.id_cliente) ?? 0,
+    };
+  });
+
+  return {
+    modoPagoMesa,
+    totalComanda: Number(pedido.total ?? 0),
+    clientes,
+  };
 }
 
 export async function auditar(

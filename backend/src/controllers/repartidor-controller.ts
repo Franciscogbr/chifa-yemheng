@@ -141,6 +141,18 @@ export async function postRegistrarVenta(req: Request, res: Response): Promise<v
         res.status(409).json({ error: 'CAJA_NO_ABIERTA' });
         return;
       }
+      if (error.code === 'VALIDATION_ERROR') {
+        res.status(400).json({ error: 'VALIDATION_ERROR' });
+        return;
+      }
+      if (error.code === 'PEDIDO_INVALIDO' || error.code === 'REPARTIDOR_NO_DISPONIBLE') {
+        res.status(409).json({ error: error.code });
+        return;
+      }
+      if (error.code === 'CLIENTE_NOT_FOUND') {
+        res.status(409).json({ error: error.code });
+        return;
+      }
       if (error.code === 'VENTA_NO_EXISTE') {
         res.status(409).json({ error: 'VENTA_NO_EXISTE' });
         return;
@@ -149,7 +161,7 @@ export async function postRegistrarVenta(req: Request, res: Response): Promise<v
 
     // Mapear errores comunes de base de datos a 409 en lugar de 500
     const msg = err.message;
-    if (msg.includes('DB_SERIE_FAIL') || msg.includes('fn_incrementar_correlativo_serie')) {
+    if (msg.includes('DB_SERIE_FAIL') || msg.includes('fn_incrementar_correlativo_serie') || msg.includes('SERIE_NO_EXISTE')) {
       res.status(409).json({ error: 'SERIE_BOLETA_FAIL' });
       return;
     }

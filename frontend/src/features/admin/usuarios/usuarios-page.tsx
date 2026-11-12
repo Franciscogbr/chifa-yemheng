@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { leerPermisos, leerToken } from '../../auth/login/auth-service';
 
-const API_ROOT = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
-const BASE = `${API_ROOT}/seguridad`;
+import { API_URL } from '../../../lib/api-url';
+
+const BASE = `${API_URL}/seguridad`;
 
 interface Usuario {
   id: number;
@@ -53,7 +54,7 @@ interface RolForm {
 }
 
 async function api<T>(path: string, opts?: RequestInit): Promise<T> {
-  const url = path.startsWith('/personal') ? `${API_ROOT}${path}` : `${BASE}${path}`;
+  const url = path.startsWith('/personal') ? `${API_URL}${path}` : `${BASE}${path}`;
   const res = await fetch(url, {
     ...opts,
     headers: {

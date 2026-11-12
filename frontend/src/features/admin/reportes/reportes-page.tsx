@@ -2,7 +2,9 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { leerToken } from '../../auth/login/auth-service';
 import { exportarReportesExcel, exportarReportesPdf, type ReporteExportable } from './reportes-export';
 
-const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/reportes`;
+import { API_URL } from '../../../lib/api-url';
+
+const BASE = `${API_URL}/reportes`;
 
 type ReportTab = 'ventas' | 'productos' | 'categorias' | 'arqueo' | 'pagos' | 'comprobantes' | 'movimientos' | 'reservas' | 'delivery' | 'canales' | 'horarios' | 'ticket' | 'anulaciones' | 'notas-credito' | 'clientes' | 'mesas' | 'empleados' | 'fiscal' | 'ventas-anuladas' | 'sunat' | 'pagos-operacion' | 'reservas-estado' | 'tipo-cliente' | 'comparacion' | 'caja-resumen';
 const filterLabel: CSSProperties = {
@@ -286,7 +288,7 @@ export function AdminReportesPage() {
     (!cajaFiltro || row.caja === cajaFiltro)
     && (!estadoTurnoFiltro || row.situacion === estadoTurnoFiltro)
     && (!termino || `${row.caja} ${row.turno}`.toLocaleLowerCase('es').includes(termino))
-    && cumpleRango(row.ventasRegistradas, montoDesde, montoHasta));
+    && cumpleRango(row.montoSistema, montoDesde, montoHasta));
 
   const cajas = opcionesUnicas([...arqueo.map((row) => row.caja), ...comprobantes.map((row) => row.caja), ...movimientos.map((row) => row.caja)]);
   const responsablesArqueo = opcionesUnicas(arqueo.map((row) => row.usuarioApertura));
@@ -944,8 +946,8 @@ export function AdminReportesPage() {
           )}
           {tab !== 'productos' && tab !== 'comprobantes' && tab !== 'movimientos' && tab !== 'comparacion' && tab !== 'reservas-estado' && (
             <div style={{ ...filterLabel, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <label style={filterLabel}>{tab === 'reservas' ? 'Adelanto mínimo' : tab === 'delivery' ? 'Costo de envío mínimo' : 'Monto mínimo'}<input className="input" type="number" min="0" step="0.01" value={montoDesde} onChange={(event) => setMontoDesde(event.target.value)} placeholder="S/ 0.00" /></label>
-              <label style={filterLabel}>{tab === 'reservas' ? 'Adelanto máximo' : tab === 'delivery' ? 'Costo de envío máximo' : 'Monto máximo'}<input className="input" type="number" min="0" step="0.01" value={montoHasta} onChange={(event) => setMontoHasta(event.target.value)} placeholder="Sin límite" /></label>
+              <label style={filterLabel}>{tab === 'reservas' ? 'Adelanto mínimo' : tab === 'delivery' ? 'Costo de envío mínimo' : tab === 'caja-resumen' ? 'Monto del sistema mínimo' : 'Monto mínimo'}<input className="input" type="number" min="0" step="0.01" value={montoDesde} onChange={(event) => setMontoDesde(event.target.value)} placeholder="S/ 0.00" /></label>
+              <label style={filterLabel}>{tab === 'reservas' ? 'Adelanto máximo' : tab === 'delivery' ? 'Costo de envío máximo' : tab === 'caja-resumen' ? 'Monto del sistema máximo' : 'Monto máximo'}<input className="input" type="number" min="0" step="0.01" value={montoHasta} onChange={(event) => setMontoHasta(event.target.value)} placeholder="Sin límite" /></label>
             </div>
           )}
           {(tab === 'productos' || tab === 'comprobantes' || tab === 'movimientos') && (

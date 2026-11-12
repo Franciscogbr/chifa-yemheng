@@ -4,7 +4,19 @@ import type { Maestro } from '../../../services/maestros';
 
 export { listarDistritos } from '../../../services/maestros';
 
-const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/personal`;
+import { API_URL } from '../../../lib/api-url';
+
+const BASE = `${API_URL}/personal`;
+const FACTILIZA = `${API_URL}/factiliza`;
+
+export interface DatosDni {
+  nombres: string;
+  apPaterno: string;
+  apMaterno: string;
+  fNacimiento: string | null;
+  genero: 'M' | 'F' | 'O' | null;
+  direccion: string | null;
+}
 
 function headers(): HeadersInit {
   return {
@@ -47,7 +59,7 @@ export function listarPersonal(f: FiltrosPersonal): Promise<PersonalLista> {
   return fetch(`${BASE}?${q.toString()}`, { headers: headers() }).then(lanzar<PersonalLista>);
 }
 
-const MAESTROS = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/maestros`;
+const MAESTROS = `${API_URL}/maestros`;
 
 /** Listas maestras vivas (cargos, contratos, tipos-identidad; distritos va por shared). */
 function listarMaestros(ruta: string): Promise<Maestro[]> {
@@ -64,6 +76,14 @@ export function listarContratos(): Promise<Maestro[]> {
 
 export function listarTiposIdentidad(): Promise<Maestro[]> {
   return listarMaestros('tipos-identidad');
+}
+
+export function consultarDni(dni: string): Promise<DatosDni> {
+  return fetch(`${FACTILIZA}/dni`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ dni }),
+  }).then(lanzar<DatosDni>);
 }
 
 export function crearEmpleado(input: Omit<PersonalForm, 'fIngreso'> & { fIngreso?: string }): Promise<Personal> {

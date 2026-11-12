@@ -74,7 +74,7 @@ export function ProductosPage() {
   useEffect(() => {
     void cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, busqueda, categoria, estado, disponible]);
+  }, [page, busqueda, categoria, estado, disponible, filtroTipo]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / LIMITE));
   const disponibles = datos.filter((d) => d.disponible && d.estado === 'A').length;

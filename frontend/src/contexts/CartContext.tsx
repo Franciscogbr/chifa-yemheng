@@ -3,6 +3,7 @@ import type { Producto } from '../types/db';
 
 const IGV_RATE = 0.18;
 const MESA_SESSION_KEY = 'chifa.cliente.mesa';
+const ITEMS_SESSION_KEY = 'chifa.cliente.items';
 
 export interface CartItem { producto: Producto; cantidad: number; nota: string; }
 interface CartState {
@@ -23,17 +24,29 @@ const Ctx = createContext<CartState>({} as CartState);
 export const useCart = () => useContext(Ctx);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>(() => {
+    try {
+      const raw = sessionStorage.getItem(ITEMS_SESSION_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
   const [mesaId, setMesaIdState] = useState(() => sessionStorage.getItem(MESA_SESSION_KEY) ?? '');
   useEffect(() => {
     const limpiarSesion = () => {
       setItems([]);
       setMesaIdState('');
       sessionStorage.removeItem(MESA_SESSION_KEY);
+      sessionStorage.removeItem(ITEMS_SESSION_KEY);
     };
     window.addEventListener('cliente:limpiar-sesion', limpiarSesion);
     return () => window.removeEventListener('cliente:limpiar-sesion', limpiarSesion);
   }, []);
+  // Persistir items cada vez que cambien
+  useEffect(() => {
+    sessionStorage.setItem(ITEMS_SESSION_KEY, JSON.stringify(items));
+  }, [items]);
   const setMesaId = useCallback((value: string) => {
     const mesa = value.trim();
     setMesaIdState(mesa);
@@ -54,10 +67,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return [...prev, { producto: p, cantidad, nota }];
     });
   }, []);
-  const remove = (id: number) => setItems((p) => p.filter((x) => x.producto.id_producto !== id));
-  const setQty = (id: number, q: number) => setItems((p) => (q <= 0 ? p.filter((x) => x.producto.id_producto !== id) : p.map((x) => (x.producto.id_producto === id ? { ...x, cantidad: q } : x))));
-  const setNota = (id: number, n: string) => setItems((p) => p.map((x) => (x.producto.id_producto === id ? { ...x, nota: n } : x)));
-  const clear = useCallback(() => setItems([]), []);
+  const remove: CartState['remove'] = (id) => setItems((p) => p.filter((x) => x.producto.id_producto !== id));
+  const setQty: CartState['setQty'] = (id, q) => {
+    setItems((p) => {
+      if (q <= 0) return p.filter((x) => x.producto.id_producto !== id);
+      return p.map((x) => (x.producto.id_producto === id ? { ...x, cantidad: q } : x));
+    });
+  };
+  const setNota: CartState['setNota'] = (id, n) => {
+    setItems((p) => p.map((x) => (x.producto.id_producto === id ? { ...x, nota: n } : x)));
+  };
+  const clear = useCallback(() => {
+    setItems([]);
+    sessionStorage.removeItem(ITEMS_SESSION_KEY);
+  }, []);
   const { subtotal, igv, total, count } = useMemo(() => {
     const total = items.reduce((s, x) => s + x.cantidad * Number(x.producto.precio), 0);
     const subtotal = total / (1 + IGV_RATE);

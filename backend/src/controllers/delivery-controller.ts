@@ -19,7 +19,29 @@ export async function postDelivery(req: Request, res: Response): Promise<void> {
   const parsed = deliveryCreateSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.flatten() }); return; }
   const s = sesion(req);
-  res.status(201).json(await crearDeliveryService(parsed.data, s.logeo, s.pc));
+  try {
+    res.status(201).json(await crearDeliveryService(parsed.data, s.id, s.logeo, s.pc));
+  } catch (error) {
+    if (error instanceof DeliveryError) {
+      if (error.code === 'CLIENTE_NOT_FOUND') {
+        res.status(404).json({ error: error.code });
+        return;
+      }
+      if (error.code === 'DISTRITO_NOT_FOUND') {
+        res.status(400).json({ error: error.code });
+        return;
+      }
+      if (error.code === 'PRODUCTO_NO_DISPONIBLE') {
+        res.status(409).json({ error: error.code });
+        return;
+      }
+      if (error.code === 'VALIDATION_ERROR') {
+        res.status(400).json({ error: error.code });
+        return;
+      }
+    }
+    throw error;
+  }
 }
 export async function patchAsignar(req: Request, res: Response): Promise<void> {
   const parsed = deliveryAsignarSchema.safeParse(req.body);

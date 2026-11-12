@@ -168,11 +168,6 @@ export function AdminShell() {
                 className="flex w-full cursor-pointer items-center justify-between rounded-lg px-4 py-1.5 text-[11px] font-bold tracking-wider text-white/50 uppercase transition-colors hover:bg-white/5 hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C94C]/50"
               >
                 <span>{g.titulo}</span>
-                <span
-                  className={`material-symbols-outlined text-[18px] transition-transform ${abiertos.includes(g.titulo) ? 'rotate-180' : ''}`}
-                >
-                  expand_more
-                </span>
               </button>
               {abiertos.includes(g.titulo) && (
                 <div className="flex flex-col gap-1">
@@ -266,7 +261,6 @@ export function AdminShell() {
                     {usuario?.empleado || usuario?.logeo}
                   </span>
                 </div>
-                <span className="material-symbols-outlined text-[18px] opacity-60">expand_more</span>
               </button>
               {menuUsuario && (
                 <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-[#2a0d0e] dark:shadow-black/50">

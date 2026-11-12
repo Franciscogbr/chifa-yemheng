@@ -99,38 +99,54 @@ export async function listarClientes(q: ClienteQuery): Promise<ClienteLista> {
   const ordenColumna = q.orden === 'puntos' ? 'puntos' : q.orden === 'alpha' ? 'id_cliente' : 'f_registro';
   const ascendente = q.orden !== 'puntos' && q.orden !== 'recientes' ? true : false;
 
-  let query = supabase
-    .from('cliente')
-    .select(SELECT, { count: 'exact' })
-    .order(ordenColumna, { ascending: ascendente })
-    .range(desde, hasta);
+  const consultarPagina = (inicio: number, fin: number) => {
+    let query = supabase
+      .from('cliente')
+      .select(SELECT, { count: 'exact' });
+    if (q.tipo) query = query.eq('tipo_cliente', q.tipo);
+    if (q.estado) query = query.eq('estado', q.estado);
+    return query.order(ordenColumna, { ascending: ascendente }).range(inicio, fin);
+  };
 
-  if (q.tipo) {
-    query = query.eq('tipo_cliente', q.tipo);
-  }
-  if (q.estado) {
-    query = query.eq('estado', q.estado);
+  const buscar = q.buscar?.trim().toLocaleLowerCase('es') ?? '';
+  if (buscar || q.orden === 'alpha') {
+    const filas: ClienteRow[] = [];
+    let totalBase = 0;
+    for (let inicio = 0; ; inicio += 1000) {
+      const { data, error, count } = await consultarPagina(inicio, inicio + 999);
+      if (error) throw new Error(`DB_LIST_FAIL: ${error.message}`);
+      const pagina = (data ?? []) as unknown as ClienteRow[];
+      filas.push(...pagina);
+      totalBase = count ?? filas.length;
+      if (pagina.length < 1000 || filas.length >= totalBase) break;
+    }
+
+    let rows = filas.map(mapRow);
+    if (buscar) {
+      rows = rows.filter((row) =>
+        row.nombre.toLocaleLowerCase('es').includes(buscar)
+        || row.documento.toLocaleLowerCase('es').includes(buscar)
+        || (row.correo ?? '').toLocaleLowerCase('es').includes(buscar));
+    }
+    if (q.orden === 'alpha') {
+      rows.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+    }
+    return {
+      data: rows.slice(desde, hasta + 1),
+      page: q.page,
+      limit: q.limit,
+      total: rows.length,
+    };
   }
 
-  const { data, error, count } = await query;
-  if (error) {
-    throw new Error(`DB_LIST_FAIL: ${error.message}`);
-  }
-  let rows = ((data ?? []) as unknown as ClienteRow[]).map(mapRow);
-
-  if (q.buscar) {
-    const b = q.buscar.toLowerCase();
-    rows = rows.filter(
-      (r) =>
-        r.nombre.toLowerCase().includes(b) ||
-        r.documento.includes(q.buscar as string) ||
-        (r.correo ?? '').toLowerCase().includes(b),
-    );
-  }
-  if (q.orden === 'alpha') {
-    rows = [...rows].sort((a, b) => a.nombre.localeCompare(b.nombre));
-  }
-  return { data: rows, page: q.page, limit: q.limit, total: count ?? 0 };
+  const { data, error, count } = await consultarPagina(desde, hasta);
+  if (error) throw new Error(`DB_LIST_FAIL: ${error.message}`);
+  return {
+    data: ((data ?? []) as unknown as ClienteRow[]).map(mapRow),
+    page: q.page,
+    limit: q.limit,
+    total: count ?? 0,
+  };
 }
 
 export async function obtenerCliente(id: number): Promise<Cliente | null> {

@@ -1,6 +1,8 @@
 ﻿import { leerToken } from '../auth/login/auth-service';
 
-const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}`;
+import { API_URL } from '../../lib/api-url';
+
+const BASE = API_URL;
 
 function headers(): HeadersInit {
   return {
@@ -28,6 +30,7 @@ export interface TicketLinea {
   notaCocina: string | null;
   estadoPreparacion: EstadoPreparacion;
   fechaSolicitud: string | null;
+  fechaAtencion: string | null;
   fechaEntregaMozo: string | null;
 }
 
@@ -104,6 +107,23 @@ export interface CierrePendiente {
   montoDeclarado: number;
   diferencia: number;
   observacion: string | null;
+}
+
+export interface HistorialTurno {
+  id: number;
+  cajaNombre: string;
+  cajero: string;
+  usuarioCierre: string | null;
+  numeroTurno: string;
+  fApertura: string;
+  fCierre: string | null;
+  montoInicial: number;
+  montoSistema: number;
+  montoDeclarado: number;
+  diferencia: number;
+  resultado: 'CUADRADO' | 'SOBRANTE' | 'FALTANTE' | null;
+  observacion: string | null;
+  situacion: 'A' | 'C';
 }
 
 /* ------------------------------- Cocina ------------------------------- */
@@ -237,7 +257,7 @@ export function registrarMovimientoCaja(input: {
 
   export function solicitarCierreCaja(input: {
     cajaId: number;
-    montoDeclarado: number | null;
+    montoDeclarado: number;
     observacion: string;
   }): Promise<{ aperturaId: number; sistema: number; declarado: number; diferencia: number; resultado: string }> {
     return fetch(`${BASE}/caja/turno/cierre`, {
@@ -315,8 +335,8 @@ export function registrarArqueo(input: {
   }).then(lanzar<ArqueoResultado>);
 }
 
-export function historialCajaService(limite = 20): Promise<CierrePendiente[]> {
-  return fetch(`${BASE}/caja/cierres/cerrados`, { headers: headers() }).then(lanzar<CierrePendiente[]>);
+export function historialCajaService(): Promise<HistorialTurno[]> {
+  return fetch(`${BASE}/caja/cierres/cerrados`, { headers: headers() }).then(lanzar<HistorialTurno[]>);
 }
 
 export function listarIncidencias(pendientes = true): Promise<IncidenciaCajaInfo[]> {

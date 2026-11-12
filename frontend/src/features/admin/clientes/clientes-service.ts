@@ -1,7 +1,10 @@
 import { leerToken } from '../../auth/login/auth-service';
 import type { Cliente, ClienteForm, ClienteLista, TipoCliente } from './clientes-types';
 
-const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/clientes`;
+import { API_URL } from '../../../lib/api-url';
+
+const BASE = `${API_URL}/clientes`;
+const FACTILIZA = `${API_URL}/factiliza`;
 
 export interface DatosDni {
   nombres: string;
@@ -60,7 +63,7 @@ export function listarClientes(f: FiltrosClientes): Promise<ClienteLista> {
 }
 
 export function consultarDni(dni: string): Promise<DatosDni> {
-  return fetch(`${BASE}/consulta/dni`, {
+  return fetch(`${FACTILIZA}/dni`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({ dni }),
@@ -68,7 +71,7 @@ export function consultarDni(dni: string): Promise<DatosDni> {
 }
 
 export function consultarRuc(ruc: string): Promise<DatosRuc> {
-  return fetch(`${BASE}/consulta/ruc`, {
+  return fetch(`${FACTILIZA}/ruc`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({ ruc }),

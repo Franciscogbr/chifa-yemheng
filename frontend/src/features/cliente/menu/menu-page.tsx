@@ -5,7 +5,7 @@ import { useCart } from '../../../contexts/CartContext';
 import { QrScannerModal } from '../../../components/QrScannerModal';
 import { useClienteAuth } from '../auth/cliente-auth-context';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
+import { API_URL } from '../../../lib/api-url';
 
 interface ProductoApi {
   id: number;

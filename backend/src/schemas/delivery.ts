@@ -10,14 +10,27 @@ export const deliveryQuerySchema = z.object({
 });
 
 export const deliveryCreateSchema = z.object({
-  pedidoId: z.number().int().positive(),
-  distritoId: z.number().int().positive().optional(),
-  direccion: z.string().min(1).max(200),
-  referencia: z.string().max(200).optional(),
-  telefono: z.string().max(20).optional(),
-  costo: z.number().min(0).default(0),
+  clienteId: z.number().int().positive(),
+  items: z.array(z.object({
+    productoId: z.number().int().positive(),
+    cantidad: z.number().int().positive(),
+    nota: z.string().max(150).optional(),
+  }).strict()).min(1),
+  distritoId: z.number().int().positive(),
+  direccion: z.string().trim().min(1).max(150),
+  referencia: z.string().max(150).optional(),
+  telefono: z.string().trim().regex(/^\d{9}$/),
+  costoEnvio: z.number().finite().min(0).default(0),
   latCliente: z.number().min(-90).max(90).optional(),
   lngCliente: z.number().min(-180).max(180).optional(),
+}).superRefine((data, ctx) => {
+  if ((data.latCliente === undefined) !== (data.lngCliente === undefined)) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'La ubicación debe incluir latitud y longitud.',
+      path: ['latCliente'],
+    });
+  }
 });
 
 export const deliveryAsignarSchema = z.object({

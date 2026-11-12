@@ -10,7 +10,9 @@ import type {
   OcupacionMesa,
 } from './mesas-types';
 
-const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/mesas`;
+import { API_URL } from '../../../lib/api-url';
+
+const BASE = `${API_URL}/mesas`;
 
 function headers(): HeadersInit {
   return {

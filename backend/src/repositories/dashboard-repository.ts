@@ -51,7 +51,7 @@ async function ventasHoy(): Promise<VentasHoy> {
 async function pedidos(): Promise<PedidosResumen> {
   try {
     const [peds, catalogo] = await Promise.all([
-      supabase.from('pedido').select('id_estadopedido').eq('anulada', 'N'),
+      supabase.from('pedido').select('id_estadopedido').eq('anulado', 'N'),
       supabase.from('estado_pedido').select('id_estadopedido, descripcion'),
     ]);
     if (peds.error || catalogo.error || !peds.data || !catalogo.data) {

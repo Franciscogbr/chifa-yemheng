@@ -8,14 +8,35 @@ import {
   crearMesa,
   estadoService,
   listarAmbientes,
+  listarClientesMesa,
   listarMesas,
   listarOcupacion,
 } from './mesas-service';
 import { MesaIcon } from './mesa-icon';
 import { COLOR_POR_ESTADO, TIPOS_MESA } from './mesas-types';
-import type { Ambiente, AmbienteForm, EstadoMesas, Mesa, MesaForm, OcupacionMesa } from './mesas-types';
+import type {
+  Ambiente,
+  AmbienteForm,
+  ClientesMesaResponse,
+  EstadoMesas,
+  Mesa,
+  MesaForm,
+} from './mesas-types';
 
 const LIMITE = 20;
+const LIMITE_MAPA = 100;
+
+async function listarTodasLasMesas(): Promise<Mesa[]> {
+  const filtros = { limit: LIMITE_MAPA, ambiente: '' as const, estado: '' as const, buscar: '' };
+  const primera = await listarMesas({ ...filtros, page: 1 });
+  const paginas = Math.ceil(primera.total / LIMITE_MAPA);
+  const restantes = await Promise.all(
+    Array.from({ length: Math.max(0, paginas - 1) }, (_, indice) =>
+      listarMesas({ ...filtros, page: indice + 2 }),
+    ),
+  );
+  return [primera, ...restantes].flatMap((pagina) => pagina.data);
+}
 type Tab = 'mapa' | 'mesas' | 'ambientes';
 
 const VACIO_MESA: MesaForm = { ambienteId: 0, numero: '', capacidad: 4, tipoId: 1, detalle: '', regenerarQr: false };
@@ -93,6 +114,7 @@ export function MesasPage() {
   const [texto, setTexto] = useState('');
   const [ambiente, setAmbiente] = useState<number | ''>('');
   const [datos, setDatos] = useState<Mesa[]>([]);
+  const [mesasMapa, setMesasMapa] = useState<Mesa[]>([]);
   const [total, setTotal] = useState(0);
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -106,26 +128,26 @@ export function MesasPage() {
   const [formAmb, setFormAmb] = useState<AmbienteForm>(VACIO_AMB);
   const [zonaMapa, setZonaMapa] = useState<number | 'all'>('all');
   const [detalle, setDetalle] = useState<Mesa | null>(null);
+  const [infoClientesMesa, setInfoClientesMesa] = useState<ClientesMesaResponse | null>(null);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
+  const [errorDetalle, setErrorDetalle] = useState<string | null>(null);
   const [hojaQR, setHojaQR] = useState<Ambiente | null>(null);
   const [estadoMesas, setEstadoMesas] = useState<EstadoMesas | null>(null);
   const [cargandoEstado, setCargandoEstado] = useState(false);
-  const [pagados, setPagados] = useState<Set<number>>(new Set());
-  const [filtroClientes, setFiltroClientes] = useState<'todos' | 'organizador' | 'participantes'>('todos');
-  const [soloLectura, setSoloLectura] = useState(false);
-  const [clientesDetalle, setClientesDetalle] = useState<Map<number, { telefono?: string; correo?: string; direccion?: string; errores: Record<string, string> }>>(new Map());
-  const [expandidos, setExpandidos] = useState<Set<number>>(new Set());
 
   const cargar = async () => {
     setCargando(true);
     setError(null);
     try {
-      const [res, ambs, ocup] = await Promise.all([
+      const [res, ambs, ocup, todasLasMesas] = await Promise.all([
         listarMesas({ page, limit: LIMITE, ambiente, estado: '', buscar }),
         listarAmbientes(),
-        listarOcupacion().catch(() => [] as OcupacionMesa[]),
+        listarOcupacion(),
+        listarTodasLasMesas(),
       ]);
       const porMesa = new Map(ocup.map((o) => [o.mesaId, o]));
       setDatos(res.data.map((m) => ({ ...m, ocupacion: porMesa.get(m.id) ?? null })));
+      setMesasMapa(todasLasMesas.map((m) => ({ ...m, ocupacion: porMesa.get(m.id) ?? null })));
       setTotal(res.total);
       setAmbientes(ambs);
     } catch {
@@ -147,72 +169,50 @@ export function MesasPage() {
     }
   };
 
-  const togglePago = (clienteId: number) => {
-    setPagados((prev) => {
-      const next = new Set(prev);
-      if (next.has(clienteId)) next.delete(clienteId);
-      else next.add(clienteId);
-      return next;
-    });
-  };
-
-  const clientePagado = (clienteId: number) => pagados.has(clienteId);
-
-  const clientesPendientes = () => {
-    const clientes = detalle?.ocupacion?.clientes ?? [];
-    return clientes.filter((c) => (c.consumoEstimado ?? 0) > 0 && !clientePagado(c.clienteId)).length;
-  };
-
-  const clientesFiltrados = () => {
-    const clientes = detalle?.ocupacion?.clientes ?? [];
-    if (filtroClientes === 'organizador') return clientes.filter((c) => c.esOrganizador);
-    if (filtroClientes === 'participantes') return clientes.filter((c) => !c.esOrganizador);
-    return clientes;
-  };
-
-  const validarCampo = (clienteId: number, campo: string, valor: string): string => {
-    const errores = clientesDetalle.get(clienteId)?.errores ?? {};
-    let error = '';
-    switch (campo) {
-      case 'telefono':
-        if (valor && !/^(\+51)?\d{9}$/.test(valor.replace(/\s/g, ''))) error = 'Teléfono inválido (ej. 999888777)';
-        break;
-      case 'correo':
-        if (valor && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)) error = 'Correo inválido';
-        break;
-      case 'dni':
-        if (valor && !/^\d{8}$/.test(valor)) error = 'DNI debe tener 8 dígitos';
-        break;
-    }
-    if (error) errores[campo] = error;
-    else delete errores[campo];
-    setClientesDetalle((prev) => {
-      const next = new Map(prev);
-      next.set(clienteId, { ...(next.get(clienteId) ?? {}), errores });
-      return next;
-    });
-    return error;
-  };
-
-  const actualizarDetalleCliente = (clienteId: number, campo: string, valor: string) => {
-    setClientesDetalle((prev) => {
-      const next = new Map(prev);
-      const actual = next.get(clienteId) ?? { errores: {} };
-      next.set(clienteId, { ...actual, [campo]: valor });
-      return next;
-    });
-    validarCampo(clienteId, campo, valor);
-  };
-
   useEffect(() => {
     void cargar();
     void cargarEstado();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, buscar, ambiente]);
 
+  const detalleId = detalle?.id;
+  useEffect(() => {
+    if (detalleId === undefined) {
+      setInfoClientesMesa(null);
+      setCargandoDetalle(false);
+      setErrorDetalle(null);
+      return;
+    }
+
+    let vigente = true;
+    setInfoClientesMesa(null);
+    setCargandoDetalle(true);
+    setErrorDetalle(null);
+
+    void Promise.all([listarClientesMesa(detalleId), listarOcupacion()])
+      .then(([clientes, ocupaciones]) => {
+        if (!vigente) return;
+        setInfoClientesMesa(clientes);
+        const ocupacion = ocupaciones.find((item) => item.mesaId === detalleId) ?? null;
+        setDetalle((actual) =>
+          actual?.id === detalleId ? { ...actual, ocupacion } : actual,
+        );
+      })
+      .catch(() => {
+        if (vigente) setErrorDetalle('No fue posible cargar los datos actuales de la comanda.');
+      })
+      .finally(() => {
+        if (vigente) setCargandoDetalle(false);
+      });
+
+    return () => {
+      vigente = false;
+    };
+  }, [detalleId]);
+
   const totalPaginas = Math.max(1, Math.ceil(total / LIMITE));
-  const porAmbiente = (id: number) => datos.filter((m) => m.ambienteId === id);
-  const conteoEstado = (nombre: string) => datos.filter((m) => m.estadoOperativo === nombre).length;
+  const porAmbiente = (id: number) => mesasMapa.filter((m) => m.ambienteId === id);
+  const conteoEstado = (nombre: string) => mesasMapa.filter((m) => m.estadoOperativo === nombre).length;
   const numeroOriginal = modal?.editando?.numero.trim().toUpperCase() ?? '';
   const numeroNuevo = form.numero.trim().toUpperCase();
   const cambioNumero = !!modal?.editando && numeroNuevo !== '' && numeroNuevo !== numeroOriginal;
@@ -626,6 +626,13 @@ export function MesasPage() {
                           <td className="px-4 py-3.5">
                             <div className="flex items-center justify-end gap-2">
                               <button
+                                title="Ver información de la mesa"
+                                onClick={() => setDetalle(m)}
+                                className="rounded-lg bg-[#A61E22]/10 px-2.5 py-1 text-xs font-semibold text-[#A61E22] transition-colors hover:bg-[#A61E22]/20"
+                              >
+                                Ver
+                              </button>
+                              <button
                                 title="Ver QR"
                                 onClick={() => setQrModal(m)}
                                 className="rounded-lg bg-[#2563EB]/10 px-2.5 py-1 text-xs font-semibold text-[#2563EB] transition-colors hover:bg-[#2563EB]/20"
@@ -695,6 +702,12 @@ export function MesasPage() {
                       </span>
                     </div>
                     <div className="mt-3 flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setDetalle(m)}
+                        className="cursor-pointer rounded-lg bg-[#A61E22]/10 px-3 py-2 text-sm font-semibold text-[#A61E22] transition-colors hover:bg-[#A61E22]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A61E22]/50"
+                      >
+                        Ver
+                      </button>
                       <button
                         onClick={() => abrirEditar(m)}
                         className="cursor-pointer rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm font-semibold transition-colors hover:bg-[#D9D9D9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A61E22]/50"
@@ -831,195 +844,97 @@ export function MesasPage() {
               </div>
             </div>
 
-            {/* Indicador POR COBRAR */}
-            {detalle?.ocupacion?.clientes && detalle.ocupacion.clientes.some((c) => (c.consumoEstimado ?? 0) > 0) && (
-              <div className="flex items-center justify-between rounded-lg bg-[#FEF2F2] border border-[#FECACA]/50 p-3 my-3">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[#DC3545]">payment</span>
-                  <span className="font-semibold text-[#DC3545] tracking-wide">Pendientes de pago</span>
-                </div>
-                <span className="text-lg font-bold text-[#DC3545]">
-                  {clientesPendientes()} de {detalle.ocupacion.clientes.filter((c) => (c.consumoEstimado ?? 0) > 0).length}
-                </span>
-              </div>
+            {cargandoDetalle && (
+              <p className="mx-6 mt-4 rounded-lg bg-[#F5F5F5] p-3 text-sm text-[#333333]/70">
+                Actualizando información de la mesa...
+              </p>
+            )}
+            {errorDetalle && (
+              <p role="alert" className="mx-6 mt-4 rounded-lg bg-[#FEF2F2] p-3 text-sm text-[#DC3545]">
+                {errorDetalle}
+              </p>
             )}
 
-            {/* Filtros y modo solo-lectura */}
-            {detalle?.ocupacion?.clientes && detalle.ocupacion.clientes.length > 0 && (
-              <div className="flex items-center justify-between gap-3 p-2 rounded-lg bg-[#F5F5F5]/50 border border-[#D9D9D9]/30 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold tracking-wider text-[#333333]/50 uppercase">Ver:</span>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => setFiltroClientes('todos')}
-                      className={`rounded px-2.5 py-1 text-[10px] font-bold transition-colors ${filtroClientes === 'todos' ? 'bg-[#A61E22] text-white shadow-sm' : 'bg-white text-[#333333]/60 border border-[#D9D9D9]'}`}
-                    >
-                      Todos
-                    </button>
-                    <button
-                      onClick={() => setFiltroClientes('organizador')}
-                      className={`rounded px-2.5 py-1 text-[10px] font-bold transition-colors ${filtroClientes === 'organizador' ? 'bg-[#A61E22] text-white shadow-sm' : 'bg-white text-[#333333]/60 border border-[#D9D9D9]'}`}
-                    >
-                      Org.
-                    </button>
-                    <button
-                      onClick={() => setFiltroClientes('participantes')}
-                      className={`rounded px-2.5 py-1 text-[10px] font-bold transition-colors ${filtroClientes === 'participantes' ? 'bg-[#A61E22] text-white shadow-sm' : 'bg-white text-[#333333]/60 border border-[#D9D9D9]'}`}
-                    >
-                      Part.
-                    </button>
+            {infoClientesMesa && infoClientesMesa.clientes.length > 0 && (
+              <section className="mx-6 mt-4 rounded-xl border border-[#E5E7EB] bg-white p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-[#F5F5F5] pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#7F1518]">Clientes de la comanda</h3>
+                    <p className="mt-0.5 text-xs text-[#333333]/60">
+                      {infoClientesMesa.clientes.length} participante{infoClientesMesa.clientes.length === 1 ? '' : 's'}
+                    </p>
                   </div>
+                  {infoClientesMesa.modoPagoMesa === 'POR_CONSUMO' && (
+                    <span className="rounded-full bg-[#FEF2F2] px-3 py-1 text-xs font-semibold text-[#A61E22]">
+                      {infoClientesMesa.clientes.filter((cliente) => cliente.estadoCuenta === 'ABIERTA').length} cuentas abiertas
+                    </span>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setSoloLectura((prev) => !prev)}
-                    className={`rounded px-2.5 py-1 text-[10px] font-bold transition-colors ${soloLectura ? 'bg-[#A61E22] text-white shadow-sm' : 'bg-white text-[#333333]/60 border border-[#D9D9D9]'}`}
-                    title={soloLectura ? 'Desactivar modo solo-lectura' : 'Activar modo solo-lectura'}
-                  >
-                    {soloLectura ? 'Edición' : 'Solo lectura'}
-                  </button>
-                </div>
-              </div>
-            )}
 
-            {/* Sección de clientes */}
-            {detalle?.ocupacion?.clientes && detalle.ocupacion.clientes.length > 0 && (
-              <div className="space-y-4">
-                {/* Lista resumida */}
-                <section className="client-list" id="client-list">
-                  <h3 className="sr-only">Clientes en la mesa</h3>
-                  <ul role="list" className="space-y-1.5">
-                    {clientesFiltrados().map((c: any, i: number) => (
-                      <li key={i} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-[#F5F5F5]/50 border border-[#D9D9D9]/30">
-                        <div className="flex items-center gap-2 flex-1">
-                          <span className="doc-icon"></span>
-                          <span className="font-semibold text-[#333333]">{c.nombre}</span>
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  {infoClientesMesa.clientes.map((cliente) => (
+                    <li
+                      key={cliente.clienteId}
+                      className="rounded-lg border border-[#E5E7EB] bg-[#FAFAFA] p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-[#333333]" title={cliente.nombre}>
+                            {cliente.nombre}
+                          </p>
+                          <p className="mt-1 text-xs text-[#333333]/60">
+                            {cliente.tipoDocumento} · {cliente.documento || 'Sin documento'}
+                          </p>
                         </div>
-                        <div className="flex items-center gap-1 text-xs">
-                          <span className="text-[#333333]/60">({c.dni})</span>
-                          <span className="consumo font-bold text-[#A61E22]">S/. {c.consumoEstimado?.toFixed(2) ?? '0.00'}</span>
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                            cliente.esOrganizador
+                              ? 'bg-[#A61E22]/10 text-[#A61E22]'
+                              : 'bg-[#F5F5F5] text-[#333333]/70'
+                          }`}
+                        >
+                          {cliente.esOrganizador ? 'Organizador' : 'Participante'}
+                        </span>
+                      </div>
+
+                      <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-[#E5E7EB] pt-3">
+                        <div>
+                          <dt className="text-[10px] font-semibold uppercase tracking-wide text-[#333333]/50">
+                            Consumo
+                          </dt>
+                          <dd className="mt-0.5 text-sm font-bold text-[#A61E22]">
+                            S/. {cliente.consumoEstimado.toFixed(2)}
+                          </dd>
                         </div>
-                        {c.consumoEstimado > 0 && (
-                          <button
-                            onClick={() => togglePago(c.clienteId)}
-                            className={`rounded px-2 py-1 text-[10px] font-bold transition-colors ${clientePagado(c.clienteId) ? 'bg-[#22C55E] text-white' : 'bg-[#DC3545] text-white'}`}
-                            disabled={soloLectura}
-                            title={clientePagado(c.clienteId) ? 'Marcar como pendiente' : 'Marcar como pagado'}
-                          >
-                            {clientePagado(c.clienteId) ? 'Pagado' : 'Pagar'}
-                          </button>
+                        {infoClientesMesa.modoPagoMesa === 'POR_CONSUMO' && (
+                          <div>
+                            <dt className="text-[10px] font-semibold uppercase tracking-wide text-[#333333]/50">
+                              Estado de cuenta
+                            </dt>
+                            <dd className="mt-0.5 text-sm font-semibold">
+                              {cliente.estadoCuenta === 'PAGADA'
+                                ? 'Pagada'
+                                : cliente.estadoCuenta === 'ABIERTA'
+                                  ? 'Abierta'
+                                  : 'Sin cuenta individual'}
+                            </dd>
+                          </div>
                         )}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-
-                {/* Tarjetas de clientes con barras de progreso */}
-                <div className="progress-bars-container space-y-3">
-                  {clientesFiltrados().map((cliente: any) => {
-                    const total = detalle.ocupacion?.total ?? 1;
-                    const porcentaje = total > 0 ? Math.max(0, Math.min(100, ((cliente.consumoEstimado ?? 0) / total) * 100)) : 0;
-                    const esOrg = cliente.esOrganizador;
-                    const det = clientesDetalle.get(cliente.clienteId) ?? { errores: {} };
-                    const estaExpandido = expandidos.has(cliente.clienteId);
-                    return (
-                      <article key={cliente.clienteId} className="cliente-card rounded-xl border p-3 shadow-sm" style={{ borderColor: esOrg ? '#A61E22' : '#22C55E' }}>
-                        <div className="cliente-header flex items-start justify-between gap-3 mb-2">
-                          <div className="cliente-roles flex items-center gap-2">
-                            <span className={`role-chip inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-bold ${esOrg ? 'bg-[#A61E22]/15 text-[#A61E22]' : 'bg-[#22C55E]/15 text-[#22C55E]'}`}>
-                              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: esOrg ? 'var(--color-primary)' : 'var(--color-success)', display: 'inline-block' }}></span>
-                              {esOrg ? 'ORGANIZADOR' : 'PARTICIPANTE'}
-                            </span>
-                            {cliente.consumoEstimado > 0 && (
-                              <button
-                                onClick={() => togglePago(cliente.clienteId)}
-                                className={`rounded px-2 py-1 text-[10px] font-bold transition-colors ${clientePagado(cliente.clienteId) ? 'bg-[#22C55E] text-white' : 'bg-[#DC3545] text-white'}`}
-                                disabled={soloLectura}
-                                title={clientePagado(cliente.clienteId) ? 'Marcar como pendiente' : 'Marcar como pagado'}
-                              >
-                                {clientePagado(cliente.clienteId) ? '✓ Pagado' : '✗ Pendiente'}
-                              </button>
-                            )}
+                        {cliente.montoPagado > 0 && (
+                          <div>
+                            <dt className="text-[10px] font-semibold uppercase tracking-wide text-[#333333]/50">
+                              Monto pagado
+                            </dt>
+                            <dd className="mt-0.5 text-sm font-semibold text-[#15803D]">
+                              S/. {cliente.montoPagado.toFixed(2)}
+                            </dd>
                           </div>
-                        </div>
-                        <div className="cliente-body space-y-2">
-                          <div className="cliente-nombre font-bold text-lg text-[#7F1518]">{cliente.nombre}</div>
-                          <div className="cliente-doc flex items-center gap-2 text-sm">
-                            <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: esOrg ? 'var(--color-primary)' : 'var(--color-success)', display: 'inline-block' }}></span>
-                            <span className="font-medium text-[#333333]">DNI {cliente.dni}</span>
-                          </div>
-                          <div className="detalle-fila flex justify-between items-center text-sm">
-                            <span className="etiqueta text-[10px] font-bold tracking-wider uppercase text-[#333333]/50">Consumo</span>
-                            <span className="valor font-bold text-[#333333]">S/. {(cliente.consumoEstimado ?? 0).toFixed(2)}</span>
-                          </div>
-                          <div className="progress-wrapper mt-1">
-                            <span className="progress-label block text-[10px] font-bold tracking-wider uppercase text-[#333333]/50 mb-1">Progreso</span>
-                            <progress className="progress-bar w-full h-1.5 bg-[#F5F5F5] rounded-full appearance-none" value={cliente.consumoEstimado ?? 0} max={total}></progress>
-                            <div className="progress-bar-visual h-1.5 rounded-full" style={{ width: `${porcentaje}%`, background: esOrg ? 'var(--color-primary)' : 'var(--color-success)' }}></div>
-                          </div>
-                          <button
-                            onClick={() => {
-                              if (estaExpandido) setExpandidos((prev) => { const n = new Set(prev); n.delete(cliente.clienteId); return n; });
-                              else setExpandidos((prev) => { const n = new Set(prev); n.add(cliente.clienteId); return n; });
-                            }}
-                            className="w-full mt-2 py-2 rounded-lg border border-[#D9D9D9]/50 text-[10px] font-semibold text-[#333333]/60 transition-colors hover:bg-[#F5F5F5]/50"
-                            disabled={soloLectura}
-                          >
-                            {estaExpandido ? 'Ocultar información' : 'Ver más información'}
-                          </button>
-                          {estaExpandido && (
-                            <div className="mt-3 p-3 rounded-lg bg-[#F5F5F5]/50 border border-[#D9D9D9]/30 space-y-3">
-                              <div className="flex items-center justify-between text-sm">
-                                <label className="block text-[10px] font-bold tracking-wider uppercase text-[#333333]/50">Teléfono</label>
-                                <span>{det.telefono || '—'}</span>
-                              </div>
-                              <div className="flex items-center justify-between text-sm">
-                                <label className="block text-[10px] font-bold tracking-wider uppercase text-[#333333]/50">Correo</label>
-                                <span>{det.correo || '—'}</span>
-                              </div>
-                              <div className="flex items-center justify-between text-sm">
-                                <label className="block text-[10px] font-bold tracking-wider uppercase text-[#333333]/50">Dirección</label>
-                                <span>{det.direccion || '—'}</span>
-                              </div>
-                              {!soloLectura && (
-                                <div className="pt-3 border-t border-[#D9D9D9]/50 grid grid-cols-3 gap-2">
-                                  <input
-                                    type="tel"
-                                    value={det.telefono ?? ''}
-                                    onChange={(e) => actualizarDetalleCliente(cliente.clienteId, 'telefono', e.target.value)}
-                                    placeholder="999888777"
-                                    className={`w-full px-2 py-1.5 rounded border ${det.errores.telefono ? 'border-[#DC3545] bg-[#FEF2F2]' : 'border-[#D9D9D9] bg-white'} focus:ring-1 focus:ring-[#A61E22] text-sm`}
-                                    disabled={soloLectura}
-                                  />
-                                  {det.errores.telefono && <span className="col-span-3 text-[10px] text-[#DC3545] font-medium mt-0.5">{det.errores.telefono}</span>}
-                                  <input
-                                    type="email"
-                                    value={det.correo ?? ''}
-                                    onChange={(e) => actualizarDetalleCliente(cliente.clienteId, 'correo', e.target.value)}
-                                    placeholder="cliente@email.com"
-                                    className={`w-full px-2 py-1.5 rounded border ${det.errores.correo ? 'border-[#DC3545] bg-[#FEF2F2]' : 'border-[#D9D9D9] bg-white'} focus:ring-1 focus:ring-[#A61E22] text-sm`}
-                                    disabled={soloLectura}
-                                  />
-                                  {det.errores.correo && <span className="col-span-3 text-[10px] text-[#DC3545] font-medium mt-0.5">{det.errores.correo}</span>}
-                                  <input
-                                    type="text"
-                                    value={det.direccion ?? ''}
-                                    onChange={(e) => actualizarDetalleCliente(cliente.clienteId, 'direccion', e.target.value)}
-                                    placeholder="Av. Siempre Viva 123"
-                                    className={`w-full px-2 py-1.5 rounded border ${det.errores.direccion ? 'border-[#DC3545] bg-[#FEF2F2]' : 'border-[#D9D9D9] bg-white'} focus:ring-1 focus:ring-[#A61E22] text-sm`}
-                                    disabled={soloLectura}
-                                  />
-                                  {det.errores.direccion && <span className="col-span-3 text-[10px] text-[#DC3545] font-medium mt-0.5">{det.errores.direccion}</span>}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              </div>
+                        )}
+                      </dl>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
 
             <div className="flex flex-col gap-4 p-6">
@@ -1041,6 +956,11 @@ export function MesasPage() {
                       ? detalle.ocupacion.platos.join(', ')
                       : 'Sin detalle de platos.'}
                   </p>
+                  {infoClientesMesa && (
+                    <p className="mt-2 text-xs text-[#333333]/60">
+                      Cuenta: {infoClientesMesa.modoPagoMesa === 'POR_CONSUMO' ? 'por consumo' : 'única'}
+                    </p>
+                  )}
                   <div className="mt-3 flex items-center justify-between border-t border-[#D9D9D9] pt-2">
                     <span className="text-sm text-[#333333]/60">Subtotal consumo:</span>
                     <span className="text-lg font-bold text-[#A61E22]">

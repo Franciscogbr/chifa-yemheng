@@ -1,4 +1,5 @@
 import { api } from '../../../services/api';
+import { API_URL } from '../../../lib/api-url';
 import type { LoginErrorCode, LoginForm, LoginResponse } from './login-types';
 
 const TOKEN_KEY = 'chifa.token';
@@ -8,7 +9,7 @@ const PERMISOS_KEY = 'chifa.permisos';
 export async function loginRequest(input: LoginForm): Promise<LoginResponse> {
   let res: Response;
   try {
-    res = await fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/auth/login`, {
+    res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -25,7 +26,7 @@ export async function loginRequest(input: LoginForm): Promise<LoginResponse> {
 }
 
 export async function cambiarClaveRequest(actual: string, nueva: string): Promise<void> {
-  const res = await fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/auth/clave`, {
+  const   res = await fetch(`${API_URL}/auth/clave`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',

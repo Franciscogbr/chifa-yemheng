@@ -7,8 +7,11 @@ import type {
   RendicionRegistroResultado,
   EstadoRendicion,
 } from '../types/rendicion';
+import { mensajeError } from '../errors';
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
+import { API_URL } from '../../lib/api-url';
+
+const API_BASE = API_URL;
 const CLIENTE_TOKEN_KEY = 'chifa.cliente.token';
 const STAFF_TOKEN_KEY = 'chifa.token';
 
@@ -54,7 +57,7 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'UNKNOWN_ERROR' }));
-      const err = new Error(error.error || `HTTP ${response.status}`);
+      const err = new Error(mensajeError(error.error || `HTTP ${response.status}`));
       Object.assign(err, error);
       throw err;
     }

@@ -70,37 +70,49 @@ export async function listarPersonal(q: PersonalQuery): Promise<PersonalLista> {
   const desde = (q.page - 1) * q.limit;
   const hasta = desde + q.limit - 1;
 
-  let query = supabase
-    .from('empleado')
-    .select(SELECT, { count: 'exact' })
-    .order('id_empleado', { ascending: true })
-    .range(desde, hasta);
+  const consultarPagina = (inicio: number, fin: number) => {
+    let query = supabase
+      .from('empleado')
+      .select(SELECT, { count: 'exact' });
+    if (q.cargo !== undefined) query = query.eq('id_cargo', q.cargo);
+    if (q.turno) query = query.ilike('turno', `%${q.turno}%`);
+    if (q.estado) query = query.eq('estado', q.estado);
+    return query.order('id_empleado', { ascending: true }).range(inicio, fin);
+  };
 
-  if (q.cargo !== undefined) {
-    query = query.eq('id_cargo', q.cargo);
-  }
-  if (q.turno) {
-    query = query.ilike('turno', `%${q.turno}%`);
-  }
-  if (q.estado) {
-    query = query.eq('estado', q.estado);
+  const buscar = q.buscar?.trim().toLocaleLowerCase('es') ?? '';
+  if (buscar) {
+    const filas: PersonalRow[] = [];
+    let totalBase = 0;
+    for (let inicio = 0; ; inicio += 1000) {
+      const { data, error, count } = await consultarPagina(inicio, inicio + 999);
+      if (error) throw new Error(`DB_LIST_FAIL: ${error.message}`);
+      const pagina = (data ?? []) as unknown as PersonalRow[];
+      filas.push(...pagina);
+      totalBase = count ?? filas.length;
+      if (pagina.length < 1000 || filas.length >= totalBase) break;
+    }
+
+    const rows = filas.map(mapRow).filter((row) =>
+      `${row.nombres} ${row.apPaterno} ${row.apMaterno}`.toLocaleLowerCase('es').includes(buscar)
+      || row.documento.toLocaleLowerCase('es').includes(buscar)
+      || (row.telefono ?? '').toLocaleLowerCase('es').includes(buscar));
+    return {
+      data: rows.slice(desde, hasta + 1),
+      page: q.page,
+      limit: q.limit,
+      total: rows.length,
+    };
   }
 
-  const { data, error, count } = await query;
-  if (error) {
-    throw new Error(`DB_LIST_FAIL: ${error.message}`);
-  }
-  let rows = ((data ?? []) as unknown as PersonalRow[]).map(mapRow);
-  if (q.buscar) {
-    const b = q.buscar.toLowerCase();
-    rows = rows.filter(
-      (r) =>
-        `${r.nombres} ${r.apPaterno} ${r.apMaterno}`.toLowerCase().includes(b) ||
-        r.documento.includes(q.buscar as string) ||
-        (r.telefono ?? '').includes(q.buscar as string),
-    );
-  }
-  return { data: rows, page: q.page, limit: q.limit, total: count ?? 0 };
+  const { data, error, count } = await consultarPagina(desde, hasta);
+  if (error) throw new Error(`DB_LIST_FAIL: ${error.message}`);
+  return {
+    data: ((data ?? []) as unknown as PersonalRow[]).map(mapRow),
+    page: q.page,
+    limit: q.limit,
+    total: count ?? 0,
+  };
 }
 
 export async function obtenerPersonal(id: number): Promise<Personal | null> {

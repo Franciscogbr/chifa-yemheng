@@ -5,7 +5,7 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { ScanLine, ClipboardList, HandPlatter, ChefHat, Smile, ArrowRight, ShieldCheck, Zap, Flame, MapPin, Phone, Clock, MessageCircle } from 'lucide-react';
 
 const HERO_IMG = '/img/fachada-yemheng.webp';
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
+import { API_URL } from '../../lib/api-url';
 
 interface ProductoLanding {
   id: number;

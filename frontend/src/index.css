@@ -30,10 +30,10 @@
   --color-error: #ba1a1a;
   --color-info: #2563eb;
 
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Playfair Display", ui-serif, Georgia, serif;
-  --font-epilogue: "Epilogue", ui-sans-serif, system-ui, sans-serif;
-  --font-newsreader: "Newsreader", ui-serif, Georgia, serif;
+  --font-sans: 'Chifa Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Chifa Display', ui-serif, Georgia, serif;
+  --font-epilogue: 'Chifa Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-newsreader: 'Chifa Display', ui-serif, Georgia, serif;
 
   --color-crimson: #b91c1c;
   --color-cream: #ffdf9a;
@@ -2362,7 +2362,7 @@ body {
 
 .ys-board {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   align-items: start;
 }

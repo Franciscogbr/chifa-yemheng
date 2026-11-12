@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bike, ChevronLeft, ChevronRight, MapPin, Phone, RefreshCw } from 'lucide-react';
 import { fmtPEN } from '@/lib/format';
+import { usePushNotifications } from '@/shared/hooks/usePushNotifications';
 import { api } from '@/shared/services/api-client';
 import type { DeliveryListaShared, DeliveryShared, EstadoDelivery } from '@/shared/types/delivery';
 
 const PAGE_SIZE = 20;
+const REFRESH_INTERVAL_MS = 30_000;
 type FiltroEntrega = 'P' | 'R' | 'historial';
 const FILTROS: { key: FiltroEntrega; label: string; estados: Array<'P' | 'R' | 'E' | 'C'> }[] = [
   { key: 'P', label: 'Asignados', estados: ['P'] },
@@ -18,6 +20,12 @@ const ESTADOS: Record<EstadoDelivery, string> = {
   E: 'Entregado',
   C: 'Cancelado',
 };
+const ESTADO_CLASES: Record<EstadoDelivery, string> = {
+  P: 'bg-amber-100 text-amber-800',
+  R: 'bg-blue-100 text-blue-800',
+  E: 'bg-green-100 text-green-800',
+  C: 'bg-red-100 text-red-800',
+};
 
 function fecha(value: string): string {
   const parsed = new Date(value);
@@ -29,11 +37,15 @@ export function MisEntregasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [filtro, setFiltro] = useState<FiltroEntrega>('P');
   const [page, setPage] = useState(1);
   const filtroActivo = FILTROS.find((item) => item.key === filtro) ?? FILTROS[0];
   const entregas: DeliveryShared[] = resultado?.data ?? [];
   const totalPaginas = Math.max(1, Math.ceil((resultado?.total ?? 0) / PAGE_SIZE));
+  const actualizar = useCallback(() => setReloadKey((key) => key + 1), []);
+
+  usePushNotifications({ onNewAssignment: actualizar });
 
   useEffect(() => {
     let vigente = true;
@@ -41,7 +53,10 @@ export function MisEntregasPage() {
     setError(null);
     void api.getMisEntregas({ estado: filtroActivo.estados, page, limit: PAGE_SIZE })
       .then((response) => {
-        if (vigente) setResultado(response);
+        if (vigente) {
+          setResultado(response);
+          setLastUpdated(new Date());
+        }
       })
       .catch((e: unknown) => {
         console.error('Error cargando entregas del repartidor:', e);
@@ -53,9 +68,33 @@ export function MisEntregasPage() {
     return () => { vigente = false; };
   }, [filtroActivo, page, reloadKey]);
 
+  useEffect(() => {
+    const actualizarSiVisible = () => {
+      if (document.visibilityState === 'visible') actualizar();
+    };
+    const intervalId = window.setInterval(actualizarSiVisible, REFRESH_INTERVAL_MS);
+    document.addEventListener('visibilitychange', actualizarSiVisible);
+    window.addEventListener('focus', actualizarSiVisible);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', actualizarSiVisible);
+      window.removeEventListener('focus', actualizarSiVisible);
+    };
+  }, [actualizar]);
+
   const cambiarFiltro = (nuevoFiltro: FiltroEntrega) => {
+    if (nuevoFiltro === filtro) return;
+    setResultado(null);
+    setLastUpdated(null);
     setFiltro(nuevoFiltro);
     setPage(1);
+  };
+
+  const cambiarPagina = (nuevaPagina: number) => {
+    if (nuevaPagina === page) return;
+    setResultado(null);
+    setLastUpdated(null);
+    setPage(nuevaPagina);
   };
 
   return (
@@ -65,11 +104,17 @@ export function MisEntregasPage() {
           <div>
             <p className="text-sm text-gray-500">Panel del repartidor</p>
             <h1 className="text-2xl font-bold text-[#7F1518]">Mis entregas</h1>
+            <p className="m-0 mt-1 text-xs text-gray-500" role="status" aria-live="polite">
+              {loading ? 'Sincronizando entregas…' : lastUpdated
+                ? `Actualizado ${lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                : 'Sincronización automática activa'}
+              {' · Actualización automática cada 30 segundos'}
+            </p>
           </div>
           <button
             type="button"
             className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"
-            onClick={() => setReloadKey((key) => key + 1)}
+            onClick={actualizar}
             disabled={loading}
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -94,13 +139,13 @@ export function MisEntregasPage() {
         {error && (
           <div className="y-panel flex flex-wrap items-center justify-between gap-3 p-4" role="alert">
             <p className="m-0 text-sm text-red-700">No se pudieron cargar las entregas. ({error})</p>
-            <button type="button" className="y-btn line" onClick={() => setReloadKey((key) => key + 1)}>
+            <button type="button" className="y-btn line" onClick={actualizar}>
               Reintentar
             </button>
           </div>
         )}
 
-        {loading && <div className="y-panel p-6 text-center text-gray-500">Cargando tus entregas…</div>}
+        {loading && !resultado && <div className="y-panel p-6 text-center text-gray-500">Cargando tus entregas…</div>}
 
         {!loading && !error && resultado?.total === 0 && (
           <div className="y-panel p-8 text-center">
@@ -112,7 +157,7 @@ export function MisEntregasPage() {
           </div>
         )}
 
-        {!loading && !error && entregas.length > 0 && (
+        {entregas.length > 0 && (
           <section className="space-y-3" aria-label="Lista de entregas">
             {entregas.map((entrega) => (
               <Link
@@ -123,7 +168,9 @@ export function MisEntregasPage() {
                 <div className="min-w-0">
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <h2 className="m-0 text-lg font-bold">Pedido #{entrega.pedidoId}</h2>
-                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold">{ESTADOS[entrega.estado]}</span>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ESTADO_CLASES[entrega.estado]}`}>
+                      {ESTADOS[entrega.estado]}
+                    </span>
                   </div>
                   <p className="mb-1 flex items-start gap-2 text-sm text-gray-600">
                     <MapPin size={16} className="mt-0.5 shrink-0" />
@@ -149,19 +196,21 @@ export function MisEntregasPage() {
                     <p className="m-0 text-xs text-gray-500">Por cobrar</p>
                     <p className="m-0 font-bold">{entrega.montoPorCobrar === undefined ? '—' : fmtPEN(entrega.montoPorCobrar)}</p>
                   </div>
-                  <ChevronRight size={20} aria-hidden="true" />
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#7F1518]">
+                    Ver entrega <ChevronRight size={18} aria-hidden="true" />
+                  </span>
                 </div>
               </Link>
             ))}
           </section>
         )}
 
-        {!loading && !error && (resultado?.total ?? 0) > 0 && (
+        {(resultado?.total ?? 0) > 0 && (
           <nav className="flex items-center justify-between gap-3" aria-label="Paginación de entregas">
             <button
               type="button"
               className="y-btn line inline-flex items-center gap-1"
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              onClick={() => cambiarPagina(Math.max(1, page - 1))}
               disabled={page === 1}
             >
               <ChevronLeft size={17} /> Anterior
@@ -170,7 +219,7 @@ export function MisEntregasPage() {
             <button
               type="button"
               className="y-btn line inline-flex items-center gap-1"
-              onClick={() => setPage((current) => Math.min(totalPaginas, current + 1))}
+              onClick={() => cambiarPagina(Math.min(totalPaginas, page + 1))}
               disabled={page >= totalPaginas}
             >
               Siguiente <ChevronRight size={17} />

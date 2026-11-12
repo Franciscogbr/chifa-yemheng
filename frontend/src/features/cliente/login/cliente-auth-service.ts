@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 const TOKEN_KEY = 'chifa.cliente.token';
 const USER_KEY = 'chifa.cliente.user';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
+import { API_URL } from '../../../lib/api-url';
 let clienteAuthClient: SupabaseClient | null = null;
 
 export interface ClienteSesion {

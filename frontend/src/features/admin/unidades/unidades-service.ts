@@ -1,7 +1,9 @@
 import { leerToken } from '../../auth/login/auth-service';
 import type { Unidad, UnidadForm, UnidadLista } from './unidades-types';
 
-const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/unidades`;
+import { API_URL } from '../../../lib/api-url';
+
+const BASE = `${API_URL}/unidades`;
 
 function headers(): HeadersInit {
   return {

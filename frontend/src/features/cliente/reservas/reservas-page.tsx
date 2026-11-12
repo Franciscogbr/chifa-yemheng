@@ -6,7 +6,7 @@ import { ReservaForm, ReservaCard } from '../../../components/ReservaParts';
 import type { Reserva } from '../../../types/db';
 import { useClienteAuth } from '../auth/cliente-auth-context';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
+import { API_URL } from '../../../lib/api-url';
 
 export function ClienteReservasPage() {
   const { cliente, token } = useClienteAuth();

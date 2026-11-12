@@ -8,7 +8,9 @@ export interface Maestro {
   abreviatura?: string | null;
 }
 
-const MAESTROS = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/maestros`;
+import { API_URL } from '../lib/api-url';
+
+const MAESTROS = `${API_URL}/maestros`;
 
 function headers(): HeadersInit {
   return {

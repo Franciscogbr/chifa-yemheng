@@ -36,8 +36,10 @@ export interface StockInsumo {
   idProducto: number;
   producto: string;
   tipoProducto: string;
+  categoriaId: number | null;
   stockActual: number;
   stockMinimo: number;
+  unidadId: number | null;
   unidadMedida: string | null;
   estadoBajoStock: boolean;
 }

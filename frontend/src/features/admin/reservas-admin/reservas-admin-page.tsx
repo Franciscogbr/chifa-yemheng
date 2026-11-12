@@ -16,8 +16,14 @@ import { ESTADO_RESERVA as ER } from './reservas-types';
 import { PageHeader } from '../../../components/ui';
 import type { FiltrosReservas } from './reservas-service';
 import { listarMesas } from '../mesas/mesas-service';
+import { listarClientes } from '../clientes/clientes-service';
+import type { Cliente } from '../clientes/clientes-types';
 
 const LIMITE = 20;
+const LIMITE_CLIENTES = 100;
+
+const normalizarBusqueda = (valor: string) =>
+  valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es');
 
 export function AdminReservasPage() {
   const [page, setPage] = useState(1);
@@ -29,11 +35,20 @@ export function AdminReservasPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ clienteId: 0, mesaId: 0, fecha: '', hora: '', comensales: 1, observacion: '' });
+  const [form, setForm] = useState({ fecha: '', hora: '', comensales: 1, observacion: '' });
+  const [clienteBuscar, setClienteBuscar] = useState('');
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null);
+  const [clientesDisponibles, setClientesDisponibles] = useState<Cliente[]>([]);
+  const [mostrarSugerenciasClientes, setMostrarSugerenciasClientes] = useState(false);
+  const [buscandoClientes, setBuscandoClientes] = useState(false);
+  const [errorBusquedaClientes, setErrorBusquedaClientes] = useState<string | null>(null);
+  const [errorCrear, setErrorCrear] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [modalConfirmar, setModalConfirmar] = useState<{ id: number; mesaId?: number; observacion?: string } | null>(null);
   const [mesasDisponibles, setMesasDisponibles] = useState<MesaDisponible[]>([]);
   const [mesaConfirmar, setMesaConfirmar] = useState('');
+  const [mesaBuscar, setMesaBuscar] = useState('');
+  const [mostrarSugerenciasMesas, setMostrarSugerenciasMesas] = useState(false);
   const [observacionConfirmar, setObservacionConfirmar] = useState('');
   const [cargandoMesas, setCargandoMesas] = useState(false);
   const [guardandoConfirmacion, setGuardandoConfirmacion] = useState(false);
@@ -62,9 +77,78 @@ export function AdminReservasPage() {
       .then((res) => setMesas(res.data.map(({ id, numero }) => ({ id, numero }))))
       .catch((e: unknown) => setError((e as Error).message || 'No se pudieron cargar las mesas.'));
   }, []);
+  useEffect(() => {
+    if (!modal) return;
+    let vigente = true;
+    const cargarClientes = async () => {
+      setClientesDisponibles([]);
+      setBuscandoClientes(true);
+      setErrorBusquedaClientes(null);
+      try {
+        const primeraPagina = await listarClientes({
+          page: 1,
+          limit: LIMITE_CLIENTES,
+          buscar: '',
+          tipo: '',
+          estado: 'A',
+          orden: 'alpha',
+        });
+        const clientes = [...primeraPagina.data];
+        const paginas = Math.ceil(primeraPagina.total / LIMITE_CLIENTES);
+
+        for (let pagina = 2; pagina <= paginas; pagina += 1) {
+          if (!vigente) return;
+          const resultado = await listarClientes({
+            page: pagina,
+            limit: LIMITE_CLIENTES,
+            buscar: '',
+            tipo: '',
+            estado: 'A',
+            orden: 'alpha',
+          });
+          clientes.push(...resultado.data);
+        }
+
+        if (vigente) setClientesDisponibles(clientes);
+      } catch (e: unknown) {
+        if (vigente) {
+          setErrorBusquedaClientes(e instanceof Error ? e.message : 'No se pudieron cargar los clientes.');
+        }
+      } finally {
+        if (vigente) setBuscandoClientes(false);
+      }
+    };
+
+    void cargarClientes();
+    return () => {
+      vigente = false;
+    };
+  }, [modal]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / LIMITE));
   const totalDiasMes = new Date(fCalendario.getFullYear(), fCalendario.getMonth() + 1, 0).getDate();
+  const busquedaClienteNormalizada = normalizarBusqueda(clienteBuscar.trim());
+  const clientesCoincidentes = clientesDisponibles.filter((cliente) =>
+    [cliente.nombre, cliente.documento, cliente.correo ?? '', cliente.telefono]
+      .some((dato) => normalizarBusqueda(dato).includes(busquedaClienteNormalizada)),
+  );
+  const mesasCoincidentes = mesasDisponibles.filter((mesa) => {
+    const buscar = mesaBuscar.trim().toLocaleLowerCase('es');
+    const textoMesa = `Mesa ${mesa.numero} · ${mesa.capacidad} personas${mesa.ambiente ? ` · ${mesa.ambiente}` : ''}`.toLocaleLowerCase('es');
+    return !buscar || textoMesa.includes(buscar);
+  });
+
+  const abrirNuevaReserva = () => {
+    setForm({ fecha: '', hora: '', comensales: 1, observacion: '' });
+    setClienteBuscar('');
+    setClienteSeleccionado(null);
+    setClientesDisponibles([]);
+    setBuscandoClientes(true);
+    setMostrarSugerenciasClientes(true);
+    setErrorBusquedaClientes(null);
+    setErrorCrear(null);
+    setModal(true);
+  };
 
   const setCalendarioAnterior = () => {
     setFCalendario(new Date(fCalendario.getFullYear(), fCalendario.getMonth() - 1, 1));
@@ -83,25 +167,26 @@ export function AdminReservasPage() {
   const colorEstado = (e: EstadoReserva) => ER[e] === 'Confirmada' ? 'bg-green-100 text-green-700' : ER[e] === 'Atendida' ? 'bg-blue-100 text-blue-700' : ER[e] === 'Cancelada' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700';
 
   const handleCrear = async () => {
-    if (!form.clienteId || !form.fecha || !form.hora) {
-      setError('Cliente, fecha y hora son obligatorios.');
+    if (!clienteSeleccionado || !form.fecha || !form.hora || form.comensales < 1) {
+      setErrorCrear('Selecciona un cliente de las sugerencias e ingresa fecha, hora y comensales válidos.');
       return;
     }
+    setErrorCrear(null);
     setGuardando(true);
     try {
       await crearReserva({
-        clienteId: form.clienteId,
-        mesaId: form.mesaId || undefined,
+        clienteId: clienteSeleccionado.id,
         fecha: form.fecha,
         hora: form.hora,
         comensales: form.comensales,
         observacion: form.observacion || undefined,
       });
       setModal(false);
-      setForm({ clienteId: 0, mesaId: 0, fecha: '', hora: '', comensales: 1, observacion: '' });
+      setForm({ fecha: '', hora: '', comensales: 1, observacion: '' });
+      setClienteSeleccionado(null);
       await cargar();
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (e: unknown) {
+      setErrorCrear(e instanceof Error ? e.message : 'No se pudo crear la reserva.');
     } finally {
       setGuardando(false);
     }
@@ -111,6 +196,8 @@ export function AdminReservasPage() {
     setModalConfirmar({ id: reserva.id });
     setMesasDisponibles([]);
     setMesaConfirmar('');
+    setMesaBuscar('');
+    setMostrarSugerenciasMesas(false);
     setObservacionConfirmar(reserva.observacion ?? '');
     setErrorConfirmar(null);
     setCargandoMesas(true);
@@ -125,7 +212,11 @@ export function AdminReservasPage() {
   };
 
   const handleConfirmarGuardar = async () => {
-    if (!modalConfirmar || !mesaConfirmar) return;
+    if (!modalConfirmar) return;
+    if (!mesaConfirmar) {
+      setErrorConfirmar('Selecciona una mesa de las sugerencias disponibles.');
+      return;
+    }
     setGuardandoConfirmacion(true);
     setErrorConfirmar(null);
     try {
@@ -169,7 +260,7 @@ export function AdminReservasPage() {
         sub="Gestión operativa de mesas y clientes"
         right={
           <button
-            onClick={() => setModal(true)}
+            onClick={abrirNuevaReserva}
             className="rounded-lg bg-[#A61E22] px-4 py-2 text-sm font-semibold text-white hover:bg-[#7F1518]"
           >
             + Nueva Reserva
@@ -413,29 +504,78 @@ export function AdminReservasPage() {
               </button>
             </div>
             <form onSubmit={(event) => { event.preventDefault(); void handleCrear(); }} className="flex flex-col gap-4 p-6">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs font-bold uppercase opacity-60">Cliente ID *</span>
-                    <input
-                      type="number"
-                      value={form.clienteId}
-                      onChange={(e) => setForm({ ...form, clienteId: Number(e.target.value) })}
-                      className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm"
-                    />
-                  </label>
+              <div>
+                <label htmlFor="cliente-reserva-buscar" className="mb-1 block text-xs font-bold uppercase opacity-60">
+                  Cliente *
+                </label>
+                <div className="relative">
+                  <input
+                    id="cliente-reserva-buscar"
+                    type="text"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={mostrarSugerenciasClientes}
+                    aria-controls="clientes-reserva-sugerencias"
+                    autoComplete="off"
+                    value={clienteBuscar}
+                    onFocus={() => setMostrarSugerenciasClientes(true)}
+                    onChange={(event) => {
+                      setClienteBuscar(event.target.value);
+                      setClienteSeleccionado(null);
+                      setMostrarSugerenciasClientes(true);
+                      setErrorBusquedaClientes(null);
+                      setErrorCrear(null);
+                    }}
+                    placeholder="Buscar por nombre, documento, correo o teléfono"
+                    className="w-full rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm"
+                  />
+                  {mostrarSugerenciasClientes && (
+                    <div
+                      id="clientes-reserva-sugerencias"
+                      role="listbox"
+                      className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-[#E8E1DB] bg-white shadow-lg"
+                    >
+                      {buscandoClientes && (
+                        <p className="px-3 py-2 text-sm text-gray-500">Cargando clientes…</p>
+                      )}
+                      {!buscandoClientes && !errorBusquedaClientes && clientesCoincidentes.length === 0 && (
+                        <p className="px-3 py-2 text-sm text-gray-500">
+                          {clienteBuscar.trim() ? 'No se encontraron coincidencias.' : 'No hay clientes activos.'}
+                        </p>
+                      )}
+                      {clientesCoincidentes.map((cliente) => (
+                        <button
+                          key={cliente.id}
+                          type="button"
+                          role="option"
+                          aria-selected={clienteSeleccionado?.id === cliente.id}
+                          onClick={() => {
+                            setClienteSeleccionado(cliente);
+                            setClienteBuscar(cliente.nombre);
+                            setMostrarSugerenciasClientes(false);
+                            setErrorBusquedaClientes(null);
+                            setErrorCrear(null);
+                          }}
+                          className="flex w-full flex-col items-start border-b border-[#F0EBE7] px-3 py-2 text-left last:border-0 hover:bg-[#FAF6F2]"
+                        >
+                          <span className="text-sm font-semibold text-[#333333]">{cliente.nombre}</span>
+                          <span className="text-xs text-[#333333]/65">
+                            {cliente.tipoDoc} {cliente.documento}
+                            {cliente.correo ? ` · ${cliente.correo}` : cliente.telefono ? ` · ${cliente.telefono}` : ''}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs font-bold uppercase opacity-60">Mesa ID</span>
-                    <input
-                      type="number"
-                      value={form.mesaId}
-                      onChange={(e) => setForm({ ...form, mesaId: Number(e.target.value) || 0 })}
-                      className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm"
-                    />
-                  </label>
-                </div>
+                {clienteSeleccionado && (
+                  <p className="mt-1 text-xs text-green-700">
+                    Seleccionado: {clienteSeleccionado.tipoDoc} {clienteSeleccionado.documento}
+                  </p>
+                )}
+                {errorBusquedaClientes && (
+                  <p role="alert" className="mt-1 text-sm text-red-700">{errorBusquedaClientes}</p>
+                )}
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
@@ -443,6 +583,7 @@ export function AdminReservasPage() {
                     <span className="text-xs font-bold uppercase opacity-60">Fecha *</span>
                     <input
                       type="date"
+                      required
                       value={form.fecha}
                       onChange={(e) => setForm({ ...form, fecha: e.target.value })}
                       className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm"
@@ -454,6 +595,7 @@ export function AdminReservasPage() {
                     <span className="text-xs font-bold uppercase opacity-60">Hora *</span>
                     <input
                       type="time"
+                      required
                       value={form.hora}
                       onChange={(e) => setForm({ ...form, hora: e.target.value })}
                       className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm"
@@ -466,6 +608,9 @@ export function AdminReservasPage() {
                   <span className="text-xs font-bold uppercase opacity-60">Comensales</span>
                   <input
                     type="number"
+                    min="1"
+                    step="1"
+                    required
                     value={form.comensales}
                     onChange={(e) => setForm({ ...form, comensales: Number(e.target.value) }) }
                     className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm"
@@ -484,6 +629,11 @@ export function AdminReservasPage() {
                   </label>
                 </div>
               </div>
+              {errorCrear && (
+                <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {errorCrear}
+                </p>
+              )}
               <div className="flex justify-end gap-3 mt-4">
                 <button
                   type="button"
@@ -534,21 +684,55 @@ export function AdminReservasPage() {
               </div>
               <label className="flex flex-col gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-[#333333]/60">Mesa disponible *</span>
-                  <select
+                <div className="relative">
+                  <input
                     id="mesaConfirmar"
-                    required
-                    value={mesaConfirmar}
-                    onChange={(event) => setMesaConfirmar(event.target.value)}
+                    type="text"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={mostrarSugerenciasMesas}
+                    aria-controls="mesas-disponibles-sugerencias"
+                    autoComplete="off"
+                    value={mesaBuscar}
+                    onFocus={() => setMostrarSugerenciasMesas(true)}
+                    onChange={(event) => {
+                      setMesaBuscar(event.target.value);
+                      setMesaConfirmar('');
+                      setMostrarSugerenciasMesas(true);
+                      setErrorConfirmar(null);
+                    }}
                     disabled={cargandoMesas || mesasDisponibles.length === 0}
-                    className="rounded-xl border border-[#E8E1DB] bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-[#A61E22] focus:ring-2 focus:ring-[#A61E22]/15 disabled:bg-[#F5F5F5]"
-                  >
-                    <option value="">{cargandoMesas ? 'Buscando mesas disponibles…' : 'Selecciona una mesa'}</option>
-                    {mesasDisponibles.map((mesa) => (
-                      <option key={mesa.mesaId} value={mesa.mesaId}>
-                        Mesa {mesa.numero} · {mesa.capacidad} personas{mesa.ambiente ? ` · ${mesa.ambiente}` : ''}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder={cargandoMesas ? 'Buscando mesas disponibles…' : 'Buscar por número, capacidad o ambiente'}
+                    className="w-full rounded-xl border border-[#E8E1DB] bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-[#A61E22] focus:ring-2 focus:ring-[#A61E22]/15 disabled:bg-[#F5F5F5]"
+                  />
+                  {mostrarSugerenciasMesas && mesasDisponibles.length > 0 && (
+                    <div
+                      id="mesas-disponibles-sugerencias"
+                      role="listbox"
+                      className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-[#E8E1DB] bg-white shadow-lg"
+                    >
+                      {mesasCoincidentes.length > 0 ? mesasCoincidentes.map((mesa) => (
+                        <button
+                          key={mesa.mesaId}
+                          type="button"
+                          role="option"
+                          aria-selected={mesaConfirmar === String(mesa.mesaId)}
+                          onClick={() => {
+                            setMesaConfirmar(String(mesa.mesaId));
+                            setMesaBuscar(`Mesa ${mesa.numero} · ${mesa.capacidad} personas${mesa.ambiente ? ` · ${mesa.ambiente}` : ''}`);
+                            setMostrarSugerenciasMesas(false);
+                            setErrorConfirmar(null);
+                          }}
+                          className="w-full border-b border-[#F0EBE7] px-4 py-3 text-left text-sm last:border-0 hover:bg-[#FAF6F2]"
+                        >
+                          Mesa {mesa.numero} · {mesa.capacidad} personas{mesa.ambiente ? ` · ${mesa.ambiente}` : ''}
+                        </button>
+                      )) : (
+                        <p className="px-4 py-3 text-sm text-gray-500">No hay mesas que coincidan con la búsqueda.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
                 {mesasDisponibles.length === 0 && !cargandoMesas && !errorConfirmar && (
                   <span className="mt-2 block text-sm text-amber-700">No hay mesas disponibles para esta fecha, hora y grupo.</span>
                 )}

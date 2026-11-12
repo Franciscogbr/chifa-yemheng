@@ -1,7 +1,9 @@
 import { leerToken } from '../../auth/login/auth-service';
 import type { DashboardResumen } from './dashboard-types';
 
-const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/dashboard`;
+import { API_URL } from '../../../lib/api-url';
+
+const BASE = `${API_URL}/dashboard`;
 
 export async function resumenDashboard(): Promise<DashboardResumen> {
   const res = await fetch(`${BASE}/resumen`, {

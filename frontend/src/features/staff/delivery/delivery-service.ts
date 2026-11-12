@@ -1,7 +1,9 @@
 import { leerToken } from '../../auth/login/auth-service';
 import type { Delivery, DeliveryLista, EstadoDelivery } from './delivery-types';
 
-const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/delivery`;
+import { API_URL } from '../../../lib/api-url';
+
+const BASE = `${API_URL}/delivery`;
 
 function headers(): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${leerToken() ?? ''}` };

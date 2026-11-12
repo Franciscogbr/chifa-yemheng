@@ -3,6 +3,9 @@ import { api } from '@/shared/services/api-client';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { MapLeaflet } from '@/shared/ui/MapLeaflet';
+import { useToast } from '@/shared/ui/use-toast';
+import { listarClientes } from '@/features/admin/clientes/clientes-service';
+import type { Cliente as ClienteRegistro } from '@/features/admin/clientes/clientes-types';
 
 interface Producto {
   id_producto: number;
@@ -13,11 +16,6 @@ interface Producto {
 
 interface Categoria {
   id_categoria: number;
-  nombre: string;
-}
-
-interface Cliente {
-  id_cliente: number;
   nombre: string;
 }
 
@@ -53,18 +51,14 @@ interface CrearDeliveryModalProps {
 }
 
 export function CrearDeliveryModal({ abierto, onCerrar, onExito }: CrearDeliveryModalProps) {
+  const { toast } = useToast();
   const [mostrarHero, setMostrarHero] = useState(true);
   const [paso, setPaso] = useState(1);
   const [loading, setLoading] = useState(false);
 
   const [clienteId, setClienteId] = useState<number | null>(null);
   const [clienteBuscar, setClienteBuscar] = useState('');
-  const [clientes] = useState<Cliente[]>([
-    { id_cliente: 1, nombre: 'María González' },
-    { id_cliente: 2, nombre: 'José López' },
-    { id_cliente: 3, nombre: 'Ana Torres' },
-    { id_cliente: 4, nombre: 'Carlos Ruiz' },
-  ]);
+  const [clientes, setClientes] = useState<ClienteRegistro[]>([]);
   const [mostrarClientes, setMostrarClientes] = useState(false);
 
   const [direccion, setDireccion] = useState('');
@@ -97,13 +91,15 @@ export function CrearDeliveryModal({ abierto, onCerrar, onExito }: CrearDelivery
 
   const cargarDatosIniciales = async () => {
     try {
-      const [cats, deps] = await Promise.all([
+      const [cats, deps, clientesRes] = await Promise.all([
         api.getCategorias(),
         api.getDepartamentos(),
+        listarClientes({ page: 1, limit: 100, buscar: '', tipo: '', estado: 'A', orden: 'alpha' }),
       ]);
 
       setCategorias(cats);
       setDepartamentos(deps);
+      setClientes(clientesRes.data);
 
       if (cats.length > 0) {
         setCategoriaActiva(cats[0].id_categoria);
@@ -114,12 +110,42 @@ export function CrearDeliveryModal({ abierto, onCerrar, onExito }: CrearDelivery
       }
     } catch (error) {
       console.error('Error cargando datos iniciales:', error);
+      toast({
+        title: 'No se pudieron cargar los datos del delivery',
+        description: error instanceof Error ? error.message : 'Inténtalo nuevamente.',
+        variant: 'destructive',
+      });
     }
   };
 
   useEffect(() => {
     void cargarDatosIniciales();
   }, []);
+
+  useEffect(() => {
+    const buscar = clienteBuscar.trim();
+    if (!mostrarClientes || buscar.length < 2) return;
+
+    let vigente = true;
+    const timer = window.setTimeout(() => {
+      void listarClientes({ page: 1, limit: 30, buscar, tipo: '', estado: 'A', orden: 'alpha' })
+        .then((resultado) => {
+          if (vigente) setClientes(resultado.data);
+        })
+        .catch((error: unknown) => {
+          if (!vigente) return;
+          toast({
+            title: 'No se pudieron buscar los clientes',
+            description: error instanceof Error ? error.message : 'Inténtalo nuevamente.',
+            variant: 'destructive',
+          });
+        });
+    }, 250);
+    return () => {
+      vigente = false;
+      window.clearTimeout(timer);
+    };
+  }, [clienteBuscar, mostrarClientes, toast]);
 
   useEffect(() => {
     if (!departamentoId) {
@@ -230,29 +256,29 @@ export function CrearDeliveryModal({ abierto, onCerrar, onExito }: CrearDelivery
       setCostoEnvio(res.costoSugerido);
     } catch (error) {
       console.error('Error sugiriendo costo:', error);
-      alert(error instanceof Error ? error.message : 'No se pudo calcular el costo de envío.');
+      toast({ title: 'Error calculando costo de envío', description: error instanceof Error ? error.message : 'No se pudo calcular el costo de envío.', variant: 'destructive' });
     }
   };
 
   const handleSubmit = async () => {
     if (!clienteId) {
-      alert('Seleccione un cliente');
+      toast({ title: 'Seleccione un cliente', variant: 'destructive' });
       return;
     }
     if (!direccion.trim()) {
-      alert('Dirección obligatoria');
+      toast({ title: 'Dirección obligatoria', variant: 'destructive' });
       return;
     }
     if (!distritoId) {
-      alert('Distrito obligatorio');
+      toast({ title: 'Distrito obligatorio', variant: 'destructive' });
       return;
     }
     if (!telefono.trim()) {
-      alert('Teléfono obligatorio');
+      toast({ title: 'Teléfono obligatorio', variant: 'destructive' });
       return;
     }
     if (items.length === 0) {
-      alert('Agregue al menos un producto');
+      toast({ title: 'Agregue al menos un producto', variant: 'destructive' });
       return;
     }
 
@@ -261,7 +287,6 @@ export function CrearDeliveryModal({ abierto, onCerrar, onExito }: CrearDelivery
       await api.request('/delivery', {
         method: 'POST',
         body: JSON.stringify({
-          pedidoId: 0,
           clienteId,
           items: items.map((item) => ({
             productoId: item.productoId,
@@ -276,11 +301,11 @@ export function CrearDeliveryModal({ abierto, onCerrar, onExito }: CrearDelivery
         }),
       });
 
-      alert('Delivery creado exitosamente');
+      toast({ title: 'Delivery creado exitosamente', variant: 'success' });
       onExito();
       onCerrar();
     } catch (error: any) {
-      alert(error.message || 'Error creando delivery');
+      toast({ title: 'Error creando delivery', description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -333,9 +358,9 @@ export function CrearDeliveryModal({ abierto, onCerrar, onExito }: CrearDelivery
                     .map((c) => (
                       <button
                         type="button"
-                        key={c.id_cliente}
+                        key={c.id}
                         onClick={() => {
-                          setClienteId(c.id_cliente);
+                          setClienteId(c.id);
                           setClienteBuscar(c.nombre);
                           setMostrarClientes(false);
                         }}
@@ -344,6 +369,11 @@ export function CrearDeliveryModal({ abierto, onCerrar, onExito }: CrearDelivery
                         {c.nombre}
                       </button>
                     ))}
+                </div>
+              )}
+              {mostrarClientes && clienteBuscar.trim().length >= 2 && clientes.length === 0 && (
+                <div className="absolute z-10 w-full mt-1 rounded-lg border bg-white p-3 text-sm text-gray-500 shadow-lg">
+                    No se encontraron clientes.
                 </div>
               )}
             </div>

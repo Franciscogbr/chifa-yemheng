@@ -160,6 +160,65 @@ export async function pedidosAbiertosPorMesaService(mesaId: number): Promise<Ped
   return pedidosAbiertosPorMesa(mesaId);
 }
 
+export interface DetalleTandaInput {
+  producto: number;
+  cantidad: number;
+  nota?: string;
+  descuento?: number;
+}
+
+export interface TandaInput {
+  mesa: number;
+  comensales?: number;
+  obs?: string;
+  detalles: DetalleTandaInput[];
+}
+
+export async function abrirPedidoTandaService(
+  input: TandaInput,
+  clienteId: number,
+): Promise<Pedido> {
+  if (!input.mesa) {
+    throw new PedidoError('TIPO_INVALIDO');
+  }
+  if (input.detalles.length === 0) {
+    throw new PedidoError('TIPO_INVALIDO');
+  }
+  // Abrir o unirse a la comanda QR (una sola operación)
+  const result = await abrirOUnirseComandaQR({
+    tipo: 1,
+    usuario: AUTOSERVICIO_USER_ID,
+    mesa: input.mesa,
+    cliente: clienteId,
+    comensales: input.comensales ?? 1,
+    obs: input.obs ?? '',
+  });
+  await auditar(
+    AUTOSERVICIO_USER_ID,
+    'ABRIR_PEDIDO_TANDA',
+    result.id,
+    `Pedido ${result.numero} (cliente ${clienteId}, ${input.detalles.length} platos)`,
+  );
+  // Agregar cada detalle al pedido (una operación por plato, dentro de la misma comanda)
+  for (const d of input.detalles) {
+    await repoAgregarDeCliente(
+      result.id,
+      d.producto,
+      d.cantidad,
+      d.nota ?? '',
+      d.descuento ?? 0,
+      clienteId,
+    );
+  }
+  await repoRecalcular(result.id);
+  await auditar(AUTOSERVICIO_USER_ID, 'AGREGAR_TANDA_DETALLES', result.id, `${input.detalles.length} detalles`);
+  const updated = await repoObtener(result.id);
+  if (!updated) {
+    throw new PedidoError('NOT_FOUND');
+  }
+  return updated;
+}
+
 export async function detalleClienteService(
   pedidoId: number,
   clienteId: number,

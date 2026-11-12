@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase.js';
 import { DeliveryError, type Delivery, type DeliveryLista } from '../models/delivery.js';
 import type { DeliveryCreate, DeliveryQuery, ParametrosNegocioUpdate, TarifaUpsert } from '../schemas/delivery.js';
-import { createAudit, updateAudit } from '../utils/auditoria.js';
+import { updateAudit } from '../utils/auditoria.js';
 import { calcularDistanciaHaversineKm, calcularSugerenciaCosto } from '../utils/delivery-costo.js';
 
 interface DeliveryRow {
@@ -99,23 +99,56 @@ export async function listarDelivery(q: DeliveryQuery): Promise<DeliveryLista> {
   };
 }
 
-export async function crearDelivery(input: DeliveryCreate, usucre: string, pc = ''): Promise<Delivery> {
-  const { data, error } = await supabase
-    .from('pedido_delivery')
-    .insert({
-      id_pedido: input.pedidoId,
-      id_distrito: input.distritoId ?? null,
-      direccion_entrega: input.direccion,
-      referencia: input.referencia || null,
-      telefono_contacto: input.telefono || null,
-      costo_envio: input.costo,
-      situacion: 'P',
-      ...createAudit(usucre, pc),
-    })
-    .select(SELECT)
-    .single();
-  if (error) throw new Error(`DB_CREATE_FAIL: ${error.message}`);
-  return mapRow(data as unknown as DeliveryRow);
+export async function crearDelivery(
+  input: DeliveryCreate,
+  usuarioId: number,
+  usucre: string,
+  pc = '',
+): Promise<{ idPedidoDelivery: number; pedidoId: number; situacion: string; costoEnvio: number }> {
+  const { data, error } = await supabase.rpc('fn_crear_delivery_admin', {
+    p_cliente: input.clienteId,
+    p_usuario: usuarioId,
+    p_distrito: input.distritoId,
+    p_direccion: input.direccion,
+    p_referencia: input.referencia ?? null,
+    p_telefono: input.telefono,
+    p_costo_envio: input.costoEnvio,
+    p_items: input.items,
+    p_actor: usucre,
+    p_pc: pc || null,
+  });
+
+  if (error) {
+    const message = error.message;
+    if (message.includes('CLIENTE_NOT_FOUND')) throw new DeliveryError('CLIENTE_NOT_FOUND');
+    if (message.includes('DISTRITO_NOT_FOUND')) throw new DeliveryError('DISTRITO_NOT_FOUND');
+    if (message.includes('PRODUCTO_NO_DISPONIBLE') || message.includes('Producto no disponible.')) {
+      throw new DeliveryError('PRODUCTO_NO_DISPONIBLE');
+    }
+    if (message.includes('DELIVERY_VALIDATION_ERROR') || message.includes('DELIVERY_ITEMS_INVALID')) {
+      throw new DeliveryError('VALIDATION_ERROR');
+    }
+    throw new Error(`DB_CREATE_FAIL: ${message}`);
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || typeof row !== 'object') throw new Error('DB_CREATE_FAIL: DELIVERY_ID_NOT_RETURNED');
+  const created = row as {
+    id_pedidodelivery?: number;
+    id_pedido?: number;
+    situacion?: string;
+    costo_envio?: number;
+  };
+  if (!created.id_pedidodelivery || !created.id_pedido) {
+    throw new Error('DB_CREATE_FAIL: DELIVERY_ID_NOT_RETURNED');
+  }
+
+  return {
+    idPedidoDelivery: Number(created.id_pedidodelivery),
+    pedidoId: Number(created.id_pedido),
+    situacion: created.situacion ?? 'P',
+    costoEnvio: Number(created.costo_envio ?? 0),
+  };
 }
 
 export async function asignarRepartidor(

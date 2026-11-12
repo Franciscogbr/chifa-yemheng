@@ -8,6 +8,8 @@ import {
   type EstadoPreparacion,
   type PedidoAdmin,
 } from './pedidos-service';
+import { mensajeError } from '../../../shared/errors';
+import { useToast } from '../../../shared/ui/use-toast';
 
 const LIMITE = 50;
 const ESTADOS_PEDIDO = ['ABIERTO', 'EN PREPARACION', 'SERVIDO', 'FACTURADO', 'ANULADO'];
@@ -70,6 +72,9 @@ export function AdminPedidosPage() {
   const [errorDetalle, setErrorDetalle] = useState<string | null>(null);
   const [versionDetalle, setVersionDetalle] = useState(0);
   const [accionPedidoId, setAccionPedidoId] = useState<number | null>(null);
+  const { toast } = useToast();
+  const [pedidoParaAnular, setPedidoParaAnular] = useState<PedidoAdmin | null>(null);
+  const [motivoAnular, setMotivoAnular] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -131,25 +136,39 @@ export function AdminPedidosPage() {
   const facturados = pedidos.filter((pedido) => pedido.facturado === 'S').length;
   const activos = pedidos.filter((pedido) => puedeAnular(pedido)).length;
 
-  const anular = async (pedido: PedidoAdmin) => {
-    const motivo = window.prompt(`Motivo para anular la comanda ${pedido.numero}:`)?.trim();
-    if (!motivo) return;
-    if (!window.confirm(`¿Confirmas anular la comanda ${pedido.numero}? Esta acción no se puede deshacer.`)) return;
+  const abrirAnular = (pedido: PedidoAdmin) => {
+    setPedidoParaAnular(pedido);
+    setMotivoAnular('');
+  };
 
-    setAccionPedidoId(pedido.id);
+  const cerrarAnular = () => {
+    setPedidoParaAnular(null);
+    setMotivoAnular('');
+  };
+
+  const ejecutarAnular = async () => {
+    if (!pedidoParaAnular || !motivoAnular.trim()) return;
+    setAccionPedidoId(pedidoParaAnular.id);
     setError(null);
     try {
-      await anularPedidoAdmin(pedido.id, motivo);
+      await anularPedidoAdmin(pedidoParaAnular.id, motivoAnular.trim());
       setActualizar((valor) => valor + 1);
-      if (pedidoIdSeleccionado === pedido.id) setVersionDetalle((valor) => valor + 1);
+      if (pedidoIdSeleccionado === pedidoParaAnular.id) setVersionDetalle((valor) => valor + 1);
+      cerrarAnular();
+      toast({
+        title: 'Comanda anulada',
+        description: 'La comanda ha sido anulada correctamente.',
+        variant: 'success',
+      });
     } catch (e) {
       const err = e as Error & { error?: string; detail?: string };
       const detailError = err.detail ?? err.message;
-      if (detailError.includes('DELIVERY_NO_CANCELABLE')) {
-        setNoCancelablesIds((actual) => new Set(actual).add(pedido.id));
+      const codigo = err.error ?? detailError;
+      if (codigo === 'DELIVERY_NO_CANCELABLE') {
+        setNoCancelablesIds((actual) => new Set(actual).add(pedidoParaAnular.id));
         setError('Esta comanda pertenece a un delivery que ya no se puede anular.');
       } else {
-        setError(err.message || 'No fue posible anular la comanda.');
+        setError(mensajeError(codigo) || 'No fue posible anular la comanda.');
       }
     } finally {
       setAccionPedidoId(null);
@@ -256,7 +275,7 @@ export function AdminPedidosPage() {
                           className="btn btn-ghost"
                           style={{ color: '#ef4444', marginLeft: 4 }}
                           disabled={accionPedidoId === pedido.id}
-                          onClick={() => void anular(pedido)}
+                          onClick={() => void abrirAnular(pedido)}
                         >
                           {accionPedidoId === pedido.id ? 'Anulando…' : 'Anular'}
                         </button>
@@ -326,13 +345,64 @@ export function AdminPedidosPage() {
                 </div>
                 {puedeAnular(detalle) && !noCancelablesIds.has(detalle.id) && (
                   <div style={{ display: 'flex', justifyContent: 'end', marginTop: 18 }}>
-                    <button className="btn btn-ghost" style={{ color: '#ef4444' }} disabled={accionPedidoId === detalle.id} onClick={() => void anular(detalle)}>
+                    <button className="btn btn-ghost" style={{ color: '#ef4444' }} disabled={accionPedidoId === detalle.id} onClick={() => void abrirAnular(detalle)}>
                       {accionPedidoId === detalle.id ? 'Anulando…' : 'Anular comanda'}
                     </button>
                   </div>
                 )}
               </>
             )}
+          </section>
+        </div>
+      )}
+
+      {pedidoParaAnular && (
+        <div
+          role="presentation"
+          onMouseDown={(event) => { if (event.target === event.currentTarget) cerrarAnular(); }}
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.65)', display: 'grid', placeItems: 'center', padding: 16 }}
+        >
+          <section role="dialog" aria-modal="true" aria-labelledby="anular-titulo" className="y-panel" style={{ width: 'min(480px, 90%)', maxHeight: '90vh', overflowY: 'auto', padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 12, marginBottom: 16 }}>
+              <div>
+                <h2 id="anular-titulo" style={{ margin: 0 }}>Anular comanda</h2>
+                <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 13 }}>
+                  {pedidoParaAnular.numero ?? `Pedido #${pedidoParaAnular.id}`}
+                </p>
+              </div>
+              <button className="btn btn-ghost" onClick={cerrarAnular} aria-label="Cerrar">Cerrar</button>
+            </div>
+            <p style={{ margin: '0 0 16px', color: 'var(--muted)' }}>
+              ¿Estás seguro de que quieres anular esta comanda? Esta acción no se puede deshacer.
+            </p>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>Motivo de anulación</label>
+              <textarea
+                value={motivoAnular}
+                onChange={(event) => setMotivoAnular(event.target.value)}
+                placeholder="Ej: Cliente desistió, error en el pedido…"
+                rows={3}
+                style={{ width: '100%', padding: 8, border: '1px solid var(--line2)', borderRadius: 6, background: 'var(--surface-lowest)', color: 'var(--text)', fontSize: 13 }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                onClick={cerrarAnular}
+                className="btn btn-ghost"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={ejecutarAnular}
+                disabled={accionPedidoId === pedidoParaAnular.id || !motivoAnular.trim()}
+                className="btn"
+                style={{ background: '#ef4444', color: '#fff' }}
+              >
+                {accionPedidoId === pedidoParaAnular.id ? 'Anulando…' : 'Anular comanda'}
+              </button>
+            </div>
           </section>
         </div>
       )}

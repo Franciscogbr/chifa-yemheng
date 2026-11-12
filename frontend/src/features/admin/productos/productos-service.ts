@@ -1,9 +1,11 @@
 import { leerToken } from '../../auth/login/auth-service';
 import type { Producto, ProductoForm, ProductoLista, TipoProducto } from './productos-types';
 
-const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/productos`;
-const BASE_CAT = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/categorias`;
-const BASE_UNI = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/unidades`;
+import { API_URL } from '../../../lib/api-url';
+
+const BASE = `${API_URL}/productos`;
+const BASE_CAT = `${API_URL}/categorias`;
+const BASE_UNI = `${API_URL}/unidades`;
 
 function headers(): HeadersInit {
   return {

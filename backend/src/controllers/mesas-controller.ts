@@ -16,6 +16,7 @@ import {
   ambientesService,
   cambiarEstadoAmbienteService,
   cambiarEstadoService,
+  clientesMesaService,
   crearAmbienteService,
   crearService,
   listarService,
@@ -57,6 +58,15 @@ export async function getMesas(req: Request, res: Response): Promise<void> {
 
 export async function getOcupacion(_req: Request, res: Response): Promise<void> {
   res.json(await ocupacionService());
+}
+
+export async function getClientesMesa(req: Request, res: Response): Promise<void> {
+  const mesaId = Number(req.params['id']);
+  if (!Number.isSafeInteger(mesaId) || mesaId <= 0) {
+    res.status(400).json({ error: 'VALIDATION_ERROR' });
+    return;
+  }
+  res.json(await clientesMesaService(mesaId));
 }
 
 export async function getMesa(req: Request, res: Response): Promise<void> {

@@ -48,6 +48,18 @@ export function PublicGuard({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** Esqueleto de carga mostrado mientras el guard valida la sesión. */
+export function GuardSkeleton() {
+  return (
+    <div className="y-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400, gap: 16 }}>
+      <div className="skel" style={{ width: 120, height: 120, borderRadius: '50%', margin: '0 auto' }} />
+      <div className="skel" style={{ width: 200, height: 24 }} />
+      <div className="skel" style={{ width: 280, height: 24 }} />
+      <p style={{ color: 'var(--muted)', fontSize: 14 }}>Validando sesión...</p>
+    </div>
+  );
+}
+
 /** AuthGuard: exige JWT staff VÁLIDO. */
 export function AuthGuard({ children }: { children: ReactNode }) {
   const { token, logout } = useAuth();
@@ -64,7 +76,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     }
   }, [payload, logout, navigate]);
 
-  if (!authorized) return null;
+  if (!authorized) return <GuardSkeleton />;
   return <>{children}</>;
 }
 
@@ -95,7 +107,7 @@ export function RoleGuard({ roles, children }: { roles: string[]; children: Reac
       </div>
     );
   }
-  if (!authorized) return null;
+  if (!authorized) return <GuardSkeleton />;
   return <>{children}</>;
 }
 
@@ -119,7 +131,7 @@ export function RepartidorGuard({ children }: { children: ReactNode }) {
     }
   }, [payload, usuario?.tipo, navigate]);
 
-  if (!authorized) return null;
+  if (!authorized) return <GuardSkeleton />;
   return <>{children}</>;
 }
 
@@ -159,7 +171,7 @@ export function AreaGuard({ area, children }: { area: keyof typeof AREA_PERMISOS
       </div>
     );
   }
-  if (!authorized) return null;
+  if (!authorized) return <GuardSkeleton />;
   return <>{children}</>;
 }
 

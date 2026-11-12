@@ -62,13 +62,13 @@ export function EntregaDetallePage() {
 
   /* Modal de confirmación de venta realizada */
   const [ventaConfirmada, setVentaConfirmada] = useState(false);
-  const [resultadoVenta, setResultadoVenta] = useState<{ idVenta: number; montoPagado: number; metodoPago: string } | null>(null);
+  const [resultadoVenta, setResultadoVenta] = useState<{ idVenta: number | null; montoPagado: number; metodoPago: string } | null>(null);
 
-  const cargar = useCallback(async () => {
+  const cargar = useCallback(async (): Promise<DeliveryShared | null> => {
     if (!deliveryId) {
       setError('El identificador de entrega no es válido.');
       setLoading(false);
-      return;
+      return null;
     }
     try {
       setError(null);
@@ -76,9 +76,11 @@ export function EntregaDetallePage() {
       setEntrega(resultado);
       if (resultado.estado === 'R') setCompartiendoGps(true);
       if (resultado.estado === 'E' || resultado.estado === 'C') setCompartiendoGps(false);
+      return resultado;
     } catch (e) {
       console.error('Error cargando entrega:', e);
       setError(e instanceof Error ? e.message : 'No se pudo cargar la entrega.');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -179,8 +181,16 @@ export function EntregaDetallePage() {
       console.error('Error registrando venta:', e);
       const msg = e instanceof Error ? e.message : 'No se pudo registrar el cobro.';
       if ((e as { error?: string })?.error === 'VENTA_YA_EXISTE') {
-        toast({ title: 'Ya registrado', description: 'Esta entrega ya tiene una venta registrada.', variant: 'destructive' });
-        void cargar();
+        const entregado = await cargar();
+        // Si ya existe una venta y el delivery quedó marcado como entregado, mostrar confirmación
+        if (entregado?.estado === 'E' && (entregado.montoPagado ?? 0) > 0) {
+          setResultadoVenta({
+            idVenta: null,
+            montoPagado: entregado.montoPagado ?? 0,
+            metodoPago: entregado.metodoPago ?? 'EFECTIVO',
+          });
+          setVentaConfirmada(true);
+        }
       } else {
         toast({ title: 'Error', description: msg, variant: 'destructive' });
       }
@@ -481,20 +491,30 @@ export function EntregaDetallePage() {
 
         {/* Modal de confirmación de venta realizada */}
         {ventaConfirmada && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 sm:p-6">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 sm:p-6"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="venta-confirmada-titulo"
+            aria-describedby="venta-confirmada-descripcion"
+          >
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
               <div className="flex flex-col items-center justify-center text-center">
                 <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
                   <CheckCircle2 size={24} className="text-green-600" />
                 </div>
-                <h2 className="text-xl font-bold text-[#7F1518] mb-2">Venta registrada</h2>
-                <p className="text-gray-600 mb-6">
-                  La venta <strong>#{resultadoVenta?.idVenta}</strong> se registró correctamente y el pedido fue entregado al cliente.
+                <h2 id="venta-confirmada-titulo" className="text-xl font-bold text-[#7F1518] mb-2">¡Cobro realizado correctamente!</h2>
+                <p id="venta-confirmada-descripcion" className="text-gray-600 mb-6">
+                  {resultadoVenta?.idVenta != null
+                    ? <>El cobro de la venta <strong>#{resultadoVenta.idVenta}</strong> se registró correctamente y el pedido quedó como entregado.</>
+                    : 'El cobro ya registrado se confirmó correctamente y el pedido quedó como entregado.'}
                 </p>
                 <div className="space-y-2 mb-6">
                   <div className="flex justify-between text-sm border-b pb-2">
                     <span className="text-gray-500">Número de venta</span>
-                    <span className="text-gray-700 font-bold">#{resultadoVenta?.idVenta}</span>
+                    <span className="text-gray-700 font-bold">
+                      {resultadoVenta?.idVenta != null ? `#${resultadoVenta.idVenta}` : 'Ya registrada'}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm border-b pb-2">
                     <span className="text-gray-500">Monto cobrado</span>

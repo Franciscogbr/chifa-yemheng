@@ -70,6 +70,8 @@ export function AdminInventarioPage() {
           limit: LIMITE,
           productoId: undefined,
           tipo: filtroTipo || undefined,
+          desde: filtroDesde || undefined,
+          hasta: filtroHasta || undefined,
         });
         setMovimientos(res.data);
         setTotalMov(res.total);
@@ -79,7 +81,6 @@ export function AdminInventarioPage() {
         setTotalRec(res.total);
       } else {
         const res = await getStockInsumos({
-          productoId: filtroProductoId === null ? undefined : filtroProductoId,
           nombre: filtroNombre || undefined,
           categoriaId: filtroCategoriaId === null ? undefined : filtroCategoriaId,
           unidadId: filtroUnidadId === null ? undefined : filtroUnidadId,
@@ -92,10 +93,19 @@ export function AdminInventarioPage() {
           ordenDireccion: filtroOrdenDireccion,
         });
         setInsumosTabla(res);
-        const cats = Array.from(new Set(res.filter((r) => r.categoria).map((r) => r.categoria!))).map((c: string, i: number) => ({ id: i + 1, nombre: c }));
-        const units = Array.from(new Set(res.filter((r) => r.unidadMedida).map((r) => r.unidadMedida!))).map((u: string, i: number) => ({ id: i + 1, nombre: u }));
-        setCategoriasInsumo(cats);
-        setUnidadesInsumo(units);
+        const filtrosActivos = filtroNombre || filtroCategoriaId !== null || filtroUnidadId !== null
+          || filtroEstadoStock !== 'todos' || filtroStockMinDesde || filtroStockMinHasta
+          || filtroStockActDesde || filtroStockActHasta;
+        if (!filtrosActivos) {
+          setCategoriasInsumo(Array.from(new Map(
+            res.filter((r) => r.categoriaId !== null && r.categoria)
+              .map((r) => [r.categoriaId!, r.categoria!]),
+          ), ([id, nombre]) => ({ id, nombre })));
+          setUnidadesInsumo(Array.from(new Map(
+            res.filter((r) => r.unidadId !== null && r.unidadMedida)
+              .map((r) => [r.unidadId!, r.unidadMedida!]),
+          ), ([id, nombre]) => ({ id, nombre })));
+        }
       }
     } catch {
       setError('No fue posible cargar los datos.');

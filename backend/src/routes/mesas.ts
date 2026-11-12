@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getAmbientes,
+  getClientesMesa,
   getMesa,
   getMesaPorQr,
   getMesas,
@@ -28,6 +29,7 @@ mesasRouter.put('/ambientes/:id', requirePermisos('MESA_EDITAR'), putAmbiente);
 mesasRouter.patch('/ambientes/:id/estado', requirePermisos('MESA_ELIMINAR'), patchAmbienteEstado);
 mesasRouter.get('/', requirePermisos('MESA_VER'), getMesas);
 mesasRouter.get('/ocupacion', requirePermisos('MESA_VER'), getOcupacion);
+mesasRouter.get('/:id/clientes', requirePermisos('MESA_VER'), getClientesMesa);
 mesasRouter.get('/:id', requirePermisos('MESA_VER'), getMesa);
 mesasRouter.post('/', requirePermisos('MESA_CREAR'), postMesa);
 mesasRouter.put('/:id', requirePermisos('MESA_EDITAR'), putMesa);

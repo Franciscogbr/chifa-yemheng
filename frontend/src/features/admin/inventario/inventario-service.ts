@@ -1,7 +1,9 @@
 import { leerToken } from '../../auth/login/auth-service';
 
-const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/inventario`;
-const PRODUCTOS_BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1'}/productos`;
+import { API_URL } from '../../../lib/api-url';
+
+const BASE = `${API_URL}/inventario`;
+const PRODUCTOS_BASE = `${API_URL}/productos`;
 
 function headers(): HeadersInit {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${leerToken() ?? ''}` };
@@ -59,9 +61,11 @@ export interface OpcionProducto {
 export interface StockInsumoView {
   idProducto: number;
   producto: string;
+  categoriaId: number | null;
   categoria: string | null;
   stockActual: number;
   stockMinimo: number;
+  unidadId: number | null;
   unidadMedida: string | null;
   estadoBajoStock: boolean;
 }
@@ -138,10 +142,12 @@ export function getCostoReceta(productoId: number): Promise<RecetaCostoView> {
   return fetch(`${BASE}/recetas/costo?${q.toString()}`, { headers: headers() }).then(lanzar<RecetaCostoView>);
 }
 
-export function listarMovimientos(f: { page: number; limit: number; productoId?: number; tipo?: string }): Promise<MovimientoLista> {
+export function listarMovimientos(f: { page: number; limit: number; productoId?: number; tipo?: string; desde?: string; hasta?: string }): Promise<MovimientoLista> {
   const q = new URLSearchParams({ page: String(f.page), limit: String(f.limit) });
   if (f.productoId) q.set('productoId', String(f.productoId));
   if (f.tipo) q.set('tipo', f.tipo);
+  if (f.desde) q.set('desde', f.desde);
+  if (f.hasta) q.set('hasta', f.hasta);
   return fetch(`${BASE}/movimientos?${q.toString()}`, { headers: headers() }).then(lanzar<MovimientoLista>);
 }
 

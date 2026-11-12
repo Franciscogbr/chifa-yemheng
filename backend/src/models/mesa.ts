@@ -47,6 +47,23 @@ export interface OcupacionMesa {
   platos: string[];
 }
 
+export interface ClienteMesa {
+  clienteId: number;
+  nombre: string;
+  tipoDocumento: string;
+  documento: string;
+  esOrganizador: boolean;
+  consumoEstimado: number;
+  estadoCuenta: 'ABIERTA' | 'PAGADA' | null;
+  montoPagado: number;
+}
+
+export interface ClientesMesaResponse {
+  modoPagoMesa: 'CUENTA_UNICA' | 'POR_CONSUMO';
+  totalComanda: number;
+  clientes: ClienteMesa[];
+}
+
 export type MesaErrorCode =
   | 'YA_EXISTE'
   | 'NOT_FOUND'
