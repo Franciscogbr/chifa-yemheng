@@ -19,9 +19,12 @@ import {
   recalcularService,
   entregasPendientesMozoService,
   confirmarEntregaMozoService,
+  reservasEsperandoMozoService,
+  abrirPedidoReservaMozoService,
 } from '../services/pedidos-service.js';
 import type { AuthenticatedRequest } from '../middlewares/auth-guard.js';
 import { getPc } from '../utils/auditoria.js';
+import { crearLogAuditoria, AuditAction } from '../utils/audit-logger.js';
 
 function sesion(req: Request): { id: number; logeo: string; pc: string; roles: string[] } {
   const user = (req as AuthenticatedRequest).user;
@@ -39,6 +42,7 @@ function errorPedido(res: Response, err: unknown): void {
             err.code === 'YA_POR_COBRAR' ||
             err.code === 'MESA_POR_COBRAR' ||
             err.code === 'MOZO_PEDIDO_DIGITAL' ||
+            err.code === 'RESERVA_NO_ESPERA_MOZO' ||
             err.code === 'ENTREGA_NO_DISPONIBLE'
           ? 409
           : err.code === 'PRODUCTO_NO_DISPONIBLE' || err.code === 'TIPO_INVALIDO'
@@ -91,6 +95,14 @@ export async function postPedido(req: Request, res: Response): Promise<void> {
   try {
     const s = sesion(req);
     const pedido = await abrirService(parsed.data, s.id, s.logeo, s.pc);
+    crearLogAuditoria(
+      req,
+      AuditAction.PEDIDO_CREAR,
+      `Pedido ${pedido.numero} creado para mesa ${pedido.mesaNumero ?? 'sin mesa'}`,
+      'pedidos',
+      { pedidoId: pedido.id, mesaId: pedido.mesaId, comensales: pedido.comensales },
+      'info',
+    );
     res.status(201).json(pedido);
   } catch (err) {
     errorPedido(res, err);
@@ -106,6 +118,14 @@ export async function postDetalle(req: Request, res: Response): Promise<void> {
   try {
     const s = sesion(req);
     const pedido = await agregarDetalleService(Number(req.params['id']), parsed.data, s.id, s.logeo, s.pc, s.roles);
+    crearLogAuditoria(
+      req,
+      AuditAction.PEDIDO_DETALLE_AGREGAR,
+      `Detalle agregado al pedido ${req.params['id']}`,
+      'pedidos',
+      { pedidoId: Number(req.params['id']), producto: parsed.data.producto, cantidad: parsed.data.cantidad },
+      'info',
+    );
     res.json(pedido);
   } catch (err) {
     errorPedido(res, err);
@@ -114,6 +134,24 @@ export async function postDetalle(req: Request, res: Response): Promise<void> {
 
 export async function getEntregasMozo(_req: Request, res: Response): Promise<void> {
   res.json(await entregasPendientesMozoService());
+}
+
+export async function getReservasEsperandoMozo(_req: Request, res: Response): Promise<void> {
+  res.json(await reservasEsperandoMozoService());
+}
+
+export async function postAbrirPedidoReservaMozo(req: Request, res: Response): Promise<void> {
+  const reservaId = Number(req.params['id']);
+  if (!Number.isInteger(reservaId) || reservaId <= 0) {
+    res.status(400).json({ error: 'VALIDATION_ERROR' });
+    return;
+  }
+  try {
+    const s = sesion(req);
+    res.status(201).json(await abrirPedidoReservaMozoService(reservaId, s.id, s.logeo, s.pc));
+  } catch (err) {
+    errorPedido(res, err);
+  }
 }
 
 export async function patchEntregarDetalle(req: Request, res: Response): Promise<void> {
@@ -139,6 +177,14 @@ export async function patchPreparacion(req: Request, res: Response): Promise<voi
   try {
     const s = sesion(req);
     await cambiarPreparacionService(Number(req.params['idDetalle']), parsed.data.estado, s.id, s.logeo, s.pc);
+    crearLogAuditoria(
+      req,
+      AuditAction.PEDIDO_PREPARACION_CAMBIO,
+      `Preparación cambiada a ${parsed.data.estado}`,
+      'pedidos',
+      { detalleId: Number(req.params['idDetalle']), estado: parsed.data.estado },
+      'info',
+    );
     res.json({ ok: true });
   } catch (err) {
     errorPedido(res, err);
@@ -154,6 +200,14 @@ export async function patchAnular(req: Request, res: Response): Promise<void> {
   try {
     const s = sesion(req);
     await anularService(Number(req.params['id']), s.id, parsed.data.motivo, s.pc, s.roles);
+    crearLogAuditoria(
+      req,
+      AuditAction.PEDIDO_ANULAR,
+      `Pedido ${req.params['id']} anulado`,
+      'pedidos',
+      { pedidoId: Number(req.params['id']), motivo: parsed.data.motivo },
+      'warn',
+    );
     res.json({ ok: true });
   } catch (err) {
     errorPedido(res, err);
@@ -163,6 +217,14 @@ export async function patchAnular(req: Request, res: Response): Promise<void> {
 export async function postRecalcular(req: Request, res: Response): Promise<void> {
   try {
     const pedido = await recalcularService(Number(req.params['id']), sesion(req).roles);
+    crearLogAuditoria(
+      req,
+      AuditAction.PEDIDO_RECALCULAR,
+      `Pedido ${req.params['id']} recalculado`,
+      'pedidos',
+      { pedidoId: Number(req.params['id']) },
+      'info',
+    );
     res.json(pedido);
   } catch (err) {
     errorPedido(res, err);

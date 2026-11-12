@@ -10,6 +10,11 @@ describe('Pedidos - Listar (caja negra)', () => {
     expect(res.status).toBe(401);
   });
 
+  it('GET /pedidos/mozo/reservas-pendientes sin auth -> 401', async () => {
+    const res = await request(app).get('/api/v1/pedidos/mozo/reservas-pendientes');
+    expect(res.status).toBe(401);
+  });
+
   it('GET /pedidos con auth -> 200 o 403/503', async () => {
     const res = await request(app)
       .get('/api/v1/pedidos/')

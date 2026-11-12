@@ -5,6 +5,7 @@ import { Loading, Empty } from '../../../components/ui';
 import { ReservaForm, ReservaCard } from '../../../components/ReservaParts';
 import type { Reserva } from '../../../types/db';
 import { useClienteAuth } from '../auth/cliente-auth-context';
+import { useReservasRefresco } from '../../../shared/hooks/useReservasRefresco';
 
 import { API_URL } from '../../../lib/api-url';
 
@@ -16,52 +17,32 @@ export function ClienteReservasPage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    let cancelado = false;
-    const controller = new AbortController();
-    if (!cliente) {
-      setLoading(false);
-      return () => {
-        cancelado = true;
-        controller.abort();
-      };
-    }
-    if (!token) {
-      setError('Inicia sesión nuevamente para consultar tus reservas.');
-      setLoading(false);
-      return () => {
-        cancelado = true;
-        controller.abort();
-      };
-    }
-
+  const cargarReservas = async () => {
+    if (!cliente || !token) return;
     setLoading(true);
     setError(null);
-    fetch(`${API_URL}/cliente/reservas`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error('No se pudieron cargar tus reservas.');
-        return res.json() as Promise<{ data?: Reserva[] } | Reserva[]>;
-      })
-      .then((body) => {
-        if (cancelado) return;
-        setReservasActuales(Array.isArray(body) ? body : (body.data ?? []));
-      })
-      .catch((e: unknown) => {
-        if (!cancelado && !controller.signal.aborted) {
-          setError(e instanceof Error ? e.message : 'No se pudieron cargar tus reservas.');
-        }
-      })
-      .finally(() => {
-        if (!cancelado) setLoading(false);
+    const controller = new AbortController();
+    try {
+      const res = await fetch(`${API_URL}/cliente/reservas`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
       });
+      if (!res.ok) throw new Error('No se pudieron cargar tus reservas.');
+      const body = (await res.json()) as { data?: Reserva[] } | Reserva[];
+      setReservasActuales(Array.isArray(body) ? body : (body.data ?? []));
+    } catch (e: unknown) {
+      if (!controller.signal.aborted) {
+        setError(e instanceof Error ? e.message : 'No se pudieron cargar tus reservas.');
+      }
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  };
 
-    return () => {
-      cancelado = true;
-      controller.abort();
-    };
+  const { refrescando } = useReservasRefresco(cargarReservas, 10000);
+
+  useEffect(() => {
+    void cargarReservas();
   }, [cliente, token, refreshKey]);
 
   function onDone() {
@@ -163,7 +144,7 @@ export function ClienteReservasPage() {
             </div>
           )}
         </div>
-      ) : loading ? (
+      ) : ((loading && reservasActuales.length === 0) && !refrescando) ? (
         <Loading text="Cargando reservas…" />
       ) : error ? (
         <div className="y-panel y-cliente-empty" role="alert">

@@ -16,6 +16,13 @@ import { PedidoError } from '../../../../models/pedido.js';
 import { makeMockRequest, makeMockResponse, makeMockUser } from '../shared/helpers.js';
 
 vi.mock('../../../../services/pedidos-service.js');
+vi.mock('../../../../middlewares/auth-guard.js', () => ({
+  authGuard: (req: any, res: any, next: any) => next(),
+}));
+vi.mock('../../../../middlewares/permission-guard.js', () => ({
+  requirePermisos: () => (req: any, res: any, next: any) => next(),
+  requirePermisosORoles: () => (req: any, res: any, next: any) => next(),
+}));
 
 describe('Caja blanca - pedidos-controller', () => {
   let mockReq: Request;

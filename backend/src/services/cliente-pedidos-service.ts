@@ -7,6 +7,7 @@ import {
   obtenerPedido as repoObtener,
   abrirOUnirseComandaQR,
   pedidosAbiertosPorMesa,
+  registrarLlegadaReservaCliente,
   recalcularPedido as repoRecalcular,
   obtenerEstadoMesa as repoEstadoMesa,
   clienteParticipa,
@@ -18,6 +19,7 @@ import {
   actualizarModoPagoMesa,
 } from '../repositories/pedidos-repository.js';
 import { distribuirConsumoPedido } from '../utils/pedido-consumo.js';
+import type { ReservaAtencionCliente } from '../schemas/pedido.js';
 
 const AUTOSERVICIO_USER_ID = 1;
 
@@ -37,6 +39,17 @@ export interface ComandaActivaCliente {
   modoPagoMesa: ModoPagoMesa;
   esOrganizador: boolean;
   participantes: (ParticipantePedido & { consumoEstimado: number })[];
+}
+
+export async function elegirAtencionClienteService(
+  input: ReservaAtencionCliente,
+  clienteId: number,
+): Promise<{ reservaId: number | null; canal: ReservaAtencionCliente['canal'] }> {
+  const reservaId = await registrarLlegadaReservaCliente(input.mesaId, clienteId, input.canal);
+  if (input.canal === 'MOZO' && reservaId === null) {
+    throw new PedidoError('RESERVA_NO_ESPERA_MOZO');
+  }
+  return { reservaId, canal: input.canal };
 }
 
 /** BR-INF-047/048: estado de la comanda derivado de sus ítems. */

@@ -1,0 +1,32 @@
+{
+  "admin": {
+    "usuario": "admin",
+    "clave": "admin123",
+    "rol": "ADMIN",
+    "nombre": "Administrador"
+  },
+  "cajero1": {
+    "usuario": "cajero1",
+    "clave": "clave123",
+    "rol": "CAJERO",
+    "nombre": "Cajero 1"
+  },
+  "mozo1": {
+    "usuario": "mozo1",
+    "clave": "clave123",
+    "rol": "MOZO",
+    "nombre": "Mozo 1"
+  },
+  "almacen1": {
+    "usuario": "almacen1",
+    "clave": "clave123",
+    "rol": "ALMACEN",
+    "nombre": "Almacen 1"
+  },
+  "cliente1": {
+    "usuario": "cliente1",
+    "clave": "clave123",
+    "rol": "CLIENTE",
+    "nombre": "Cliente 1"
+  }
+}

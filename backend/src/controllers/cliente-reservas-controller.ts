@@ -80,6 +80,7 @@ export async function postClienteReserva(req: Request, res: Response): Promise<v
       n_personas: comensales ?? 2,
       adelanto: adelanto ?? 0,
       observacion: observacion ?? null,
+      origen: 'WEB',
       situacion: 'P',
       usucre: email,
       pccre: pc,
@@ -117,7 +118,7 @@ export async function getMisReservasCli(req: Request, res: Response): Promise<vo
 
   const { data, error } = await supabase
     .from('reserva')
-    .select('id_reserva, id_mesa, f_reserva, n_personas, situacion, observacion, mesa(numero), adelanto')
+    .select('id_reserva, id_mesa, f_reserva, n_personas, situacion, observacion, mesa(numero), adelanto, origen, f_llegada, canal_atencion')
     .eq('id_cliente', clienteId)
     .eq('estado', 'A')
     .order('f_reserva', { ascending: false });

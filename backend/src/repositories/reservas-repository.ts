@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase.js';
 import type { Reserva, ReservaLista, DisponibilidadMesa } from '../models/reservas.js';
-import type { ReservaCreate, ReservaQuery, ReservaConfirmar, ReservaReprogramar, DisponibilidadQuery } from '../schemas/reservas.js';
+import type { ReservaCreate, ReservaQuery, ReservaConfirmar, ReservaReprogramar, ReservaAtencion, DisponibilidadQuery } from '../schemas/reservas.js';
 import { createAudit, updateAudit } from '../utils/auditoria.js';
 
 interface ReservaRow {
@@ -15,9 +15,12 @@ interface ReservaRow {
   situacion: string;
   adelanto: number;
   feccre: string;
+  origen?: string;
+  f_llegada?: string | null;
+  canal_atencion?: string | null;
 }
 
-const SELECT = 'id_reserva, id_cliente, cliente:cliente(persona(nombre, ap_paterno)), id_mesa, mesa(numero), f_reserva, n_personas, observacion, adelanto, situacion, feccre';
+const SELECT = 'id_reserva, id_cliente, cliente:cliente(persona(nombre, ap_paterno)), id_mesa, mesa(numero), f_reserva, n_personas, observacion, adelanto, situacion, feccre, origen, f_llegada, canal_atencion';
 
 function mapRow(row: ReservaRow): Reserva {
   return {
@@ -34,6 +37,9 @@ function mapRow(row: ReservaRow): Reserva {
     adelanto: row.adelanto ?? 0,
     observacion: row.observacion,
     estado: (row.situacion ?? 'P') as Reserva['estado'],
+    origen: (row.origen ?? 'PERSONAL') as Reserva['origen'],
+    llegada: row.f_llegada ?? null,
+    canalAtencion: (row.canal_atencion ?? null) as Reserva['canalAtencion'],
     fechaCreacion: row.feccre,
   };
 }
@@ -86,6 +92,7 @@ export async function crearReserva(input: ReservaCreate, usuarioId: number, usuc
     .insert({
       id_cliente: input.clienteId,
       id_mesa: input.mesaId ?? null,
+      origen: input.origen,
       id_usuario: usuarioId,
       f_reserva: `${input.fecha.slice(0, 10)}T${input.hora.slice(0, 5)}:00`,
       n_personas: input.comensales,
@@ -198,33 +205,22 @@ export async function confirmarReserva(id: number, input: ReservaConfirmar, usum
   return mapRow(data as unknown as ReservaRow);
 }
 
-export async function atenderReserva(id: number, usumod: string, pc = ''): Promise<Reserva> {
-  const { data, error } = await supabase
-    .from('reserva')
-    .update({ situacion: 'A', ...updateAudit(usumod, pc) })
-    .eq('id_reserva', id)
-    .select(SELECT)
-    .maybeSingle();
-  if (error) throw new Error(`DB_UPDATE_FAIL: ${error.message}`);
-  if (!data) throw new Error('NOT_FOUND');
-
-  // Ocupar mesa (ponemos a OCUPADA)
-  // Obtener mesaId de la reserva atendida
-  const { data: r, error: errR } = await supabase
-    .from('reserva')
-    .select('id_mesa')
-    .eq('id_reserva', id)
-    .maybeSingle();
-  if (errR) throw new Error(`DB_GET_FAIL: ${errR.message}`);
-  if (r?.id_mesa) {
-    const { error: mesaError } = await supabase
-      .from('mesa')
-      .update({ id_estadomesa: 2, ...updateAudit(usumod, pc) }) // OCUPADA
-      .eq('id_mesa', r.id_mesa);
-    if (mesaError) throw new Error(`DB_UPDATE_FAIL: ${mesaError.message}`);
-  }
-
-  return mapRow(data as unknown as ReservaRow);
+export async function atenderReserva(
+  id: number,
+  atencion: ReservaAtencion,
+  usumod: string,
+  pc = '',
+): Promise<Reserva> {
+  const { data, error } = await supabase.rpc('fn_registrar_llegada_reserva', {
+    p_reserva: id,
+    p_canal: atencion.canal,
+    p_usuario: usumod,
+    p_pc: pc,
+  });
+  if (error) throw new Error(`DB_ARRIVAL_FAIL: ${error.message}`);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error('NOT_FOUND');
+  return mapRow(row as unknown as ReservaRow);
 }
 
 export async function anularReserva(id: number, usumod: string, pc = ''): Promise<Reserva> {

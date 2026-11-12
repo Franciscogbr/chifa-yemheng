@@ -18,6 +18,11 @@ export function ReservaCard({ r, nombre }: { r: Reserva; nombre?: string }) {
         <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <span className={`y-chip ${tone}`}>{txt}</span>
           <span className="y-chip" style={{ background: 'rgba(255,255,255,.06)', color: 'var(--muted)' }}>{r.id_mesa ? `Mesa ${r.mesa_numero ?? r.id_mesa} asignada` : 'Sin mesa aún'}</span>
+          {r.f_llegada && (
+            <span className="y-chip" style={{ background: 'rgba(34,197,94,.12)', color: '#4ade80' }}>
+              Llegada registrada{r.canal_atencion ? ` · ${r.canal_atencion === 'QR' ? 'QR' : 'mozo'}` : ''}
+            </span>
+          )}
         </span>
       </div>
     </motion.div>

@@ -24,6 +24,7 @@ import {
   obtenerService,
   ocupacionService,
 } from '../services/mesas-service.js';
+import { supabase } from '../config/supabase.js';
 import { getPc } from '../utils/auditoria.js';
 
 function sesion(req: Request): { id: number; logeo: string; pc: string } {
@@ -180,24 +181,16 @@ export async function patchAmbienteEstado(req: Request, res: Response): Promise<
 export async function getMesaPorQrConTipo(req: Request, res: Response): Promise<void> {
   const { codigo } = req.query;
   const { tipo } = req.params;
+  if (typeof codigo !== 'string') {
+    res.status(400).json({ error: 'VALIDATION_ERROR' });
+    return;
+  }
   try {
-    let result;
+    const mesa = await obtenerPorQrService(codigo);
     if (tipo === '2') {
-      result = await obtenerPorQrService(codigo);
-      if (!result) {
-        res.status(404).json({ error: 'QR_INVALIDO' });
-        return;
-      }
-      result.esNuevo = false;
-      res.json(result);
+      res.json({ ...mesa, esNuevo: false });
     } else {
-      result = await obtenerPorQrService(codigo);
-      if (!result) {
-        res.status(404).json({ error: 'QR_INVALIDO' });
-        return;
-      }
-      result.esNuevo = true;
-      res.json(result);
+      res.json({ ...mesa, esNuevo: true });
     }
   } catch (err) {
     errorMesa(res, err);
@@ -206,11 +199,15 @@ export async function getMesaPorQrConTipo(req: Request, res: Response): Promise<
 
 export async function abrirOUnirseComandaQRConQr(req: Request, res: Response): Promise<void> {
   const { codigo, tipo } = req.query;
+  if (typeof codigo !== 'string' || typeof tipo !== 'string') {
+    res.status(400).json({ error: 'VALIDATION_ERROR' });
+    return;
+  }
   try {
     let result;
     if (tipo === '2') {
       // Unirse a comanda existente
-      const mesa = await obtenerPorQrService(codigo as string);
+      const mesa = await obtenerPorQrService(codigo);
       if (!mesa) {
         res.status(404).json({ error: 'QR_INVALIDO' });
         return;
@@ -220,7 +217,7 @@ export async function abrirOUnirseComandaQRConQr(req: Request, res: Response): P
         .rpc('fn_abrir_o_unirse_comanda_qr', {
           p_tipo: 2,
           p_usuario: 1, // usuario anónimo
-          p_mesa: mesa.id_mesa,
+          p_mesa: mesa.id,
           p_cliente: 1,
           p_comensales: 1,
           p_obs: 'QR scan'
@@ -231,7 +228,7 @@ export async function abrirOUnirseComandaQRConQr(req: Request, res: Response): P
       result = { id: data.id_pedido, numero: data.numero_pedido, esNuevo: data.es_nuevo === true };
     } else {
       // Nueva comanda
-      const mesa = await obtenerPorQrService(codigo as string);
+      const mesa = await obtenerPorQrService(codigo);
       if (!mesa) {
         res.status(404).json({ error: 'QR_INVALIDO' });
         return;
@@ -240,7 +237,7 @@ export async function abrirOUnirseComandaQRConQr(req: Request, res: Response): P
         .rpc('fn_abrir_o_unirse_comanda_qr', {
           p_tipo: 1,
           p_usuario: 1,
-          p_mesa: mesa.id_mesa,
+          p_mesa: mesa.id,
           p_cliente: 1,
           p_comensales: 1,
           p_obs: 'QR scan'

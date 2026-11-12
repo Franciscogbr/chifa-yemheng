@@ -80,6 +80,9 @@ export interface Reserva {
   adelanto?: number | null;
   situacion?: string | null;
   observacion?: string | null;
+  origen?: 'WEB' | 'TELEFONO' | 'PERSONAL';
+  f_llegada?: string | null;
+  canal_atencion?: 'QR' | 'MOZO' | null;
   cliente_nombre?: string;
   mesa_numero?: string;
 }

@@ -13,7 +13,21 @@ export interface Reserva {
   adelanto: number;
   observacion: string | null;
   estado: EstadoReserva;
+  origen: 'WEB' | 'TELEFONO' | 'PERSONAL';
+  llegada: string | null;
+  canalAtencion: 'QR' | 'MOZO' | null;
   fechaCreacion: string;
+}
+
+export interface SolicitudMozo {
+  reservaId: number;
+  cliente: string;
+  mesaId: number;
+  mesa: string;
+  fecha: string;
+  hora: string;
+  comensales: number;
+  llegada: string;
 }
 
 export interface ReservaLista {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ErrorBox, Loading, PageHeader } from '../../../components/ui';
 import { Ico } from '../../../components/Icon';
 import { PageHero } from '../../../components/PageHero';
@@ -9,14 +9,18 @@ import { listarProductos } from '../../admin/productos/productos-service';
 import type { Producto } from '../../admin/productos/productos-types';
 import {
   abrirPedidoMesa,
+  abrirPedidoReservaMozo,
   agregarLinea,
+  listarReservasEsperandoMozo,
   listarPedidoPorMesa,
   pedirCuenta,
+  type ReservaEsperandoMozo,
   type Ticket,
 } from '../staff-service';
 import { EstadoBadge } from '../../../shared/ui/EstadoBadge';
 import { useRealtimePedido } from '../../../shared/hooks/useRealtimePedido';
 import { StaffFeedbackModal } from '../staff-feedback-modal';
+import { useReservasRefresco } from '../../../shared/hooks/useReservasRefresco';
 
 function tone(mesa: Mesa): string {
   return mesa.color || COLOR_POR_ESTADO[mesa.estadoOperativo] || '#d4a017';
@@ -129,6 +133,7 @@ function colorAtencion(mesa: Mesa): string | null {
 
 export function StaffMozoPage() {
   const [mesas, setMesas] = useState<Mesa[] | null>(null);
+  const mesasRef = useRef<Mesa[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [buscar, setBuscar] = useState('');
   const [abierta, setAbierta] = useState<Mesa | null>(null);
@@ -136,6 +141,9 @@ export function StaffMozoPage() {
   const [cargandoComanda, setCargandoComanda] = useState(false);
   const [feedback, setFeedback] = useState<MozoFeedback | null>(null);
   const [filtroMesa, setFiltroMesa] = useState<FiltroMesa>('TODAS');
+  const [reservasMozo, setReservasMozo] = useState<ReservaEsperandoMozo[]>([]);
+  const [errorReservasMozo, setErrorReservasMozo] = useState<string | null>(null);
+  const [cargandoReservaId, setCargandoReservaId] = useState<number | null>(null);
 
   const mostrarError = useCallback(
     (err: unknown, fallback: string, onRefresh?: () => Promise<void>) => {
@@ -151,16 +159,33 @@ export function StaffMozoPage() {
         listarOcupacion(),
       ]);
       const porMesa = new Map<number, OcupacionMesa>(ocupaciones.map((ocupacion) => [ocupacion.mesaId, ocupacion]));
-      setMesas(lista.data.map((mesa) => ({ ...mesa, ocupacion: porMesa.get(mesa.id) ?? null })));
+      const mesasActualizadas = lista.data.map((mesa) => ({ ...mesa, ocupacion: porMesa.get(mesa.id) ?? null }));
+      mesasRef.current = mesasActualizadas;
+      setMesas(mesasActualizadas);
       setError(null);
     } catch (e) {
       setError(describirError(e, 'No se pudo cargar el salón. Intenta actualizar el salón.').description);
     }
   }, []);
 
+  const cargarReservasMozo = useCallback(async () => {
+    try {
+      setReservasMozo(await listarReservasEsperandoMozo());
+      setErrorReservasMozo(null);
+    } catch (e) {
+      setErrorReservasMozo(describirError(e, 'No se pudieron cargar las reservas que esperan al mozo.').description);
+    }
+  }, []);
+
   useEffect(() => {
     void cargarMesas();
   }, [cargarMesas]);
+
+  const { refrescando: _refrescandoReservasMozo } = useReservasRefresco(cargarReservasMozo, 10000);
+
+  useEffect(() => {
+    void cargarReservasMozo();
+  }, [cargarReservasMozo]);
 
   const cargarComanda = useCallback(async (mesa: Mesa) => {
     setCargandoComanda(true);
@@ -184,6 +209,25 @@ export function StaffMozoPage() {
       });
     }
   }, [cargarComanda, cargarMesas, mostrarError]);
+
+  const abrirPedidoReserva = async (solicitud: ReservaEsperandoMozo) => {
+    setCargandoReservaId(solicitud.reservaId);
+    try {
+      await abrirPedidoReservaMozo(solicitud.reservaId);
+      await Promise.all([cargarMesas(), cargarReservasMozo()]);
+      const mesa = mesasRef.current.find((item) => item.id === solicitud.mesaId);
+      if (mesa) {
+        setAbierta(mesa);
+        await cargarComanda(mesa);
+      }
+    } catch (e) {
+      mostrarError(e, 'No se pudo iniciar el pedido de esta reserva. Actualiza la cola e inténtalo nuevamente.', async () => {
+        await Promise.all([cargarMesas(), cargarReservasMozo()]);
+      });
+    } finally {
+      setCargandoReservaId(null);
+    }
+  };
 
   const libres = useMemo(() => (mesas ?? []).filter((m) => m.estadoOperativo === 'LIBRE'), [mesas]);
   const ocupadas = useMemo(() => (mesas ?? []).filter((m) => m.estadoOperativo === 'OCUPADA'), [mesas]);
@@ -212,8 +256,8 @@ export function StaffMozoPage() {
         ariaLabel="Resumen de atención"
         headingAs="h2"
         eyebrow="Tu siguiente prioridad"
-        title={presenciales.length > 0 ? 'Hay mesas por atender.' : 'Mantén el salón en marcha.'}
-        description="Consulta las mesas y sus estados. Los pedidos digitales se muestran para seguimiento."
+        title={reservasMozo.length > 0 ? 'Hay reservas esperando un mozo.' : presenciales.length > 0 ? 'Hay mesas por atender.' : 'Mantén el salón en marcha.'}
+        description="Toma las reservas que eligieron atención presencial o consulta el estado de las mesas."
         statsLabel="Estado del salón"
         stats={[
           { label: 'Mesas ocupadas', value: mesas === null ? '—' : ocupadas.length, hint: 'En atención' },
@@ -221,6 +265,37 @@ export function StaffMozoPage() {
           { label: 'Mesas libres', value: mesas === null ? '—' : libres.length, hint: `${reservadas.length} reservadas` },
         ]}
       />
+      {(reservasMozo.length > 0 || errorReservasMozo) && (
+        <section className="card" aria-labelledby="reservas-esperando-mozo" style={{ padding: 18, marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <h2 id="reservas-esperando-mozo" style={{ margin: 0, fontSize: 18 }}>Reservas esperando atención</h2>
+            <button type="button" className="btn btn-ghost" onClick={() => void cargarReservasMozo()}>Actualizar</button>
+          </div>
+          {errorReservasMozo && <p role="alert" style={{ color: '#b42318' }}>{errorReservasMozo}</p>}
+          {reservasMozo.length > 0 && (
+            <div style={{ display: 'grid', gap: 10 }}>
+              {reservasMozo.map((solicitud) => (
+                <article key={solicitud.reservaId} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12, borderTop: '1px solid var(--line2)', paddingTop: 10 }}>
+                  <div>
+                    <strong>{solicitud.cliente}</strong>
+                    <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                      Reserva #{solicitud.reservaId} · Mesa {solicitud.mesa} · {solicitud.comensales} comensales · {solicitud.hora}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-gold"
+                    disabled={cargandoReservaId !== null}
+                    onClick={() => void abrirPedidoReserva(solicitud)}
+                  >
+                    {cargandoReservaId === solicitud.reservaId ? 'Abriendo pedido…' : 'Tomar pedido'}
+                  </button>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
       <div className="y-search" style={{ marginBottom: 14 }}>
         <Ico n="search" size={18} />
         <input

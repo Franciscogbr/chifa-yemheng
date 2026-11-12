@@ -4,12 +4,14 @@ import {
   getPedidos,
   getCocina,
   getEntregasMozo,
+  getReservasEsperandoMozo,
   patchAnular,
   patchPedirCuenta,
   patchPreparacion,
   patchEntregarDetalle,
   postDetalle,
   postPedido,
+  postAbrirPedidoReservaMozo,
   postRecalcular,
 } from '../controllers/pedidos-controller.js';
 import { authGuard } from '../middlewares/auth-guard.js';
@@ -28,6 +30,16 @@ pedidosRouter.get(
   '/mozo/entregas',
   requirePermisosORoles(['PED_VER', 'PED_ENTREGAR', 'PED_REGISTRAR'], ['MOZO']),
   asyncHandler(getEntregasMozo),
+);
+pedidosRouter.get(
+  '/mozo/reservas-pendientes',
+  requirePermisosORoles(['PED_VER'], ['MOZO']),
+  asyncHandler(getReservasEsperandoMozo),
+);
+pedidosRouter.post(
+  '/mozo/reservas/:id/abrir',
+  requirePermisosORoles(['PED_REGISTRAR'], ['MOZO']),
+  asyncHandler(postAbrirPedidoReservaMozo),
 );
 pedidosRouter.get('/', requirePermisos('PED_VER'), asyncHandler(getPedidos));
 pedidosRouter.get('/:id', requirePermisos('PED_VER'), asyncHandler(getPedido));

@@ -18,6 +18,7 @@ import type { FiltrosReservas } from './reservas-service';
 import { listarMesas } from '../mesas/mesas-service';
 import { listarClientes } from '../clientes/clientes-service';
 import type { Cliente } from '../clientes/clientes-types';
+import { useReservasRefresco } from '../../../shared/hooks/useReservasRefresco';
 
 const LIMITE = 20;
 const LIMITE_CLIENTES = 100;
@@ -35,7 +36,7 @@ export function AdminReservasPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ fecha: '', hora: '', comensales: 1, observacion: '' });
+  const [form, setForm] = useState({ fecha: '', hora: '', comensales: 1, observacion: '', origen: 'PERSONAL' as 'TELEFONO' | 'PERSONAL' });
   const [clienteBuscar, setClienteBuscar] = useState('');
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null);
   const [clientesDisponibles, setClientesDisponibles] = useState<Cliente[]>([]);
@@ -55,10 +56,11 @@ export function AdminReservasPage() {
   const [errorConfirmar, setErrorConfirmar] = useState<string | null>(null);
   const [modalAnular, setModalAnular] = useState<{ id: number } | null>(null);
   const [modalAtender, setModalAtender] = useState<{ id: number } | null>(null);
+  const [guardandoAtencion, setGuardandoAtencion] = useState(false);
   const [fCalendario, setFCalendario] = useState<Date>(new Date());
 
-  const cargar = async () => {
-    setCargando(true);
+  const cargar = async (inicial = true) => {
+    if (inicial) setCargando(true);
     setError(null);
     try {
       const res = await listarReservas(filtros);
@@ -67,9 +69,11 @@ export function AdminReservasPage() {
     } catch {
       setError('No fue posible cargar las reservas.');
     } finally {
-      setCargando(false);
+      if (inicial) setCargando(false);
     }
   };
+
+  const { refrescando } = useReservasRefresco(() => cargar(false), 10000);
 
   useEffect(() => { void cargar(); }, [filtros.fecha, filtros.mesaId, filtros.estado, filtros.page, tab]);
   useEffect(() => {
@@ -139,7 +143,7 @@ export function AdminReservasPage() {
   });
 
   const abrirNuevaReserva = () => {
-    setForm({ fecha: '', hora: '', comensales: 1, observacion: '' });
+    setForm({ fecha: '', hora: '', comensales: 1, observacion: '', origen: 'PERSONAL' });
     setClienteBuscar('');
     setClienteSeleccionado(null);
     setClientesDisponibles([]);
@@ -176,13 +180,14 @@ export function AdminReservasPage() {
     try {
       await crearReserva({
         clienteId: clienteSeleccionado.id,
+        origen: form.origen,
         fecha: form.fecha,
         hora: form.hora,
         comensales: form.comensales,
         observacion: form.observacion || undefined,
       });
       setModal(false);
-      setForm({ fecha: '', hora: '', comensales: 1, observacion: '' });
+      setForm({ fecha: '', hora: '', comensales: 1, observacion: '', origen: 'PERSONAL' });
       setClienteSeleccionado(null);
       await cargar();
     } catch (e: unknown) {
@@ -247,10 +252,18 @@ export function AdminReservasPage() {
     setModalAtender({ id });
   };
 
-  const handleAtenderEjecutar = async (id: number) => {
-    try { await atenderReserva(id); await cargar(); }
-    catch { setError('No se pudo atender.'); }
-    setModalAtender(null);
+  const handleAtenderEjecutar = async (id: number, canal: 'QR' | 'MOZO') => {
+    setGuardandoAtencion(true);
+    setError(null);
+    try {
+      await atenderReserva(id, canal);
+      setModalAtender(null);
+      await cargar();
+    } catch {
+      setError('No se pudo registrar la llegada. Verifica que la reserva siga confirmada y tenga una mesa asignada.');
+    } finally {
+      setGuardandoAtencion(false);
+    }
   };
 
   return (
@@ -337,7 +350,7 @@ export function AdminReservasPage() {
 
         <div className="p-4">{error && <div className="rounded-lg bg-red-100 p-3 text-sm text-red-700">{error} <button onClick={() => setError(null)} className="ml-2 underline">Cerrar</button></div>}</div>
 
-        {cargando ? (
+        {(cargando && !refrescando) ? (
           <Skeleton className="h-64" />
         ) : total === 0 ? (
           <Empty
@@ -351,6 +364,7 @@ export function AdminReservasPage() {
                 <tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333333]/60">
                   <th className="px-3 py-2">ID</th>
                   <th className="px-3 py-2">Cliente</th>
+                  <th className="px-3 py-2">Origen</th>
                   <th className="px-3 py-2">Mesa</th>
                   <th className="px-3 py-2">Fecha</th>
                   <th className="px-3 py-2">Hora</th>
@@ -365,6 +379,7 @@ export function AdminReservasPage() {
                   <tr key={r.id} className="hover:bg-[#F5F5F5]">
                     <td className="px-3 py-2">{r.id}</td>
                     <td className="px-3 py-2">{r.cliente}</td>
+                    <td className="px-3 py-2">{r.origen === 'TELEFONO' ? 'Teléfono' : r.origen === 'WEB' ? 'Web' : 'Personal'}</td>
                     <td className="px-3 py-2">{r.mesa || '—'}</td>
                     <td className="px-3 py-2">{r.fecha}</td>
                     <td className="px-3 py-2">{r.hora}</td>
@@ -374,6 +389,11 @@ export function AdminReservasPage() {
                       <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${colorEstado(r.estado)}`}>
                         {ESTADO_RESERVA[r.estado]}
                       </span>
+                      {r.llegada && (
+                        <span className="mt-1 block text-xs text-blue-700">
+                          Llegó · {r.canalAtencion === 'MOZO' ? 'espera mozo' : 'QR'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2 flex gap-1">
                       {r.estado === 'P' && (
@@ -577,6 +597,17 @@ export function AdminReservasPage() {
                   <p role="alert" className="mt-1 text-sm text-red-700">{errorBusquedaClientes}</p>
                 )}
               </div>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-bold uppercase opacity-60">Origen</span>
+                <select
+                  value={form.origen}
+                  onChange={(event) => setForm({ ...form, origen: event.target.value as 'TELEFONO' | 'PERSONAL' })}
+                  className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm"
+                >
+                  <option value="PERSONAL">Presencial</option>
+                  <option value="TELEFONO">Teléfono</option>
+                </select>
+              </label>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="flex flex-col gap-1">
@@ -800,20 +831,30 @@ export function AdminReservasPage() {
       {modalAtender && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h2 className="text-xl font-bold text-[#7F1518]">Atender Reserva #{modalAtender.id}</h2>
-            <p className="mt-2 text-sm opacity-70">¿Marcar esta reserva como Atendida (cliente llegó a la mesa)?</p>
-            <div className="mt-4 flex justify-end gap-2">
+            <h2 className="text-xl font-bold text-[#7F1518]">Registrar llegada · Reserva #{modalAtender.id}</h2>
+            <p className="mt-2 text-sm opacity-70">Elige cómo quiere hacer su pedido. Si elige mozo, aparecerá en la cola de atención.</p>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setModalAtender(null)}
+                disabled={guardandoAtencion}
                 className="rounded-xl bg-[#F5F5F5] px-5 py-2.5 text-sm font-semibold hover:bg-[#D9D9D9]"
               >
                 Cancelar
               </button>
               <button
-                onClick={() => void handleAtenderEjecutar(modalAtender.id)}
-                className="rounded-xl bg-[#A61E22] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#7F1518]"
+                onClick={() => void handleAtenderEjecutar(modalAtender.id, 'QR')}
+                disabled={guardandoAtencion}
+                className="rounded-xl bg-[#A61E22] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#7F1518] disabled:opacity-60"
               >
-                Atender
+                {guardandoAtencion ? 'Guardando…' : 'Pedir por QR'}
+              </button>
+              <button
+                onClick={() => void handleAtenderEjecutar(modalAtender.id, 'MOZO')}
+                disabled={guardandoAtencion}
+                className="rounded-xl border border-[#A61E22] px-5 py-2.5 text-sm font-semibold text-[#7F1518] disabled:opacity-60"
+              >
+                {guardandoAtencion ? 'Guardando…' : 'Pedir al mozo'}
               </button>
             </div>
           </div>

@@ -6,12 +6,14 @@ import {
   detalleAddSchema,
   modoPagoMesaSchema,
   pedidoAbrirSchema,
+  reservaAtencionClienteSchema,
   tandaSchema,
 } from '../schemas/pedido.js';
 import {
   agregarDetalleClienteService,
   abrirClienteService,
   abrirPedidoTandaService,
+  elegirAtencionClienteService,
   comandaActivaClienteService,
   detalleClienteService,
   miCuentaClienteService,
@@ -78,6 +80,28 @@ export async function postClienteTanda(req: Request, res: Response): Promise<voi
     const pedido = await abrirPedidoTandaService(parsed.data, user.sub);
     res.status(201).json(pedido);
   } catch (err) {
+    errorPedido(res, err);
+  }
+}
+
+export async function postClienteElegirAtencion(req: Request, res: Response): Promise<void> {
+  const parsed = reservaAtencionClienteSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.flatten() });
+    return;
+  }
+  const user = (req as Request & { user?: { sub: number } }).user;
+  if (!user) {
+    res.status(401).json({ error: 'CREDENCIALES_INVALIDAS' });
+    return;
+  }
+  try {
+    res.json(await elegirAtencionClienteService(parsed.data, user.sub));
+  } catch (err) {
+    if (err instanceof PedidoError && err.code === 'RESERVA_NO_ESPERA_MOZO') {
+      res.status(409).json({ error: err.code });
+      return;
+    }
     errorPedido(res, err);
   }
 }

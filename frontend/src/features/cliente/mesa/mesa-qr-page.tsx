@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../contexts/CartContext';
 import { useClienteAuth } from '../auth/cliente-auth-context';
+import { guardarModoCliente, marcarQrValidado } from '../auth/cliente-mode';
 import { mensajeError } from '../../../shared/errors';
 
 import { API_URL } from '../../../lib/api-url';
@@ -13,17 +14,21 @@ interface MesaInfo {
   capacidad: number;
   estadoOperativo: string;
   qr: string | null;
+  comensales?: number;
 }
 
 export default function MesaQrPage() {
   const { id } = useParams();
   const { setMesaId } = useCart();
-  const { cliente } = useClienteAuth();
+  const { cliente, token } = useClienteAuth();
   const navigate = useNavigate();
   const [mesa, setMesa] = useState<MesaInfo | null>(null);
   const [err, setErr] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [mostrarDecision, setMostrarDecision] = useState(false);
+  const [procesandoAtencion, setProcesandoAtencion] = useState(false);
+  const [mensajeAtencion, setMensajeAtencion] = useState<string | null>(null);
+  const [errorAtencion, setErrorAtencion] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -46,16 +51,14 @@ export default function MesaQrPage() {
         if (cancelado) return;
 
         setMesa(data);
+        setMesaId(String(data.id));
+        marcarQrValidado();
+        guardarModoCliente('local');
 
-        if (data?.comensales > 0 && !cliente && !cancelado) {
+        if (data?.comensales > 0 && !cancelado) {
           navigate('/cliente/mi-consumo?mesa=' + (data.qr ?? id ?? ''));
-        } else if (!cliente && !cancelado) {
-          // Primera vez: mostrar tarjeta con decisión clara
-          setMostrarDecision(true);
         } else {
-          // Already has session
-          setMesaId(String(data.id));
-          navigate('/cliente/menu');
+          setMostrarDecision(true);
         }
       })
       .catch((err) => {
@@ -67,7 +70,49 @@ export default function MesaQrPage() {
     return () => {
       cancelado = true;
     };
-  }, [id, cliente, navigate]);
+  }, [id, cliente, navigate, setMesaId]);
+
+  const elegirAtencion = async (canal: 'QR' | 'MOZO') => {
+    if (!mesa) return;
+    const codigoMesa = mesa?.qr ?? id ?? '';
+    if (!cliente || !token) {
+      navigate(`/cliente/login?mesa=${encodeURIComponent(codigoMesa)}&modo=${canal.toLowerCase()}`);
+      return;
+    }
+
+    setProcesandoAtencion(true);
+    setErrorAtencion(null);
+    setMensajeAtencion(null);
+    try {
+      const response = await fetch(`${API_URL}/cliente/pedidos/reserva/atencion`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ mesaId: mesa.id, canal }),
+      });
+      const body = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) {
+        if (body.error === 'RESERVA_NO_ESPERA_MOZO') {
+          throw new Error('No encontramos una reserva confirmada para esta mesa y tu cuenta. Pide ayuda al personal.');
+        }
+        throw new Error('No se pudo registrar la opción de atención. Inténtalo nuevamente o avisa al personal.');
+      }
+
+      if (canal === 'QR') {
+        setMesaId(String(mesa.id));
+        setMostrarDecision(false);
+        navigate('/cliente/menu');
+      } else {
+        setMensajeAtencion('Solicitud enviada. Un mozo atenderá tu mesa para tomar el pedido.');
+      }
+    } catch (error) {
+      setErrorAtencion(error instanceof Error ? error.message : 'No se pudo enviar la solicitud.');
+    } finally {
+      setProcesandoAtencion(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -88,39 +133,77 @@ export default function MesaQrPage() {
   }
 
   // Tarjeta de decisión para primera vez en la mesa
-  if (mostrarDecision && !cliente) {
+  if (mostrarDecision) {
     return (
       <div style={{padding: '24px 16px 140px', maxWidth: 420, margin: '0 auto'}}>
         <div style={{padding: 26, textAlign: 'center', background: 'radial-gradient(300px 200px at 50% 0,rgba(166,30,34,0.12),transparent),var(--surface-lowest)'}}>
           <h1 style={{fontSize: 32, margin: '0 0 12px'}}>¿Cómo quieres pedir?</h1>
           <p style={{color: 'var(--muted)', fontSize: 14, margin: '0 0 24px'}}>
-            Selecciona cómo quieres gestionar tu comanda en la mesa {mesa.numero}.
+            Selecciona cómo quieres gestionar tu pedido en la mesa {mesa.numero}.
           </p>
           <div style={{display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24}}>
-            <button
-              onClick={() => {
-                setMesaId(String(mesa.id));
-                setMostrarDecision(false);
-                navigate('/cliente/menu');
-              }}
-              className="w-full flex items-center justify-center gap-8 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-lg font-bold text-[#7F1518] shadow-sm transition hover:bg-amber-500/20"
-            >
-              <span style={{fontSize: 24}}>🍽️</span>
-              <span>Pedir yo por toda la mesa</span>
-            </button>
-            <button
-              onClick={() => {
-                navigate('/cliente/login?mesa=' + encodeURIComponent(mesa.qr ?? id ?? ''));
-                setMostrarDecision(false);
-              }}
-              className="w-full flex items-center justify-center gap-8 rounded-lg border border-gray-300 bg-white px-4 py-4 text-lg font-bold text-gray-700 shadow-sm transition hover:bg-gray-50"
-            >
-              <span style={{fontSize: 24}}>👤</span>
-              <span>Cada uno pide lo suyo</span>
-            </button>
+            {cliente ? (
+              <>
+                <button
+                  type="button"
+                  disabled={procesandoAtencion}
+                  onClick={() => void elegirAtencion('QR')}
+                  className="w-full flex items-center justify-center gap-8 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-lg font-bold text-[#7F1518] shadow-sm transition hover:bg-amber-500/20 disabled:opacity-60"
+                >
+                  <span style={{fontSize: 24}}>📱</span>
+                  <span>Pedir por QR</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={procesandoAtencion}
+                  onClick={() => void elegirAtencion('MOZO')}
+                  className="w-full flex items-center justify-center gap-8 rounded-lg border border-gray-300 bg-white px-4 py-4 text-lg font-bold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-60"
+                >
+                  <span style={{fontSize: 24}}>🙋</span>
+                  <span>Que un mozo tome mi pedido</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMesaId(String(mesa.id));
+                    setMostrarDecision(false);
+                    navigate('/cliente/menu');
+                  }}
+                  className="w-full flex items-center justify-center gap-8 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-lg font-bold text-[#7F1518] shadow-sm transition hover:bg-amber-500/20"
+                >
+                  <span style={{fontSize: 24}}>🍽️</span>
+                  <span>Pedir yo por toda la mesa</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate('/cliente/login?mesa=' + encodeURIComponent(mesa.qr ?? id ?? ''));
+                    setMostrarDecision(false);
+                  }}
+                  className="w-full flex items-center justify-center gap-8 rounded-lg border border-gray-300 bg-white px-4 py-4 text-lg font-bold text-gray-700 shadow-sm transition hover:bg-gray-50"
+                >
+                  <span style={{fontSize: 24}}>👤</span>
+                  <span>Cada uno pide lo suyo</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void elegirAtencion('MOZO')}
+                  className="w-full flex items-center justify-center gap-8 rounded-lg border border-gray-300 bg-white px-4 py-4 text-lg font-bold text-gray-700 shadow-sm transition hover:bg-gray-50"
+                >
+                  <span style={{fontSize: 24}}>🙋</span>
+                  <span>Que un mozo tome mi pedido</span>
+                </button>
+              </>
+            )}
           </div>
+          {procesandoAtencion && <p role="status">Registrando tu opción…</p>}
+          {mensajeAtencion && <p role="status" style={{color: '#15803d'}}>{mensajeAtencion}</p>}
+          {errorAtencion && <p role="alert" style={{color: '#b42318'}}>{errorAtencion}</p>}
           <p style={{color: 'var(--muted)', fontSize: 12, marginTop: 16}}>
-            Si eliges "Cada uno pide lo suyo", se te pedirá iniciar sesión con tu cuenta.
+            Para solicitar un mozo desde aquí, inicia sesión con la cuenta asociada a tu reserva. También puedes avisar directamente al personal.
           </p>
         </div>
       </div>

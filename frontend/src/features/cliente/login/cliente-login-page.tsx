@@ -85,6 +85,15 @@ export function ClienteLoginPage() {
 
   function redirigirCliente() {
     const mesaParam = params.get('mesa');
+    if (params.get('redirect') === 'comanda') {
+      navigate('/cliente/comanda');
+      return;
+    }
+    const modoAtencion = params.get('modo');
+    if (mesaParam && modoAtencion) {
+      navigate(`/cliente/mesa/${encodeURIComponent(mesaParam)}`);
+      return;
+    }
     const destino = mesaParam
       ? `/cliente/inicio?mesa=${encodeURIComponent(mesaParam)}`
       : '/cliente/inicio';

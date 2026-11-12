@@ -289,7 +289,7 @@ export async function getDeliveryComprobante(id: number, clienteId: number) {
   }
 
   // Obtener datos del cliente
-  const { data: cliente, error: clienteError } = await supabase
+  const { data: cliente } = await supabase
     .from('cliente')
     .select('n_documento, nombre')
     .eq('id_cliente', (venta as unknown as { id_cliente?: number }).id_cliente ?? 0)

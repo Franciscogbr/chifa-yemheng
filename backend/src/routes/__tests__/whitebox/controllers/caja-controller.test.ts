@@ -17,6 +17,13 @@ import * as cajaService from '../../../../services/caja-service.js';
 import { makeMockRequest, makeMockResponse, makeMockUser } from '../shared/helpers.js';
 
 vi.mock('../../../../services/caja-service.js');
+vi.mock('../../../../middlewares/auth-guard.js', () => ({
+  authGuard: (req: any, res: any, next: any) => next(),
+}));
+vi.mock('../../../../middlewares/permission-guard.js', () => ({
+  requirePermisos: () => (req: any, res: any, next: any) => next(),
+  requirePermisosORoles: () => (req: any, res: any, next: any) => next(),
+}));
 
 describe('Caja blanca - caja-controller', () => {
   let mockReq: Request;

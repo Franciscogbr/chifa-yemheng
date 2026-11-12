@@ -45,6 +45,7 @@ export function listarReservas(f: FiltrosReservas): Promise<ReservaLista> {
 export function crearReserva(input: {
   clienteId: number;
   mesaId?: number;
+  origen?: 'TELEFONO' | 'PERSONAL';
   fecha: string;
   hora: string;
   comensales?: number;
@@ -73,6 +74,10 @@ export function anularReserva(id: number): Promise<Reserva> {
   return fetch(`${BASE}/${id}/anular`, { method: 'PATCH', headers: headers() }).then(lanzar<Reserva>);
 }
 
-export function atenderReserva(id: number): Promise<Reserva> {
-  return fetch(`${BASE}/${id}/atender`, { method: 'PATCH', headers: headers() }).then(lanzar<Reserva>);
+export function atenderReserva(id: number, canal: 'QR' | 'MOZO'): Promise<Reserva> {
+  return fetch(`${BASE}/${id}/atender`, {
+    method: 'PATCH',
+    headers: headers(),
+    body: JSON.stringify({ canal }),
+  }).then(lanzar<Reserva>);
 }

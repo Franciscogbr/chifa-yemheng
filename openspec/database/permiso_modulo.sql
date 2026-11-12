@@ -79,6 +79,7 @@ FROM (VALUES
   ('RESERVAS',  'Crear reservas',           'RES_CREAR',           'Registrar presencial/telefónica (reservas.md)'),
   ('RESERVAS',  'Confirmar reservas',       'RES_CONFIRMAR',       'Confirmar online con mesa libre + SAL_RESERVA'),
   ('RESERVAS',  'Anular reservas',          'RES_ANULAR',          'Anular P/C → X (reservas.md)'),
+  ('RESERVAS',  'Atender reservas',         'RES_ATENDER',         'Registrar llegada y atender reserva confirmada (reservas.md)'),
   -- Permisos canónicos de negocio (Anexo REGLAS, por si faltan)
   ('VENTAS',    'Emitir nota de crédito',   'VEN_NOTACREDITO',     'Solo supervisor, USP_ANULAR_VENTA_CON_NC'),
   ('RESERVAS',  'Confirmar reserva online', 'SAL_RESERVA',         'Confirma online asignando mesa (BR-RES-052)')

@@ -58,6 +58,17 @@ export interface Ticket {
   detalles: TicketLinea[];
 }
 
+export interface ReservaEsperandoMozo {
+  reservaId: number;
+  cliente: string;
+  mesaId: number;
+  mesa: string;
+  fecha: string;
+  hora: string;
+  comensales: number;
+  llegada: string;
+}
+
 export interface CajaInfo {
   id: number;
   nombre: string;
@@ -152,6 +163,18 @@ export function listarPedidoPorMesa(mesaId: number): Promise<Ticket[]> {
   return fetch(`${BASE}/pedidos?mesa=${mesaId}&limit=20`, { headers: headers() })
     .then(lanzar<{ data: Ticket[] }>)
     .then((r) => r.data);
+}
+
+export function listarReservasEsperandoMozo(): Promise<ReservaEsperandoMozo[]> {
+  return fetch(`${BASE}/pedidos/mozo/reservas-pendientes`, { headers: headers() })
+    .then(lanzar<ReservaEsperandoMozo[]>);
+}
+
+export function abrirPedidoReservaMozo(reservaId: number): Promise<Ticket> {
+  return fetch(`${BASE}/pedidos/mozo/reservas/${reservaId}/abrir`, {
+    method: 'POST',
+    headers: headers(),
+  }).then(lanzar<Ticket>);
 }
 
 export function agregarLinea(

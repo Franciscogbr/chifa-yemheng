@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0.8% </span>
+                <span class="strong">0.77% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>1/125</span>
+                <span class='fraction'>1/129</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/100</span>
+                <span class='fraction'>0/104</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/16</span>
+                <span class='fraction'>0/17</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0.81% </span>
+                <span class="strong">0.78% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/123</span>
+                <span class='fraction'>1/127</span>
             </div>
         
             
@@ -409,7 +409,20 @@
 <a name='L344'></a><a href='#L344'>344</a>
 <a name='L345'></a><a href='#L345'>345</a>
 <a name='L346'></a><a href='#L346'>346</a>
-<a name='L347'></a><a href='#L347'>347</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L347'></a><a href='#L347'>347</a>
+<a name='L348'></a><a href='#L348'>348</a>
+<a name='L349'></a><a href='#L349'>349</a>
+<a name='L350'></a><a href='#L350'>350</a>
+<a name='L351'></a><a href='#L351'>351</a>
+<a name='L352'></a><a href='#L352'>352</a>
+<a name='L353'></a><a href='#L353'>353</a>
+<a name='L354'></a><a href='#L354'>354</a>
+<a name='L355'></a><a href='#L355'>355</a>
+<a name='L356'></a><a href='#L356'>356</a>
+<a name='L357'></a><a href='#L357'>357</a>
+<a name='L358'></a><a href='#L358'>358</a>
+<a name='L359'></a><a href='#L359'>359</a>
+<a name='L360'></a><a href='#L360'>360</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -430,7 +443,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">54x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -448,6 +463,17 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -764,6 +790,7 @@ import {
   obtenerPedido as repoObtener,
   abrirOUnirseComandaQR,
   pedidosAbiertosPorMesa,
+  registrarLlegadaReservaCliente,
   recalcularPedido as repoRecalcular,
   obtenerEstadoMesa as repoEstadoMesa,
   clienteParticipa,
@@ -775,6 +802,7 @@ import {
   actualizarModoPagoMesa,
 } from '../repositories/pedidos-repository.js';
 import { distribuirConsumoPedido } from '../utils/pedido-consumo.js';
+import type { ReservaAtencionCliente } from '../schemas/pedido.js';
 &nbsp;
 const AUTOSERVICIO_USER_ID = 1;
 &nbsp;
@@ -794,6 +822,17 @@ export interface ComandaActivaCliente {
   modoPagoMesa: ModoPagoMesa;
   esOrganizador: boolean;
   participantes: (ParticipantePedido &amp; { consumoEstimado: number })[];
+}
+&nbsp;
+export async function <span class="fstat-no" title="function not covered" >elegirAtencionClienteService(</span>
+  input: ReservaAtencionCliente,
+  clienteId: number,
+): Promise&lt;{ reservaId: number | null; canal: ReservaAtencionCliente['canal'] }&gt; {
+  const reservaId = <span class="cstat-no" title="statement not covered" >await registrarLlegadaReservaCliente(input.mesaId, clienteId, input.canal);</span>
+<span class="cstat-no" title="statement not covered" >  if (input.canal === 'MOZO' &amp;&amp; reservaId === null) {</span>
+<span class="cstat-no" title="statement not covered" >    throw new PedidoError('RESERVA_NO_ESPERA_MOZO');</span>
+  }
+<span class="cstat-no" title="statement not covered" >  return { reservaId, canal: input.canal };</span>
 }
 &nbsp;
 /** BR-INF-047/048: estado de la comanda derivado de sus ítems. */
@@ -1108,7 +1147,7 @@ export async function <span class="fstat-no" title="function not covered" >pedir
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-12T14:07:31.385Z
+                at 2026-11-12T17:26:02.387Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

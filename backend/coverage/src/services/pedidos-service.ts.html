@@ -25,28 +25,28 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/96</span>
+                <span class='fraction'>0/103</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/101</span>
+                <span class='fraction'>0/103</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/17</span>
+                <span class='fraction'>0/19</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/95</span>
+                <span class='fraction'>0/101</span>
             </div>
         
             
@@ -314,7 +314,26 @@
 <a name='L249'></a><a href='#L249'>249</a>
 <a name='L250'></a><a href='#L250'>250</a>
 <a name='L251'></a><a href='#L251'>251</a>
-<a name='L252'></a><a href='#L252'>252</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L252'></a><a href='#L252'>252</a>
+<a name='L253'></a><a href='#L253'>253</a>
+<a name='L254'></a><a href='#L254'>254</a>
+<a name='L255'></a><a href='#L255'>255</a>
+<a name='L256'></a><a href='#L256'>256</a>
+<a name='L257'></a><a href='#L257'>257</a>
+<a name='L258'></a><a href='#L258'>258</a>
+<a name='L259'></a><a href='#L259'>259</a>
+<a name='L260'></a><a href='#L260'>260</a>
+<a name='L261'></a><a href='#L261'>261</a>
+<a name='L262'></a><a href='#L262'>262</a>
+<a name='L263'></a><a href='#L263'>263</a>
+<a name='L264'></a><a href='#L264'>264</a>
+<a name='L265'></a><a href='#L265'>265</a>
+<a name='L266'></a><a href='#L266'>266</a>
+<a name='L267'></a><a href='#L267'>267</a>
+<a name='L268'></a><a href='#L268'>268</a>
+<a name='L269'></a><a href='#L269'>269</a>
+<a name='L270'></a><a href='#L270'>270</a>
+<a name='L271'></a><a href='#L271'>271</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -336,6 +355,25 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -571,11 +609,13 @@ import type { DetalleAdd, PedidoAbrir, PedidoQuery } from '../schemas/pedido.js'
 import {
   agregarDetalle as repoAgregar,
   anularPedido as repoAnular,
+  abrirPedidoReservaMozo as repoAbrirPedidoReservaMozo,
   auditar,
   cambiarPreparacion as repoCambiarPrep,
   idEstadoMesaPorNombre,
   listarPedidos as repoListar,
   listarPedidosCocina,
+  listarReservasEsperandoMozo as repoListarReservasEsperandoMozo,
   obtenerEstadoMesa,
   obtenerPedido as repoObtener,
   abrirPedido as repoAbrir,
@@ -588,6 +628,23 @@ import { descontarInsumosPorDetalle } from './inventario-service.js';
 &nbsp;
 export function <span class="fstat-no" title="function not covered" >listarService(q</span>: PedidoQuery): Promise&lt;PedidoLista&gt; {
 <span class="cstat-no" title="statement not covered" >  return repoListar(q);</span>
+}
+&nbsp;
+export function <span class="fstat-no" title="function not covered" >reservasEsperandoMozoService() {</span>
+<span class="cstat-no" title="statement not covered" >  return repoListarReservasEsperandoMozo();</span>
+}
+&nbsp;
+export async function <span class="fstat-no" title="function not covered" >abrirPedidoReservaMozoService(</span>
+  reservaId: number,
+  usuarioId: number,
+  logeo: string,
+  pc: string,
+): Promise&lt;Pedido&gt; {
+  const result = <span class="cstat-no" title="statement not covered" >await repoAbrirPedidoReservaMozo(reservaId, usuarioId, logeo, pc);</span>
+<span class="cstat-no" title="statement not covered" >  await auditar(usuarioId, 'ABRIR_PEDIDO_RESERVA', result.id, `Reserva ${reservaId} · Pedido ${result.numero}`);</span>
+  const pedido = <span class="cstat-no" title="statement not covered" >await repoObtener(result.id);</span>
+<span class="cstat-no" title="statement not covered" >  if (!pedido) <span class="cstat-no" title="statement not covered" >throw new PedidoError('NOT_FOUND');</span></span>
+<span class="cstat-no" title="statement not covered" >  return pedido;</span>
 }
 &nbsp;
 /** Pedidos activos con detalle para cocina (KDS), con envoltorio paginado (spec). */
@@ -823,7 +880,7 @@ export async function <span class="fstat-no" title="function not covered" >pedid
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-12T14:07:31.385Z
+                at 2026-11-12T17:26:02.387Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

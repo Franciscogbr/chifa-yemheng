@@ -84,6 +84,29 @@ describe('Caja blanca - permission-guard', () => {
 
       expect(next).toHaveBeenCalled();
     });
+
+    it('responde 403 cuando no tiene RES_ATENDER', () => {
+      const req = makeMockReq(makeMockUser({ permisos: ['RES_VER', 'RES_CREAR'] }));
+      const res = makeMockRes();
+      const next = makeMockNext();
+
+      requirePermisos('RES_ATENDER')(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({ error: 'FORBIDDEN' });
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('llama next() cuando el usuario tiene RES_ATENDER', () => {
+      const req = makeMockReq(makeMockUser({ permisos: ['RES_VER', 'RES_ATENDER'] }));
+      const res = makeMockRes();
+      const next = makeMockNext();
+
+      requirePermisos('RES_ATENDER')(req, res, next);
+
+      expect(next).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
+    });
   });
 
   describe('requirePermisosORoles', () => {

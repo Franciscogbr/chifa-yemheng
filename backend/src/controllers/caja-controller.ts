@@ -31,6 +31,7 @@ import {
 } from '../services/caja-service.js';
 import { getMovimientosResumenService } from '../services/caja-resumen-service.js';
 import type { AuthenticatedRequest } from '../middlewares/auth-guard.js';
+import { crearLogAuditoria, AuditAction } from '../utils/audit-logger.js';
 
 function sesion(req: Request): { id: number } {
   const user = (req as AuthenticatedRequest).user;
@@ -138,7 +139,16 @@ export async function postCajaTurno(req: Request, res: Response): Promise<void> 
   }
   const s = sesion(req);
   try {
-    res.status(201).json(await abrirCajaService(parsed.data.cajaId, s.id, parsed.data.montoInicial, parsed.data.observacion));
+    const result = await abrirCajaService(parsed.data.cajaId, s.id, parsed.data.montoInicial, parsed.data.observacion);
+    crearLogAuditoria(
+      req,
+      AuditAction.CAJA_ABRIR,
+      `Caja ${parsed.data.cajaId} abierta con monto inicial ${parsed.data.montoInicial}`,
+      'caja',
+      { cajaId: parsed.data.cajaId, montoInicial: parsed.data.montoInicial, turnoId: result.id },
+      'info',
+    );
+    res.status(201).json(result);
   } catch (err) {
     errorCaja(res, err);
   }
@@ -152,14 +162,28 @@ export async function postCajaCierre(req: Request, res: Response): Promise<void>
   }
   const s = sesion(req);
   try {
-    res.json(
-      await solicitarCierreCajaService({
+    const result = await solicitarCierreCajaService({
+      cajaId: parsed.data.cajaId,
+      usuarioId: s.id,
+      declarado: parsed.data.montoDeclarado,
+      observacion: parsed.data.observacion,
+    });
+    const nivelCierre = result.resultado === 'CUADRADA' ? 'info' : 'warn';
+    crearLogAuditoria(
+      req,
+      AuditAction.CAJA_CERRAR,
+      `Cierre de caja ${parsed.data.cajaId} declarado: ${parsed.data.montoDeclarado}, sistema: ${result.sistema}, diferencia: ${result.diferencia}`,
+      'caja',
+      {
         cajaId: parsed.data.cajaId,
-        usuarioId: s.id,
-        declarado: parsed.data.montoDeclarado,
-        observacion: parsed.data.observacion,
-      }),
+        montoDeclarado: parsed.data.montoDeclarado,
+        montoSistema: result.sistema,
+        diferencia: result.diferencia,
+        resultado: result.resultado,
+      },
+      nivelCierre,
     );
+    res.json(result);
   } catch (err) {
     errorCaja(res, err);
   }
@@ -196,17 +220,29 @@ export async function postCajaCobro(req: Request, res: Response): Promise<void> 
   const s = sesion(req);
   try {
     const input = parsed.data;
-    res.json(
-      await cobrarService({
+    const cobroResult = await cobrarService({
+      pedidoId: input.pedidoId,
+      usuarioId: s.id,
+      cajaId: input.cajaId,
+      tipoDocumento: input.tipoDocumento,
+      clienteId: input.clienteId,
+      pagos: input.pagos,
+      aportes: input.aportes,
+    });
+    crearLogAuditoria(
+      req,
+      AuditAction.PEDIDO_COBRAR,
+      `Cobro de pedido ${input.pedidoId} por ${cobroResult.total}`,
+      'caja',
+      {
         pedidoId: input.pedidoId,
-        usuarioId: s.id,
         cajaId: input.cajaId,
+        total: cobroResult.total,
         tipoDocumento: input.tipoDocumento,
-        clienteId: input.clienteId,
-        pagos: input.pagos,
-        aportes: input.aportes,
-      }),
+      },
+      'info',
     );
+    res.json(cobroResult);
   } catch (err) {
     errorCaja(res, err);
   }
@@ -255,14 +291,27 @@ export async function postCajaArqueo(req: Request, res: Response): Promise<void>
   }
   const s = sesion(req);
   try {
-    res.json(
-      await arqueoCierreService({
+    const arqueoResult = await arqueoCierreService({
+      cajaId: parsed.data.cajaId,
+      usuarioId: s.id,
+      denominaciones: parsed.data.denominaciones,
+      observacion: parsed.data.observacion,
+    });
+    const nivelArqueo = arqueoResult.resultado === 'CUADRADA' ? 'info' : 'warn';
+    crearLogAuditoria(
+      req,
+      AuditAction.CAJA_ARQUEO,
+      `Arqueo de caja ${parsed.data.cajaId}: ${arqueoResult.resultado}, diferencia ${arqueoResult.diferencia}`,
+      'caja',
+      {
         cajaId: parsed.data.cajaId,
-        usuarioId: s.id,
         denominaciones: parsed.data.denominaciones,
-        observacion: parsed.data.observacion,
-      }),
+        resultado: arqueoResult.resultado,
+        diferencia: arqueoResult.diferencia,
+      },
+      nivelArqueo,
     );
+    res.json(arqueoResult);
   } catch (err) {
     errorCaja(res, err);
   }
@@ -375,7 +424,21 @@ export async function postCajaMovimiento(req: Request, res: Response): Promise<v
   }
   const s = sesion(req);
   try {
-    res.status(201).json(await registrarMovimientoCajaService({ ...parsed.data, usuarioId: s.id }));
+    const movimientoResult = await registrarMovimientoCajaService({ ...parsed.data, usuarioId: s.id });
+    crearLogAuditoria(
+      req,
+      AuditAction.INVENTARIO_MOVIMIENTO,
+      `Movimiento de caja ${parsed.data.cajaId}: ${parsed.data.descripcion}`,
+      'caja',
+      {
+        cajaId: parsed.data.cajaId,
+        conceptoId: parsed.data.conceptoId,
+        metodoPagoId: parsed.data.metodoPagoId,
+        monto: parsed.data.monto,
+      },
+      'info',
+    );
+    res.status(201).json(movimientoResult);
   } catch (err) {
     errorCaja(res, err);
   }

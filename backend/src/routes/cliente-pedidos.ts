@@ -8,6 +8,7 @@ import {
   patchClienteModoPago,
   postClienteDetalle,
   postClientePedido,
+  postClienteElegirAtencion,
   postClienteRecalcular,
   postClienteTanda,
 } from '../controllers/cliente-pedidos-controller.js';
@@ -23,6 +24,7 @@ clientePedidosRouter.get('/:id/mi-cuenta', getClienteMiCuenta);
 clientePedidosRouter.get('/:id', getClientePedidoDetalle);
 clientePedidosRouter.post('/', postClientePedido);
 clientePedidosRouter.post('/tanda', postClienteTanda);
+clientePedidosRouter.post('/reserva/atencion', postClienteElegirAtencion);
 clientePedidosRouter.post('/:id/detalles', postClienteDetalle);
 clientePedidosRouter.post('/:id/recalcular', postClienteRecalcular);
 clientePedidosRouter.patch('/:id/modo-pago', patchClienteModoPago);

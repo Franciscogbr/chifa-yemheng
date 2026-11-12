@@ -3,7 +3,11 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler.js';
+import { httpLogger } from './loggers/pino-http.js';
+import { requestLogger, responseLogger } from './middleware/request-logger.js';
+import { sentryRequestHandler, sentryErrorHandler } from './middleware/sentry.js';
 import { env } from './config/env.js';
+import { loggingConfig } from './config/logging.js';
 import { factilizaRouter } from './routes/factiliza.js';
 import { authRouter } from './routes/auth.js';
 import { auditoriaRouter } from './routes/auditoria.js';
@@ -38,7 +42,19 @@ export function createApp() {
 
   app.use(cors());
   app.use(express.json());
-  app.use(morgan('dev'));
+
+  // Sentry request handler (captura requests como breadcrumbs para contexto de errores)
+  app.use(sentryRequestHandler);
+
+  // Structured logging (replaces/replaces morgan in production)
+  app.use(httpLogger);
+  app.use(requestLogger);
+  app.use(responseLogger);
+
+  if (!loggingConfig.isProduction && !loggingConfig.isTest) {
+    app.use(morgan('dev'));
+  }
+
   app.use(
     rateLimit({
       windowMs: 60_000,
@@ -78,6 +94,7 @@ export function createApp() {
 
   app.use(notFoundHandler);
   app.use(errorHandler);
+  app.use(sentryErrorHandler);
 
   return app;
 }

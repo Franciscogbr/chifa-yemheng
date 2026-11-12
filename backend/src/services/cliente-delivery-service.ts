@@ -1,6 +1,6 @@
 import type { Delivery } from '../models/delivery.js';
 import type { SugerirCostoResult } from '../repositories/delivery-repository.js';
-import { crearDeliveryCliente, getDeliveryActivoCliente, getDeliveryDetalle, getDeliveryUbicacion } from '../repositories/cliente-delivery-repository.js';
+import { crearDeliveryCliente, getDeliveryActivoCliente, getDeliveryComprobante, getDeliveryDetalle, getDeliveryUbicacion } from '../repositories/cliente-delivery-repository.js';
 import { getParametrosNegocio, sugerirCosto } from '../repositories/delivery-repository.js';
 import { DeliveryError } from '../models/delivery.js';
 

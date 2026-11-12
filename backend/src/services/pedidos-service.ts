@@ -4,11 +4,13 @@ import type { DetalleAdd, PedidoAbrir, PedidoQuery } from '../schemas/pedido.js'
 import {
   agregarDetalle as repoAgregar,
   anularPedido as repoAnular,
+  abrirPedidoReservaMozo as repoAbrirPedidoReservaMozo,
   auditar,
   cambiarPreparacion as repoCambiarPrep,
   idEstadoMesaPorNombre,
   listarPedidos as repoListar,
   listarPedidosCocina,
+  listarReservasEsperandoMozo as repoListarReservasEsperandoMozo,
   obtenerEstadoMesa,
   obtenerPedido as repoObtener,
   abrirPedido as repoAbrir,
@@ -21,6 +23,23 @@ import { descontarInsumosPorDetalle } from './inventario-service.js';
 
 export function listarService(q: PedidoQuery): Promise<PedidoLista> {
   return repoListar(q);
+}
+
+export function reservasEsperandoMozoService() {
+  return repoListarReservasEsperandoMozo();
+}
+
+export async function abrirPedidoReservaMozoService(
+  reservaId: number,
+  usuarioId: number,
+  logeo: string,
+  pc: string,
+): Promise<Pedido> {
+  const result = await repoAbrirPedidoReservaMozo(reservaId, usuarioId, logeo, pc);
+  await auditar(usuarioId, 'ABRIR_PEDIDO_RESERVA', result.id, `Reserva ${reservaId} · Pedido ${result.numero}`);
+  const pedido = await repoObtener(result.id);
+  if (!pedido) throw new PedidoError('NOT_FOUND');
+  return pedido;
 }
 
 /** Pedidos activos con detalle para cocina (KDS), con envoltorio paginado (spec). */

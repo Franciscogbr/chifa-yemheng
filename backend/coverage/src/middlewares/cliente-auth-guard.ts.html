@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">76.47% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/17</span>
+                <span class='fraction'>13/17</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">88.88% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/18</span>
+                <span class='fraction'>16/18</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">76.47% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/17</span>
+                <span class='fraction'>13/17</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -108,32 +108,32 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
@@ -143,33 +143,33 @@ export interface ClienteAuthenticatedRequest extends Request {
   user: { sub: number; rol: string; email: string; nombre: string };
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >clienteAuthGuard(r</span>eq: Request, res: Response, next: NextFunction): void {
-  const header = <span class="cstat-no" title="statement not covered" >req.headers.authorization ?? '';</span>
-  const token = <span class="cstat-no" title="statement not covered" >header.startsWith('Bearer ') ? header.slice(7) : '';</span>
-<span class="cstat-no" title="statement not covered" >  if (!token) {</span>
-<span class="cstat-no" title="statement not covered" >    res.status(401).json({ error: 'CREDENCIALES_INVALIDAS' });</span>
-<span class="cstat-no" title="statement not covered" >    return;</span>
+export function clienteAuthGuard(req: Request, res: Response, next: NextFunction): void {
+  const header = req.headers.authorization ?? '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (!token) {
+    res.status(401).json({ error: 'CREDENCIALES_INVALIDAS' });
+    return;
   }
-<span class="cstat-no" title="statement not covered" >  try {</span>
-    const decoded: unknown = <span class="cstat-no" title="statement not covered" >jwt.verify(token, env.JWT_SECRET);</span>
-<span class="cstat-no" title="statement not covered" >    if (typeof decoded !== 'object' || decoded === null) {</span>
+  try {
+    const decoded: unknown = jwt.verify(token, env.JWT_SECRET);
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (typeof decoded !== 'object' || decoded === null) {
 <span class="cstat-no" title="statement not covered" >      res.status(401).json({ error: 'CREDENCIALES_INVALIDAS' });</span>
 <span class="cstat-no" title="statement not covered" >      return;</span>
     }
-    const v = <span class="cstat-no" title="statement not covered" >decoded as Record&lt;string, unknown&gt;;</span>
-<span class="cstat-no" title="statement not covered" >    if (typeof v['sub'] !== 'number' || v['rol'] !== 'CLIENTE') {</span>
+    const v = decoded as Record&lt;string, unknown&gt;;
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (typeof v['sub'] !== 'number' || v['rol'] !== 'CLIENTE') {
 <span class="cstat-no" title="statement not covered" >      res.status(401).json({ error: 'CREDENCIALES_INVALIDAS' });</span>
 <span class="cstat-no" title="statement not covered" >      return;</span>
     }
-<span class="cstat-no" title="statement not covered" >    (req as ClienteAuthenticatedRequest).user = {</span>
+    (req as ClienteAuthenticatedRequest).user = {
       sub: v['sub'] as number,
       rol: v['rol'] as string,
       email: (v['email'] as string) ?? '',
       nombre: (v['nombre'] as string) ?? '',
     };
-<span class="cstat-no" title="statement not covered" >    next();</span>
+    next();
   } catch {
-<span class="cstat-no" title="statement not covered" >    res.status(401).json({ error: 'CREDENCIALES_INVALIDAS' });</span>
+    res.status(401).json({ error: 'CREDENCIALES_INVALIDAS' });
   }
 }</pre></td></tr></table></pre>
 
@@ -178,7 +178,7 @@ export function <span class="fstat-no" title="function not covered" >clienteAuth
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-12T14:07:31.385Z
+                at 2026-11-12T17:26:02.387Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

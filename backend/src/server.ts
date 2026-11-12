@@ -1,10 +1,13 @@
 import { createApp } from './app.js';
 import { env } from './config/env.js';
+import { initSentry } from './config/sentry.js';
 
 process.on('unhandledRejection', (reason) => {
   // eslint-disable-next-line no-console
   console.error('[unhandledRejection]', reason);
 });
+
+initSentry();
 
 const app = createApp();
 

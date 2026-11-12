@@ -60,6 +60,11 @@ export const modoPagoMesaSchema = z.object({
   modo: z.enum(['CUENTA_UNICA', 'POR_CONSUMO']),
 });
 
+export const reservaAtencionClienteSchema = z.object({
+  mesaId: z.number().int().positive(),
+  canal: z.enum(['QR', 'MOZO']),
+});
+
 export const joinSettingSchema = z.object({
   aceptaParticipantes: z.boolean(),
 });
@@ -73,3 +78,4 @@ export type PreparacionUpdate = z.infer<typeof preparacionUpdateSchema>;
 export type ComandaQuery = z.infer<typeof comandaQuerySchema>;
 export type Cuenta = z.infer<typeof cuentaSchema>;
 export type ModoPagoMesaInput = z.infer<typeof modoPagoMesaSchema>;
+export type ReservaAtencionCliente = z.infer<typeof reservaAtencionClienteSchema>;

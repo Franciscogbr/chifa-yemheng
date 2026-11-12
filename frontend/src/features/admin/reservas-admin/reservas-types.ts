@@ -12,6 +12,9 @@ export interface Reserva {
   comensales: number;
   observacion: string | null;
   estado: EstadoReserva;
+  origen: 'WEB' | 'TELEFONO' | 'PERSONAL';
+  llegada: string | null;
+  canalAtencion: 'QR' | 'MOZO' | null;
   fechaCreacion: string;
 }
 

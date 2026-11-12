@@ -13,6 +13,7 @@ export const reservaQuerySchema = z.object({
 export const reservaCreateSchema = z.object({
   clienteId: z.number().int().positive(),
   mesaId: z.number().int().positive().optional(),
+  origen: z.enum(['TELEFONO', 'PERSONAL']).default('PERSONAL'),
   fecha: z.string().min(1),
   hora: z.string().min(1),
   comensales: z.number().int().min(1).default(1),
@@ -34,6 +35,10 @@ export const reservaReprogramarSchema = z.object({
   observacion: z.string().max(200).optional(),
 });
 
+export const reservaAtencionSchema = z.object({
+  canal: z.enum(['QR', 'MOZO']),
+});
+
 export const disponibilidadQuerySchema = z.object({
   fecha: z.string().min(1),
   hora: z.string().min(1),
@@ -45,4 +50,5 @@ export type ReservaQuery = z.infer<typeof reservaQuerySchema>;
 export type ReservaCreate = z.infer<typeof reservaCreateSchema>;
 export type ReservaConfirmar = z.infer<typeof reservaConfirmarSchema>;
 export type ReservaReprogramar = z.infer<typeof reservaReprogramarSchema>;
+export type ReservaAtencion = z.infer<typeof reservaAtencionSchema>;
 export type DisponibilidadQuery = z.infer<typeof disponibilidadQuerySchema>;
