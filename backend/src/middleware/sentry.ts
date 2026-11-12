@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
-import { captureException, captureMessage } from '../config/sentry.js';
+import * as Sentry from '@sentry/node';
+import { captureException } from '../config/sentry.js';
 import { loggingConfig } from '../config/logging.js';
 
 export const sentryErrorHandler = (
@@ -39,5 +40,3 @@ export const sentryRequestHandler = (
   }
   next();
 };
-
-import * as Sentry from '@sentry/node';

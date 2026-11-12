@@ -1,7 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
 import { logger } from '../loggers/index.js';
-import { PedidoError } from '../models/pedido.js';
-import { PersonalError } from '../models/personal.js';
 import { loggingConfig } from '../config/logging.js';
 
 export interface AppError extends Error {

@@ -26,7 +26,6 @@ export function initSentry(): void {
     },
     integrations: [
       new Sentry.Integrations.Http({ tracing: true }),
-      new Sentry.Integrations.Contexts(),
     ],
   });
 }
@@ -42,7 +41,7 @@ export function captureMessage(message: string, level: Sentry.SeverityLevel = 'i
   if (loggingConfig.isTest) {
     return;
   }
-  Sentry.captureMessage(message, level, { contexts: { custom: context } });
+  Sentry.captureMessage(message, { level, contexts: { custom: context } });
 }
 
 export function setUser(user: { id: number; email?: string; username?: string }): void {

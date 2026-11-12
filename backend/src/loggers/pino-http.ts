@@ -2,7 +2,7 @@ import pinoHttp from 'pino-http';
 import { logger } from './index.js';
 import { loggingConfig } from '../config/logging.js';
 
-export const httpLogger = pinoHttp({
+export const httpLogger = (pinoHttp as any)({
   logger,
   redactReqBody: ['clave', 'password', 'token', 'authorization'],
   redactResBody: ['clave', 'password', 'token'],
@@ -11,12 +11,12 @@ export const httpLogger = pinoHttp({
     if (res.statusCode >= 400) return 'warn';
     return 'info';
   },
-  customRequestId: (req) => {
+  customRequestId: (req: { headers: { 'x-request-id'?: string } }) => {
     const existing = req.headers['x-request-id'] as string;
     return existing ?? crypto.randomUUID();
   },
   serializers: {
-    req: (req) => {
+    req: (req: any) => {
       const headers = req.headers || {};
       const body = req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH'
         ? { ...req.body, clave: '[REDACTED]', password: '[REDACTED]' }
@@ -36,7 +36,7 @@ export const httpLogger = pinoHttp({
         params: req.params,
       };
     },
-    res: (res) => {
+    res: (res: any) => {
       let contentType;
       try {
         contentType = res.getHeaders?.()['content-type'];
@@ -48,7 +48,7 @@ export const httpLogger = pinoHttp({
         },
       };
     },
-    err: (err) => ({
+    err: (err: any) => ({
       type: err.type,
       message: err.message,
       stack: err.stack,

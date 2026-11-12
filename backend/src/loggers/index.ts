@@ -1,4 +1,5 @@
-import pino, { Logger } from 'pino';
+import pino from 'pino';
+import type { Logger } from 'pino';
 import { loggingConfig } from '../config/logging.js';
 
 const transport = loggingConfig.pretty && !loggingConfig.isTest
@@ -25,7 +26,7 @@ const fileTransport = loggingConfig.filePath && loggingConfig.isProduction
 
 const transports = [transport, fileTransport].filter(Boolean);
 
-export const logger: Logger = pino(
+export const logger: Logger = (pino as any)(
   {
     level: loggingConfig.level,
     redact: [
@@ -43,7 +44,7 @@ export const logger: Logger = pino(
     },
     timestamp: pino.stdTimeFunctions.isoTime,
   },
-  transports.length > 0 ? pino.multistream(transports.map((t) => ({ stream: t as any, level: t.level ?? 'info' }))) : undefined
+  transports.length > 0 ? pino.multistream(transports.map((t) => ({ stream: t as any, level: (t as { level?: string }).level ?? 'info' }))) : undefined
 );
 
 export const childLogger = (module: string) => logger.child({ module });

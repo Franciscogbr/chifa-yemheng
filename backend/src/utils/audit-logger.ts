@@ -1,3 +1,4 @@
+import type { Request } from 'express';
 import { logger } from '../loggers/index.js';
 
 export const AuditAction = {
@@ -72,7 +73,7 @@ export const crearLogAuditoria = (
   auditLog({
     usuarioId: user?.sub ?? 0,
     usuarioLogeo: user?.logeo,
-    ip: req.socket?.remoteAddress ?? 'unknown',
+    ip: (req as any).socket?.remoteAddress ?? 'unknown',
     accion,
     modulo,
     detalle,

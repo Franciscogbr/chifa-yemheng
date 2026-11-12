@@ -1,7 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import httpLogger from '../loggers/pino-http.js';
 import { logger } from '../loggers/index.js';
-import { loggingConfig } from '../config/logging.js';
 
 export const requestLogger = (
   req: Request,
