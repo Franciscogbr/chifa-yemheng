@@ -241,6 +241,7 @@ export function registrarCobro(input: {
   cajaId: number;
   tipoDocumento: string;
   clienteId: number | null;
+  empresa?: { razonSocial: string; direccion: string; ruc: string };
   pagos: {
     metodoPagoId: number;
     monto: number;
@@ -339,6 +340,25 @@ export interface MovimientoResumenItem {
 export interface MovimientoResumen {
   movimientos: MovimientoResumenItem[];
   total: number;
+}
+
+export interface MovimientoCajaTurno {
+  id: number;
+  fecha: string;
+  tipoMovimiento: string;
+  concepto: string;
+  metodoPago: string;
+  monto: number;
+  afectaEfectivo: boolean;
+  descripcion: string | null;
+  documento: string | null;
+  referencia: string | null;
+  usuario: string;
+}
+
+export function listarMovimientosTurno(aperturaId: number): Promise<MovimientoCajaTurno[]> {
+  return fetch(`${BASE}/caja/turno/${aperturaId}/movimientos`, { headers: headers() })
+    .then(lanzar<MovimientoCajaTurno[]>);
 }
 
 export function verMovimientosResumen(aperturaId: number): Promise<MovimientoResumen> {

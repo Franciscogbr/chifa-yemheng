@@ -7,6 +7,7 @@ export interface Producto {
 
   categoriaId: number;
   categoria: string;
+  clasificacion: string | null;
   tipo: TipoProducto;
   precio: number;
   costo: number;
@@ -35,6 +36,7 @@ export interface ProductoForm {
   categoriaId: number;
   unidadId: number;
   tipo: TipoProducto;
+  clasificacion?: string | null;
   precio: number;
   costo: number;
   stock: number;
@@ -52,6 +54,25 @@ export const TIPOS: { valor: TipoProducto; label: string }[] = [
   { valor: 'P', label: 'Preparado' },
   { valor: 'B', label: 'Bebida' },
   { valor: 'I', label: 'Insumo' },
+];
+
+export const CLASIFICACIONES: { valor: string; label: string }[] = [
+  { valor: 'ABARROTES', label: 'Abarrotes' },
+  { valor: 'CARNES', label: 'Carnes' },
+  { valor: 'VEGETALES', label: 'Vegetales' },
+  { valor: 'MARISCOS', label: 'Mariscos' },
+  { valor: 'LACTEOS', label: 'Lácteos' },
+  { valor: 'BEBIDAS', label: 'Bebidas' },
+  { valor: 'LICORES', label: 'Licores' },
+  { valor: 'POSTRES', label: 'Postres' },
+  { valor: 'PLATOS', label: 'Platos' },
+  { valor: 'SOPAS', label: 'Sopas' },
+  { valor: 'CHIFA', label: 'Chifa' },
+  { valor: 'COMBOS', label: 'Combos' },
+  { valor: 'ENTRADAS', label: 'Entradas' },
+  { valor: 'ESPECIAS', label: 'Especias' },
+  { valor: 'ALMACEN', label: 'Almacén' },
+  { valor: 'GENERAL', label: 'General' },
 ];
 
 /** Solo el Preparado lleva cocción; Bebida e Insumo no aplican. */

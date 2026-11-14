@@ -8,7 +8,7 @@ import {
   listarUnidadesActivas,
 } from './productos-service';
 import type { CategoriaOpcion } from './productos-service';
-import { requiereTiempo, TIPOS } from './productos-types';
+import { requiereTiempo, TIPOS, CLASIFICACIONES } from './productos-types';
 import type { Producto, ProductoForm, TipoProducto } from './productos-types';
 
 const LIMITE = 20;
@@ -18,6 +18,7 @@ const VACIO: ProductoForm = {
   categoriaId: 0,
   unidadId: 1,
   tipo: 'P',
+  clasificacion: '',
   precio: 0,
   costo: 0,
   stock: 0,
@@ -46,6 +47,7 @@ export function ProductosPage() {
   const [categorias, setCategorias] = useState<CategoriaOpcion[]>([]);
   const [unidades, setUnidades] = useState<{ id: number; nombre: string }[]>([]);
   const [filtroTipo, setFiltroTipo] = useState<TipoProducto | ''>('');
+  const [filtroClasificacion, setFiltroClasificacion] = useState<string>('');
   const [modal, setModal] = useState<null | { editando: Producto | null }>(null);
   const [form, setForm] = useState<ProductoForm>(VACIO);
   const [formError, setFormError] = useState<string | null>(null);
@@ -56,7 +58,16 @@ export function ProductosPage() {
     setError(null);
     try {
       const [res, cats, unis] = await Promise.all([
-        listarProductos({ page, limit: LIMITE, nombre: busqueda, categoria, estado, disponible, tipo: filtroTipo }),
+        listarProductos({
+          page,
+          limit: LIMITE,
+          nombre: busqueda,
+          categoria,
+          clasificacion: filtroClasificacion,
+          estado,
+          disponible,
+          tipo: filtroTipo,
+        }),
         listarCategoriasActivas(),
         listarUnidadesActivas(),
       ]);
@@ -74,7 +85,7 @@ export function ProductosPage() {
   useEffect(() => {
     void cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, busqueda, categoria, estado, disponible, filtroTipo]);
+  }, [page, busqueda, categoria, estado, disponible, filtroTipo, filtroClasificacion]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / LIMITE));
   const disponibles = datos.filter((d) => d.disponible && d.estado === 'A').length;
@@ -91,6 +102,7 @@ export function ProductosPage() {
       categoriaId: p.categoriaId,
       unidadId: p.unidadId,
       tipo: p.tipo,
+      clasificacion: p.clasificacion ?? '',
       precio: p.precio,
       costo: p.costo,
       stock: p.stock,
@@ -277,6 +289,21 @@ export function ProductosPage() {
             </option>
           ))}
         </select>
+        <select
+          value={filtroClasificacion}
+          onChange={(e) => {
+            setFiltroClasificacion(e.target.value);
+            setPage(1);
+          }}
+          className="cursor-pointer rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none lg:col-span-2"
+        >
+          <option value="">Clasificación: Todas</option>
+          {CLASIFICACIONES.map((c) => (
+            <option key={c.valor} value={c.valor}>
+              {c.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {cargando ? (
@@ -315,6 +342,7 @@ export function ProductosPage() {
                     <th className="w-16 px-4 py-3 text-center">Foto</th>
                     <th className="px-4 py-3">Nombre</th>
                     <th className="px-4 py-3">Categoría</th>
+                    <th className="px-4 py-3">Clasificación</th>
                     <th className="px-4 py-3 text-right">Precio</th>
                     <th className="px-4 py-3">Stock</th>
                     <th className="px-4 py-3 text-center">Cocción</th>
@@ -351,6 +379,11 @@ export function ProductosPage() {
                       <td className="px-4 py-3">
                         <span className="rounded-full bg-[#F2C94C]/30 px-2.5 py-1 text-[11px] font-bold">
                           {p.categoria || '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${clasificacionColor(p.clasificacion)}`}>
+                          {p.clasificacion ? p.clasificacion.charAt(0).toUpperCase() + p.clasificacion.slice(1).toLowerCase() : '—'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right font-bold">
@@ -442,6 +475,9 @@ export function ProductosPage() {
                     <p className="text-xs text-[#333333]/50">
                       {p.categoria} · S/. {p.precio.toFixed(2)}
                     </p>
+                    <span className={`text-[10px] font-bold ${clasificacionColor(p.clasificacion)}`}>
+                      {p.clasificacion || '—'}
+                    </span>
                   </div>
                   {p.estado === 'A' ? (
                     <span className="rounded bg-[#22C55E]/15 px-2 py-0.5 text-[11px] font-bold text-[#22C55E]">
@@ -536,6 +572,25 @@ export function ProductosPage() {
                     {TIPOS.map((t) => (
                       <option key={t.valor} value={t.valor}>
                         {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">
+                    Clasificación
+                  </span>
+                  <select
+                    value={form.clasificacion ?? ''}
+                    onChange={(e) =>
+                      setForm({ ...form, clasificacion: e.target.value || null })
+                    }
+                    className="rounded-lg bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none"
+                  >
+                    <option value="">Ninguna</option>
+                    {CLASIFICACIONES.map((c) => (
+                      <option key={c.valor} value={c.valor}>
+                        {c.label}
                       </option>
                     ))}
                   </select>
@@ -744,4 +799,27 @@ function Toggle({ activo, titulo, onClick }: { activo: boolean; titulo: string; 
       />
     </button>
   );
+}
+
+function clasificacionColor(c: string | null): string {
+  if (!c) return 'text-[#333333]/60 bg-[#F5F5F5]';
+  const colores: Record<string, string> = {
+    VEGETALES: 'text-[#166534] bg-[#DCFCE7]',
+    CARNES: 'text-[#991B1B] bg-[#FEE2E2]',
+    ABARROTES: 'text-[#92400E] bg-[#FEF3C7]',
+    MARISCOS: 'text-[#0C4A6E] bg-[#E0F2FE]',
+    LACTEOS: 'text-[#6D28D9] bg-[#F3E8FF]',
+    BEBIDAS: 'text-[#047857] bg-[#CCFBF1]',
+    LICORES: 'text-[#7C3AED] bg-[#EDE9FE]',
+    POSTRES: 'text-[#DB2777] bg-[#FCE7F3]',
+    PLATOS: 'text-[#B45309] bg-[#FFEDD5]',
+    SOPAS: 'text-[#0891B2] bg-[#CCFBF1]',
+    CHIFA: 'text-[#B45309] bg-[#FFEDD5]',
+    COMBOS: 'text-[#1D4ED8] bg-[#DBEAFE]',
+    ENTRADAS: 'text-[#DC2626] bg-[#FCA5A5]',
+    ESPECIAS: 'text-[#7C2D12] bg-[#FEF3C7]',
+    ALMACEN: 'text-[#4B5563] bg-[#E5E7EB]',
+    GENERAL: 'text-[#6B7280] bg-[#F3F4F6]',
+  };
+  return colores[c] || 'text-[#333333]/60 bg-[#F5F5F5]';
 }

@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { createAudit } from '../utils/auditoria.js';
 import { resumirMovimientosPorMedio } from '../utils/caja-totales.js';
 
 export interface Caja {
@@ -891,6 +892,7 @@ export async function cobrarAtomicMixto(args: {
   aperturaId: number;
   tipoDocumento: string;
   clienteId: number | null;
+  empresa?: { razonSocial: string; direccion: string; ruc: string };
   pagos: {
     metodoPagoId: number;
     monto: number;
@@ -901,12 +903,68 @@ export async function cobrarAtomicMixto(args: {
   }[];
   aportes: { clienteId: number; monto: number; referencia: string }[] | undefined;
 }): Promise<{ idVenta: number; serie: string; numero: string; total: number; vuelto: number }> {
+  let idCliente = args.clienteId;
+
+  // Factura sin cliente registrado: crear empresa y cliente automáticamente con datos de Factiliza.
+  if (args.tipoDocumento === '01' && !idCliente && args.empresa) {
+    const ahora = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const auditoria = createAudit(String(args.usuarioId), '');
+
+    // Buscar empresa existente por RUC
+    const { data: empExistente } = await supabase
+      .from('empresa')
+      .select('id_empresa')
+      .eq('ruc', args.empresa.ruc)
+      .maybeSingle();
+    let idEmpresa: number;
+    if (empExistente) {
+      idEmpresa = Number((empExistente as Record<string, unknown>)['id_empresa']);
+    } else {
+      const { data: nuevaEmp, error: errEmp } = await supabase
+        .from('empresa')
+        .insert({
+          ruc: args.empresa.ruc,
+          razon_social: args.empresa.razonSocial,
+          direccion: args.empresa.direccion,
+          ...auditoria,
+        })
+        .select('id_empresa')
+        .single();
+      if (errEmp) throw new Error(`DB_CREATE_FAIL: ${errEmp.message}`);
+      idEmpresa = Number((nuevaEmp as Record<string, unknown>)['id_empresa']);
+    }
+
+    // Buscar cliente existente para esa empresa
+    const { data: cliExistente } = await supabase
+      .from('cliente')
+      .select('id_cliente')
+      .eq('id_empresa', idEmpresa)
+      .maybeSingle();
+    if (cliExistente) {
+      idCliente = Number((cliExistente as Record<string, unknown>)['id_cliente']);
+    } else {
+      const { data: nuevoCli, error: errCli } = await supabase
+        .from('cliente')
+        .insert({
+          id_empresa: idEmpresa,
+          tipo_cliente: 'J',
+          estado: 'A',
+          f_registro: ahora,
+          ...auditoria,
+        })
+        .select('id_cliente')
+        .single();
+      if (errCli) throw new Error(`DB_CREATE_FAIL: ${errCli.message}`);
+      idCliente = Number((nuevoCli as Record<string, unknown>)['id_cliente']);
+    }
+  }
+
   const { data, error } = await supabase.rpc('fn_cobrar_pedido_mixto_atomic', {
     p_pedido: args.pedidoId,
     p_usuario: args.usuarioId,
     p_apertura: args.aperturaId,
     p_tipodoc: args.tipoDocumento,
-    p_cliente: args.clienteId,
+    p_cliente: idCliente,
     p_pagos: args.pagos,
     p_aportes: args.aportes ?? null,
   });
@@ -1192,6 +1250,52 @@ export async function registrarMovimientoCaja(args: {
   });
   if (error) throw new Error(error.message);
   return Number(data);
+}
+
+export interface MovimientoCajaHistorial {
+  id: number;
+  fecha: string;
+  tipoMovimiento: string;
+  concepto: string;
+  metodoPago: string;
+  monto: number;
+  afectaEfectivo: boolean;
+  descripcion: string | null;
+  documento: string | null;
+  referencia: string | null;
+  usuario: string;
+}
+
+export async function listarMovimientosTurno(aperturaId: number): Promise<MovimientoCajaHistorial[]> {
+  const { data, error } = await supabase
+    .from('movimiento_caja')
+    .select('id_movimientocaja, f_movimiento, monto, afecta_efectivo, descripcion, documento, numero_operacion, tipo_movimiento_caja(n_tipomovimiento), concepto_caja(n_concepto), metodo_pago(n_metodopago), usuario(logeo)')
+    .eq('id_aperturacaja', aperturaId)
+    .eq('estado', 'A')
+    .order('f_movimiento', { ascending: false })
+    .order('id_movimientocaja', { ascending: false });
+
+  if (error) throw new Error(`DB_MOVIMIENTOS_TURNO_FAIL: ${error.message}`);
+
+  return ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => {
+    const tipo = row['tipo_movimiento_caja'] as Record<string, unknown> | null;
+    const concepto = row['concepto_caja'] as Record<string, unknown> | null;
+    const metodo = row['metodo_pago'] as Record<string, unknown> | null;
+    const usuario = row['usuario'] as Record<string, unknown> | null;
+    return {
+      id: Number(row['id_movimientocaja']),
+      fecha: String(row['f_movimiento'] ?? ''),
+      tipoMovimiento: String(tipo?.['n_tipomovimiento'] ?? '—'),
+      concepto: String(concepto?.['n_concepto'] ?? '—'),
+      metodoPago: String(metodo?.['n_metodopago'] ?? '—'),
+      monto: Number(row['monto'] ?? 0),
+      afectaEfectivo: String(row['afecta_efectivo'] ?? 'N') === 'S',
+      descripcion: row['descripcion'] ? String(row['descripcion']) : null,
+      documento: row['documento'] ? String(row['documento']) : null,
+      referencia: row['numero_operacion'] ? String(row['numero_operacion']) : null,
+      usuario: String(usuario?.['logeo'] ?? '—'),
+    };
+  });
 }
 
 export async function solicitarCierreCaja(args: {

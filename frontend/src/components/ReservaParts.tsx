@@ -1,14 +1,29 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Minus, Plus, CalendarCheck, CalendarDays, Clock3, Coins, MessageSquareText, UsersRound } from 'lucide-react';
+import { ArrowRight, Minus, Plus, CalendarCheck, CalendarDays, ClipboardCheck, Clock3, Coins, MessageSquareText, UsersRound, X } from 'lucide-react';
 import { fmtDate, fmtPEN, errText } from '../lib/format';
 import { Txt } from './Icon';
 import type { Reserva } from '../types/db';
 
 const SIT: Record<string, [string, string]> = { P: ['Pendiente', 'warn'], C: ['Confirmada', 'ok'], A: ['Atendida', 'ok'], X: ['Cancelada', 'bad'] };
 
-export function ReservaCard({ r, nombre }: { r: Reserva; nombre?: string }) {
+export function ReservaCard({
+  r,
+  nombre,
+  onContinuar,
+  onCancelar,
+  busy = false,
+}: {
+  r: Reserva;
+  nombre?: string;
+  onContinuar?: (reserva: Reserva) => void;
+  onCancelar?: (reserva: Reserva) => void;
+  busy?: boolean;
+}) {
   const [txt, tone] = SIT[String(r.situacion)] ?? [String(r.situacion ?? '-'), 'warn'];
+  const puedeContinuar =
+    (r.pedido_id != null || (r.situacion === 'A' && r.id_mesa != null && r.canal_atencion !== 'MOZO')) && onContinuar;
+  const puedeCancelar = !r.pedido_id && ['P', 'C', 'A'].includes(String(r.situacion)) && onCancelar;
   return (
     <motion.div className="y-panel y-rcard" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
       <div className="y-avatar">{(nombre ?? r.cliente_nombre ?? 'R').charAt(0).toUpperCase()}</div>
@@ -23,7 +38,40 @@ export function ReservaCard({ r, nombre }: { r: Reserva; nombre?: string }) {
               Llegada registrada{r.canal_atencion ? ` · ${r.canal_atencion === 'QR' ? 'QR' : 'mozo'}` : ''}
             </span>
           )}
+          {r.canal_atencion === 'MOZO' && !r.pedido_id && (
+            <span className="y-chip" role="status">Solicitud al mozo enviada</span>
+          )}
         </span>
+        {(puedeContinuar || puedeCancelar) && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+            {puedeContinuar && (
+              <button
+                type="button"
+                className="y-btn red sm"
+                disabled={busy}
+                onClick={() => onContinuar(r)}
+              >
+                {r.pedido_id ? <ClipboardCheck size={15} /> : <ArrowRight size={15} />}
+                {r.pedido_id
+                  ? 'Ver seguimiento'
+                  : r.canal_atencion === 'QR'
+                    ? 'Continuar por QR'
+                    : 'Elegir cómo pedir'}
+              </button>
+            )}
+            {puedeCancelar && (
+              <button
+                type="button"
+                className="y-btn line sm"
+                disabled={busy}
+                onClick={() => onCancelar(r)}
+              >
+                <X size={15} />
+                {busy ? 'Cancelando…' : 'Cancelar reserva'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </motion.div>
   );

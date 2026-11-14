@@ -7,12 +7,19 @@ export const turnoCajaSchema = z.object({
   observacion: z.string().trim().max(200).optional().default(''),
 });
 
+const empresaSchema = z.object({
+  razonSocial: z.string().min(1).max(140),
+  direccion: z.string().min(1).max(200),
+  ruc: z.string().regex(/^\d{11}$/, 'RUC de 11 dígitos'),
+});
+
 /** Cobro de pedido por caja (factura/boleta + pago + movimiento) */
 export const cobroCajaSchema = z.object({
   pedidoId: z.number().int().positive(),
   cajaId: z.number().int().positive(),
   tipoDocumento: z.enum(['03', '01']).default('03'),
   clienteId: z.number().int().positive().nullable().default(null),
+  empresa: empresaSchema.optional(),
   pagos: z.array(z.object({
     metodoPagoId: z.number().int().positive(),
     monto: z.number().positive(),

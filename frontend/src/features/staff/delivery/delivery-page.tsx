@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { api } from '@/shared/services/api-client';
 import { DeliveryStatusBadge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
@@ -24,6 +24,35 @@ interface Delivery {
 }
 
 const LIMITE = 20;
+const INTERVALO_ACTUALIZACION_MS = 10_000;
+const RETRASO_HISTORIAL_KEY = 'chifa.delivery.retraso-historial-segundos';
+const RETRASO_HISTORIAL_DEFAULT_SEGUNDOS = 10;
+const RETRASO_HISTORIAL_MIN_SEGUNDOS = 1;
+const RETRASO_HISTORIAL_MAX_SEGUNDOS = 600;
+const TAMANO_PAGINA_HISTORIAL = 10;
+
+function timestampFechaEntrega(fecha: string | null): number | null {
+  if (!fecha) return null;
+  const fechaConZona = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(fecha) ? fecha : `${fecha}Z`;
+  const timestamp = Date.parse(fechaConZona);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function timestampInicioHistorial(delivery: Delivery, fechaDetectada?: number): number | null {
+  return timestampFechaEntrega(delivery.fechaEntrega) ?? fechaDetectada ?? null;
+}
+
+function esHistorialEntrega(
+  delivery: Delivery,
+  ahora: number,
+  retrasoHistorialMs: number,
+  fechaDetectada?: number,
+): boolean {
+  const timestamp = timestampInicioHistorial(delivery, fechaDetectada);
+  return delivery.estado === 'E'
+    && timestamp !== null
+    && ahora - timestamp >= retrasoHistorialMs;
+}
 
 export function StaffDeliveryPage() {
   const [page, setPage] = useState(1);
@@ -32,7 +61,15 @@ export function StaffDeliveryPage() {
   const [form, setForm] = useState({ pedidoId: 0, direccion: '', referencia: '', telefono: '', costo: 0 });
   const [guardando, setGuardando] = useState(false);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [fechasEntregaDetectadas, setFechasEntregaDetectadas] = useState<Record<number, number>>({});
   const [total, setTotal] = useState(0);
+  const [ahora, setAhora] = useState(Date.now);
+  const [retrasoHistorialSegundos, setRetrasoHistorialSegundos] = useState(RETRASO_HISTORIAL_DEFAULT_SEGUNDOS);
+  const [retrasoHistorialDraft, setRetrasoHistorialDraft] = useState(String(RETRASO_HISTORIAL_DEFAULT_SEGUNDOS));
+  const [paginaHistorial, setPaginaHistorial] = useState(1);
+  const [mostrarConfiguracion, setMostrarConfiguracion] = useState(false);
+  const [errorConfiguracion, setErrorConfiguracion] = useState<string | null>(null);
+  const retrasoHistorialMs = retrasoHistorialSegundos * 1000;
 
   /* Repartidores para asignar */
   const [repartidores, setRepartidores] = useState<{ id: number; nombre: string; email: string }[]>([]);
@@ -57,20 +94,33 @@ export function StaffDeliveryPage() {
   const [formVenta, setFormVenta] = useState<{ monto: number; metodoPago: 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TARJETA' | 'TRANSFERENCIA'; referencia: string }>({ monto: 0, metodoPago: 'EFECTIVO', referencia: '' });
   const [guardandoVenta, setGuardandoVenta] = useState(false);
 
-  const cargar = async () => {
+  const cargar = useCallback(async () => {
     try {
       const res = await api.getDeliveries({ page, limit: LIMITE, estado: estado || undefined });
       if (res?.data) {
-        setDeliveries(res.data);
+        const entregasCargadas: Delivery[] = res.data;
+        const fechaCarga = Date.now();
+        setDeliveries(entregasCargadas);
         setTotal(res.total);
-        setNoCancelableIds(new Set());
+        setAhora(fechaCarga);
+        setFechasEntregaDetectadas((fechasPrevias) => {
+          const siguientes = { ...fechasPrevias };
+          for (const delivery of entregasCargadas) {
+            if (delivery.estado !== 'E' || timestampFechaEntrega(delivery.fechaEntrega) !== null) {
+              delete siguientes[delivery.id];
+            } else if (siguientes[delivery.id] === undefined) {
+              siguientes[delivery.id] = fechaCarga;
+            }
+          }
+          return siguientes;
+        });
       }
     } catch {
       toast({ title: 'Error', description: 'No fue posible cargar las entregas.', variant: 'destructive' });
     }
-  };
+  }, [page, estado]);
 
-  const cargarRepartidores = async () => {
+  const cargarRepartidores = useCallback(async () => {
     setCargandoRepartidores(true);
     try {
       const data = await api.getRepartidores();
@@ -81,12 +131,66 @@ export function StaffDeliveryPage() {
     } finally {
       setCargandoRepartidores(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void cargar();
+  }, [cargar]);
+
+  useEffect(() => {
     void cargarRepartidores();
+  }, [cargarRepartidores]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => void cargar(), INTERVALO_ACTUALIZACION_MS);
+    return () => window.clearInterval(timer);
+  }, [cargar]);
+
+  useEffect(() => {
+    try {
+      const guardado = window.localStorage.getItem(RETRASO_HISTORIAL_KEY);
+      if (guardado === null) return;
+      const segundos = Number(guardado);
+      if (
+        Number.isInteger(segundos)
+        && segundos >= RETRASO_HISTORIAL_MIN_SEGUNDOS
+        && segundos <= RETRASO_HISTORIAL_MAX_SEGUNDOS
+      ) {
+        setRetrasoHistorialSegundos(segundos);
+        setRetrasoHistorialDraft(String(segundos));
+      }
+    } catch {
+      setErrorConfiguracion('No se pudo leer el tiempo guardado en este navegador.');
+    }
+  }, []);
+
+  useEffect(() => {
+    setNoCancelableIds(new Set());
+    setPaginaHistorial(1);
   }, [page, estado]);
+
+  const guardarConfiguracion = useCallback(() => {
+    const segundos = Number(retrasoHistorialDraft);
+    if (
+      !Number.isInteger(segundos)
+      || segundos < RETRASO_HISTORIAL_MIN_SEGUNDOS
+      || segundos > RETRASO_HISTORIAL_MAX_SEGUNDOS
+    ) {
+      setErrorConfiguracion(`Ingresa un tiempo entero entre ${RETRASO_HISTORIAL_MIN_SEGUNDOS} y ${RETRASO_HISTORIAL_MAX_SEGUNDOS} segundos.`);
+      return;
+    }
+    try {
+      window.localStorage.setItem(RETRASO_HISTORIAL_KEY, String(segundos));
+    } catch {
+      setErrorConfiguracion('No se pudo guardar el tiempo en este navegador.');
+      return;
+    }
+    setRetrasoHistorialSegundos(segundos);
+    setAhora(Date.now());
+    setPaginaHistorial(1);
+    setErrorConfiguracion(null);
+    setMostrarConfiguracion(false);
+  }, [retrasoHistorialDraft]);
 
   const kpis = useMemo(() => {
     const all = deliveries;
@@ -101,6 +205,59 @@ export function StaffDeliveryPage() {
       : 0;
     return { pendientes, enRuta, entregados: entregadosHoy, tiempoPromedio: Math.round(tiempoPromedio) };
   }, [deliveries]);
+
+  const proximoTraslado = useMemo(() => {
+    const fechas = deliveries
+      .filter((delivery) => delivery.estado === 'E')
+      .map((delivery) => timestampInicioHistorial(delivery, fechasEntregaDetectadas[delivery.id]))
+      .filter((timestamp): timestamp is number => timestamp !== null)
+      .map((timestamp) => timestamp + retrasoHistorialMs)
+      .filter((timestamp) => timestamp > ahora);
+    return fechas.length > 0 ? Math.min(...fechas) : null;
+  }, [deliveries, ahora, retrasoHistorialMs, fechasEntregaDetectadas]);
+
+  useEffect(() => {
+    if (proximoTraslado === null) return;
+    const timer = window.setTimeout(
+      () => setAhora(Date.now()),
+      Math.max(0, proximoTraslado - Date.now()),
+    );
+    return () => window.clearTimeout(timer);
+  }, [proximoTraslado, ahora]);
+
+  const entregasHistorial = useMemo(() => deliveries
+    .filter((delivery) => esHistorialEntrega(
+      delivery,
+      ahora,
+      retrasoHistorialMs,
+      fechasEntregaDetectadas[delivery.id],
+    ))
+    .sort((a, b) => (
+      (timestampInicioHistorial(b, fechasEntregaDetectadas[b.id]) ?? 0)
+      - (timestampInicioHistorial(a, fechasEntregaDetectadas[a.id]) ?? 0)
+    )),
+  [deliveries, ahora, retrasoHistorialMs, fechasEntregaDetectadas]);
+  const entregasTablero = useMemo(
+    () => deliveries.filter((delivery) => !esHistorialEntrega(
+      delivery,
+      ahora,
+      retrasoHistorialMs,
+      fechasEntregaDetectadas[delivery.id],
+    )),
+    [deliveries, ahora, retrasoHistorialMs, fechasEntregaDetectadas],
+  );
+  const entregasSinFechaEntrega = deliveries.filter(
+    (delivery) => delivery.estado === 'E' && timestampFechaEntrega(delivery.fechaEntrega) === null,
+  ).length;
+  const totalPaginasHistorial = Math.max(1, Math.ceil(entregasHistorial.length / TAMANO_PAGINA_HISTORIAL));
+  const entregasHistorialPagina = useMemo(() => {
+    const inicio = (paginaHistorial - 1) * TAMANO_PAGINA_HISTORIAL;
+    return entregasHistorial.slice(inicio, inicio + TAMANO_PAGINA_HISTORIAL);
+  }, [entregasHistorial, paginaHistorial]);
+
+  useEffect(() => {
+    setPaginaHistorial((paginaActual) => Math.min(paginaActual, totalPaginasHistorial));
+  }, [totalPaginasHistorial]);
 
   const handleCrear = async () => {
     if (!form.pedidoId || !form.direccion.trim()) {
@@ -266,11 +423,11 @@ export function StaffDeliveryPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
         {columns.map((col) => {
-          const items = deliveries.filter((d) => d.estado === col.key);
+          const items = entregasTablero.filter((d) => d.estado === col.key);
           return (
-            <div key={`col-${col.key}`} className={`rounded-xl p-4 shadow-sm border ${col.color}`}>
+            <div key={`col-${col.key}`} className={`min-w-0 rounded-xl border p-4 shadow-sm ${col.color}`}>
               <h3 className="font-medium text-gray-700 text-sm uppercase mb-4">
                 {col.label} ({items.length})
               </h3>
@@ -279,30 +436,36 @@ export function StaffDeliveryPage() {
               ) : (
                 <div className="space-y-3">
                   {items.map((d) => (
-                    <div key={d.id} className="bg-white rounded-lg p-3 border hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="font-mono text-sm text-gray-600">Pedido #{d.pedidoId}</p>
-                          <p className="text-sm font-medium text-gray-900 truncate">{d.direccion}</p>
+                    <div
+                      key={d.id}
+                      data-testid="delivery-card"
+                      className="min-w-0 overflow-hidden break-words rounded-lg border bg-white p-3 transition-shadow hover:shadow-md [overflow-wrap:anywhere]"
+                    >
+                      <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="break-all font-mono text-sm text-gray-600">Pedido #{d.pedidoId}</p>
+                          <p className="min-w-0 break-words text-sm font-medium text-gray-900 [overflow-wrap:anywhere]">{d.direccion}</p>
                         </div>
-                        <DeliveryStatusBadge estado={d.estado} />
+                        <div className="shrink-0">
+                          <DeliveryStatusBadge estado={d.estado} />
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>{d.repartidor || 'Sin asignar'}</span>
-                        <span>S/ {d.costo.toFixed(2)}</span>
+                      <div className="flex min-w-0 items-center justify-between gap-2 text-xs text-gray-500">
+                        <span className="min-w-0 break-words [overflow-wrap:anywhere]">{d.repartidor || 'Sin asignar'}</span>
+                        <span className="shrink-0 whitespace-nowrap">S/ {d.costo.toFixed(2)}</span>
                       </div>
                       {d.totalPedido !== undefined && (
-                        <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
+                        <div className="mt-1 flex min-w-0 items-center justify-between gap-2 text-xs text-gray-500">
                           <span className="text-gray-500">Total pedido</span>
-                          <span className="font-medium text-gray-700">S/ {d.totalPedido.toFixed(2)}</span>
+                          <span className="shrink-0 whitespace-nowrap font-medium text-gray-700">S/ {d.totalPedido.toFixed(2)}</span>
                         </div>
                       )}
-                      <div className="flex gap-2 mt-2 pt-2 border-t">
+                      <div className="mt-2 flex flex-wrap gap-2 border-t pt-2">
                         {d.estado === 'P' && !d.repartidorId && (
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex-1"
+                            className="min-w-0 flex-1 whitespace-normal break-words leading-tight"
                             onClick={() => { setDeliveryAsignarId(d.id); setModalAsignar(true); }}
                             disabled={cargandoRepartidores || repartidores.length === 0}
                           >
@@ -313,7 +476,7 @@ export function StaffDeliveryPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="flex-1"
+                            className="min-w-0 flex-1 whitespace-normal break-words leading-tight"
                             onClick={() => void handleDespachar(d.id)}
                             disabled={guardando}
                           >
@@ -324,7 +487,7 @@ export function StaffDeliveryPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="flex-1"
+                            className="min-w-0 flex-1 whitespace-normal break-words leading-tight"
                             onClick={() => {
                               setDeliveryVentaId(d.id);
                               setFormVenta({
@@ -343,7 +506,7 @@ export function StaffDeliveryPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="flex-1"
+                            className="min-w-0 flex-1 whitespace-normal break-words leading-tight"
                             onClick={() => void handleEntregar(d.id)}
                             disabled={guardando}
                           >
@@ -354,7 +517,7 @@ export function StaffDeliveryPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex-1"
+                            className="min-w-0 flex-1 whitespace-normal break-words leading-tight"
                             onClick={() => { setDeliveryAnularId(d.id); setFormAnular({ motivo: '' }); setModalAnular(true); }}
                             disabled={guardandoAnular}
                           >
@@ -365,7 +528,7 @@ export function StaffDeliveryPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex-1"
+                            className="min-w-0 flex-1 whitespace-normal break-words leading-tight"
                             onClick={() => { setDeliveryAnularId(d.id); setFormAnular({ motivo: '' }); setModalAnular(true); }}
                             disabled={guardandoAnular}
                           >
@@ -383,6 +546,89 @@ export function StaffDeliveryPage() {
       </div>
     );
   };
+
+  const renderHistorial = () => (
+    <section className="mt-6 min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm" aria-labelledby="delivery-history-title">
+      <div className="p-4">
+        <h2 id="delivery-history-title" className="mb-4 font-semibold text-gray-700">
+          Historial de entregas ({entregasHistorial.length})
+        </h2>
+        {entregasSinFechaEntrega > 0 && (
+          <p role="status" className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+            {entregasSinFechaEntrega} entrega(s) no tienen fecha de entrega guardada; para ellas el tiempo se cuenta desde la primera carga.
+          </p>
+        )}
+        {entregasHistorial.length === 0 ? (
+          <p className="py-4 text-center text-sm text-gray-500">Aún no hay entregas en el historial.</p>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] table-fixed border-collapse text-sm" aria-label="Historial de entregas">
+                <thead>
+                  <tr className="border-b text-left text-xs uppercase text-gray-500">
+                    <th scope="col" className="w-40 p-3">Fecha de entrega</th>
+                    <th scope="col" className="w-24 p-3">Delivery</th>
+                    <th scope="col" className="w-24 p-3">Pedido</th>
+                    <th scope="col" className="p-3">Dirección</th>
+                    <th scope="col" className="w-40 p-3">Repartidor</th>
+                    <th scope="col" className="w-28 p-3">Costo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entregasHistorialPagina.map((delivery) => {
+                    const timestamp = timestampInicioHistorial(delivery, fechasEntregaDetectadas[delivery.id]);
+                    return (
+                      <tr key={delivery.id} className="border-b last:border-0">
+                        <td className="break-words p-3">
+                          {timestamp === null ? '—' : new Date(timestamp).toLocaleString('es-PE', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        <td className="break-all p-3">#{delivery.id}</td>
+                        <td className="break-all p-3">#{delivery.pedidoId}</td>
+                        <td className="break-words p-3 [overflow-wrap:anywhere]">
+                          {delivery.direccion}{delivery.distrito ? `, ${delivery.distrito}` : ''}
+                        </td>
+                        <td className="break-words p-3 [overflow-wrap:anywhere]">{delivery.repartidor || 'Sin asignar'}</td>
+                        <td className="whitespace-nowrap p-3">S/ {delivery.costo.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-gray-500">
+                Página {paginaHistorial} de {totalPaginasHistorial} — {entregasHistorial.length} entregas
+              </p>
+              <div className="flex gap-2" aria-label="Paginación del historial de entregas">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPaginaHistorial((paginaActual) => Math.max(1, paginaActual - 1))}
+                  disabled={paginaHistorial === 1}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPaginaHistorial((paginaActual) => Math.min(totalPaginasHistorial, paginaActual + 1))}
+                  disabled={paginaHistorial === totalPaginasHistorial}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </section>
+  );
 
   const renderPagination = () => (
     <div className="flex items-center justify-between mt-6">
@@ -595,18 +841,77 @@ export function StaffDeliveryPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="mx-auto w-full max-w-6xl min-w-0 p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Delivery</h1>
-        <Button onClick={() => setModal(true)} size="lg">
-          + Nueva Entrega
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-expanded={mostrarConfiguracion}
+            aria-controls="delivery-configurar-tiempo"
+            onClick={() => {
+              if (mostrarConfiguracion) {
+                setMostrarConfiguracion(false);
+                return;
+              }
+              setRetrasoHistorialDraft(String(retrasoHistorialSegundos));
+              setErrorConfiguracion(null);
+              setMostrarConfiguracion(true);
+            }}
+          >
+            Configurar tiempo
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void cargar()}>Refrescar</Button>
+          <Button onClick={() => setModal(true)} size="lg">
+            + Nueva Entrega
+          </Button>
+        </div>
       </div>
+
+      {errorConfiguracion && <p role="alert" className="mb-3 text-sm text-red-600">{errorConfiguracion}</p>}
+      {mostrarConfiguracion && (
+        <section
+          id="delivery-configurar-tiempo"
+          className="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+          aria-label="Configuración del tiempo para historial de entregas"
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              guardarConfiguracion();
+            }}
+            className="flex flex-wrap items-end gap-3"
+          >
+            <label className="grid gap-1.5 text-sm">
+              Segundos antes de mover al historial
+              <input
+                type="number"
+                min={RETRASO_HISTORIAL_MIN_SEGUNDOS}
+                max={RETRASO_HISTORIAL_MAX_SEGUNDOS}
+                step={1}
+                required
+                value={retrasoHistorialDraft}
+                onChange={(event) => setRetrasoHistorialDraft(event.target.value)}
+                className="w-44 rounded-lg border border-gray-300 px-3 py-2"
+              />
+            </label>
+            <Button type="submit" size="sm">Guardar</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setMostrarConfiguracion(false)}>
+              Cancelar
+            </Button>
+          </form>
+          <p className="mt-2 text-xs text-gray-500">
+            Entre {RETRASO_HISTORIAL_MIN_SEGUNDOS} y {RETRASO_HISTORIAL_MAX_SEGUNDOS} segundos. Se guarda en este navegador.
+          </p>
+        </section>
+      )}
 
       {renderKpis()}
       {renderFiltros()}
       {renderKanban()}
       {renderPagination()}
+      {renderHistorial()}
       {renderModal()}
       {renderModalAsignar()}
       {renderModalAnular()}

@@ -10,7 +10,7 @@ import { API_URL } from '../../../lib/api-url';
 const PLACEHOLDER_IMG = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"%3E%3Crect width="96" height="96" fill="%23f0eded"/%3E%3Ctext x="48" y="54" text-anchor="middle" font-family="system-ui" font-size="28" fill="%238e706d"%3E🍽️%3C/text%3E%3C/svg%3E';
 
 export function ClienteComandaPage() {
-  const { items, mesaId, setMesaId, setQty, remove, clear, subtotal, igv, total } = useCart();
+  const { items, mesaId, reservaId, setMesaId, setQty, remove, clear, subtotal, igv, total } = useCart();
   const { cliente } = useClienteAuth();
   const navigate = useNavigate();
   const [enviando, setEnviando] = useState(false);
@@ -55,7 +55,7 @@ export function ClienteComandaPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          mesa: Number(mesaId),
+          ...(reservaId != null ? { reservaId } : { mesa: Number(mesaId) }),
           comensales: 1,
           obs: '',
           detalles,

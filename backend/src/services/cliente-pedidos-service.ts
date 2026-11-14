@@ -6,8 +6,11 @@ import {
   auditar,
   obtenerPedido as repoObtener,
   abrirOUnirseComandaQR,
+  abrirComandaReservaCliente,
   pedidosAbiertosPorMesa,
-  registrarLlegadaReservaCliente,
+  elegirCanalReservaClientePorMesa,
+  elegirCanalReservaCliente,
+  obtenerAtencionReservaCliente,
   recalcularPedido as repoRecalcular,
   obtenerEstadoMesa as repoEstadoMesa,
   clienteParticipa,
@@ -19,6 +22,7 @@ import {
   actualizarModoPagoMesa,
 } from '../repositories/pedidos-repository.js';
 import { distribuirConsumoPedido } from '../utils/pedido-consumo.js';
+import { getComprobanteService, type ComprobanteData } from './caja-service.js';
 import type { ReservaAtencionCliente } from '../schemas/pedido.js';
 
 const AUTOSERVICIO_USER_ID = 1;
@@ -45,11 +49,29 @@ export async function elegirAtencionClienteService(
   input: ReservaAtencionCliente,
   clienteId: number,
 ): Promise<{ reservaId: number | null; canal: ReservaAtencionCliente['canal'] }> {
-  const reservaId = await registrarLlegadaReservaCliente(input.mesaId, clienteId, input.canal);
+  if (input.reservaId != null) {
+    const seleccion = await elegirCanalReservaCliente(
+      input.reservaId,
+      input.mesaId,
+      clienteId,
+      input.canal,
+    );
+    return { reservaId: seleccion.reservaId, canal: input.canal };
+  }
+  const reservaId = await elegirCanalReservaClientePorMesa(input.mesaId, clienteId, input.canal);
   if (input.canal === 'MOZO' && reservaId === null) {
     throw new PedidoError('RESERVA_NO_ESPERA_MOZO');
   }
   return { reservaId, canal: input.canal };
+}
+
+export async function estadoAtencionReservaClienteService(
+  reservaId: number,
+  clienteId: number,
+) {
+  const atencion = await obtenerAtencionReservaCliente(reservaId, clienteId);
+  if (!atencion) throw new PedidoError('NOT_FOUND');
+  return atencion;
 }
 
 /** BR-INF-047/048: estado de la comanda derivado de sus ítems. */
@@ -181,7 +203,8 @@ export interface DetalleTandaInput {
 }
 
 export interface TandaInput {
-  mesa: number;
+  mesa?: number;
+  reservaId?: number;
   comensales?: number;
   obs?: string;
   detalles: DetalleTandaInput[];
@@ -191,21 +214,42 @@ export async function abrirPedidoTandaService(
   input: TandaInput,
   clienteId: number,
 ): Promise<Pedido> {
-  if (!input.mesa) {
+  if (input.mesa == null && input.reservaId == null) {
     throw new PedidoError('TIPO_INVALIDO');
   }
   if (input.detalles.length === 0) {
     throw new PedidoError('TIPO_INVALIDO');
   }
   // Abrir o unirse a la comanda QR (una sola operación)
-  const result = await abrirOUnirseComandaQR({
-    tipo: 1,
-    usuario: AUTOSERVICIO_USER_ID,
-    mesa: input.mesa,
-    cliente: clienteId,
-    comensales: input.comensales ?? 1,
-    obs: input.obs ?? '',
-  });
+  let result: { id: number; numero: string; esNuevo: boolean };
+  if (input.reservaId != null) {
+    result = await abrirComandaReservaCliente({
+      tipo: 1,
+      usuario: AUTOSERVICIO_USER_ID,
+      reserva: input.reservaId,
+      cliente: clienteId,
+      obs: input.obs ?? '',
+    });
+  } else {
+    if (input.mesa == null) {
+      throw new PedidoError('TIPO_INVALIDO');
+    }
+    result = await abrirOUnirseComandaQR({
+      tipo: 1,
+      usuario: AUTOSERVICIO_USER_ID,
+      mesa: input.mesa,
+      cliente: clienteId,
+      comensales: input.comensales ?? 1,
+      obs: input.obs ?? '',
+    });
+  }
+  if (input.reservaId != null && !result.esNuevo) {
+    const pedidoExistente = await repoObtener(result.id);
+    if (!pedidoExistente) {
+      throw new PedidoError('NOT_FOUND');
+    }
+    return pedidoExistente;
+  }
   await auditar(
     AUTOSERVICIO_USER_ID,
     'ABRIR_PEDIDO_TANDA',
@@ -357,4 +401,15 @@ export async function pedirCuentaClienteService(mesaId: number, clienteId: numbe
     `Mesa ${mesaId} (cliente ${clienteId})`,
   );
   return { ok: true, pedidoId: pedido.id, estado: 'POR COBRAR' };
+}
+
+export async function getClienteComprobanteService(ventaId: number, clienteId: number): Promise<ComprobanteData> {
+  const comprobante = await getComprobanteService(ventaId);
+  if (!comprobante.venta) {
+    throw new PedidoError('NOT_FOUND');
+  }
+  if (Number(comprobante.venta.id_cliente) !== clienteId) {
+    throw new PedidoError('NO_PARTICIPANTE');
+  }
+  return comprobante;
 }

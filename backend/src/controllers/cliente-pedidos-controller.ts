@@ -16,6 +16,8 @@ import {
   elegirAtencionClienteService,
   comandaActivaClienteService,
   detalleClienteService,
+  estadoAtencionReservaClienteService,
+  getClienteComprobanteService,
   miCuentaClienteService,
   pedirCuentaClienteService,
   pedidosAbiertosPorMesaService,
@@ -26,13 +28,21 @@ import {
 function errorPedido(res: Response, err: unknown): void {
   if (err instanceof PedidoError) {
     const status =
-      err.code === 'NOT_FOUND' || err.code === 'NO_COMANDA_ACTIVA' || err.code === 'SIN_CUENTA'
+      err.code === 'NOT_FOUND' ||
+      err.code === 'RESERVA_NOT_FOUND' ||
+      err.code === 'NO_COMANDA_ACTIVA' ||
+      err.code === 'SIN_CUENTA'
         ? 404
         : err.code === 'NO_PARTICIPANTE' || err.code === 'NO_ES_ORGANIZADOR'
           ? 403
           : err.code === 'PEDIDO_FACTURADO' ||
               err.code === 'PEDIDO_ANULADO' ||
               err.code === 'MESA_OCUPADA' ||
+              err.code === 'RESERVA_REQUIERE_ID' ||
+              err.code === 'RESERVA_NO_ATENDIDA' ||
+              err.code === 'RESERVA_CONTINUAR_NO_DISPONIBLE' ||
+              err.code === 'RESERVA_CANAL_YA_ELEGIDO' ||
+              err.code === 'RESERVA_MESA_NO_COINCIDE' ||
               err.code === 'YA_POR_COBRAR'
             ? 409
             : err.code === 'PRODUCTO_NO_DISPONIBLE' ||
@@ -102,6 +112,24 @@ export async function postClienteElegirAtencion(req: Request, res: Response): Pr
       res.status(409).json({ error: err.code });
       return;
     }
+    errorPedido(res, err);
+  }
+}
+
+export async function getClienteReservaAtencion(req: Request, res: Response): Promise<void> {
+  const reservaId = Number(req.params['id']);
+  if (!Number.isSafeInteger(reservaId) || reservaId <= 0) {
+    res.status(400).json({ error: 'VALIDATION_ERROR' });
+    return;
+  }
+  const user = (req as Request & { user?: { sub: number } }).user;
+  if (!user) {
+    res.status(401).json({ error: 'CREDENCIALES_INVALIDAS' });
+    return;
+  }
+  try {
+    res.json(await estadoAtencionReservaClienteService(reservaId, user.sub));
+  } catch (err) {
     errorPedido(res, err);
   }
 }
@@ -248,6 +276,31 @@ export async function patchClienteCuenta(req: Request, res: Response): Promise<v
     const result = await pedirCuentaClienteService(parsed.data.mesaId, user.sub);
     res.json(result);
   } catch (err) {
+    errorPedido(res, err);
+  }
+}
+
+export async function getClienteComprobante(req: Request, res: Response): Promise<void> {
+  const ventaId = Number(req.params['id']);
+  if (!Number.isInteger(ventaId) || ventaId <= 0) {
+    res.status(400).json({ error: 'VALIDATION_ERROR' });
+    return;
+  }
+  const user = (req as Request & { user?: { sub: number } }).user;
+  if (!user) {
+    res.status(401).json({ error: 'CREDENCIALES_INVALIDAS' });
+    return;
+  }
+  try {
+    const comprobante = await getClienteComprobanteService(ventaId, user.sub);
+    res.json(comprobante);
+  } catch (err) {
+    if (err instanceof PedidoError) {
+      if (err.code === 'NOT_FOUND' || err.code === 'NO_PARTICIPANTE') {
+        res.status(404).json({ error: 'COMPROBANTE_NO_ENCONTRADO' });
+        return;
+      }
+    }
     errorPedido(res, err);
   }
 }

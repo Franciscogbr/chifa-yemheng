@@ -30,6 +30,19 @@ export interface SolicitudMozo {
   llegada: string;
 }
 
+export type EstadoAtencionReservaCliente =
+  | 'ESPERANDO_MOZO'
+  | 'PEDIDO_TOMADO'
+  | 'RESERVA_CANCELADA'
+  | 'ATENCION_NO_DISPONIBLE';
+
+export interface AtencionReservaCliente {
+  reservaId: number;
+  mesaId: number;
+  estado: EstadoAtencionReservaCliente;
+  pedidoId: number | null;
+}
+
 export interface ReservaLista {
   data: Reserva[];
   page: number;

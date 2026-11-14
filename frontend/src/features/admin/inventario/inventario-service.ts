@@ -63,6 +63,7 @@ export interface StockInsumoView {
   producto: string;
   categoriaId: number | null;
   categoria: string | null;
+  clasificacion: string | null;
   stockActual: number;
   stockMinimo: number;
   unidadId: number | null;

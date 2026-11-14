@@ -59,6 +59,8 @@ const GRUPOS: Grupo[] = [
     titulo: 'Inventario y Compras',
     items: [
       { to: '/admin/inventario', icono: 'inventory_2', label: 'Inventario', roles: ADMIN_ROLES.inventory },
+      { to: '/admin/recetas', icono: 'local_dining', label: 'Recetas', roles: ADMIN_ROLES.inventory },
+      { to: '/admin/kardex', icono: 'receipt_long', label: 'Kardex', roles: ADMIN_ROLES.inventory, permisos: ['INV_KARDEX'] },
     ],
   },
   {
@@ -67,7 +69,6 @@ const GRUPOS: Grupo[] = [
       { to: '/admin/usuarios', icono: 'admin_panel_settings', label: 'Usuarios y Roles', roles: ADMIN_ROLES.adminSupervisor, permisos: ['SEG_USUARIO', 'SEG_ROL'] },
       { to: '/admin/auditoria', icono: 'security', label: 'Auditoría', roles: ADMIN_ROLES.admin },
       { to: '/admin/reportes', icono: 'bar_chart', label: 'Reportes', roles: ADMIN_ROLES.adminSupervisor },
-      { to: '/admin/crud', icono: 'table_view', label: 'CRUD Genérico', roles: ADMIN_ROLES.admin },
     ],
   },
 ];

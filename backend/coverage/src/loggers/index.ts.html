@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">85.71% </span>
+                <span class="strong">71.42% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>6/7</span>
+                <span class='fraction'>5/7</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">62.5% </span>
+                <span class="strong">43.75% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>10/16</span>
+                <span class='fraction'>7/16</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">50% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/2</span>
+                <span class='fraction'>0/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">83.33% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>6/6</span>
+                <span class='fraction'>5/6</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -114,21 +114,12 @@
 <a name='L49'></a><a href='#L49'>49</a>
 <a name='L50'></a><a href='#L50'>50</a>
 <a name='L51'></a><a href='#L51'>51</a>
-<a name='L52'></a><a href='#L52'>52</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">54x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">54x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -139,14 +130,20 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">54x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">54x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -159,17 +156,23 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">54x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">54x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import pino, { Logger } from 'pino';
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import pino from 'pino';
+import type { Logger } from 'pino';
 import { loggingConfig } from '../config/logging.js';
 &nbsp;
-const transport = loggingConfig.pretty &amp;&amp; !loggingConfig.isTest
-  ? {
+const transport = loggingConfig.pretty &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >!loggingConfig.isTest</span>
+  ? <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
       target: 'pino-pretty',
       options: {
         colorize: true,
@@ -177,7 +180,7 @@ const transport = loggingConfig.pretty &amp;&amp; !loggingConfig.isTest
         ignore: 'pid,hostname',
       },
     }
-  : <span class="branch-1 cbranch-no" title="branch not covered" >undefined;</span>
+  : undefined;
 &nbsp;
 const fileTransport = loggingConfig.filePath &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >loggingConfig.isProduction</span>
   ? <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
@@ -192,7 +195,7 @@ const fileTransport = loggingConfig.filePath &amp;&amp; <span class="branch-1 cb
 &nbsp;
 const transports = [transport, fileTransport].filter(Boolean);
 &nbsp;
-export const logger: Logger = pino(
+export const logger: Logger = (pino as any)(
   {
     level: loggingConfig.level,
     redact: [
@@ -210,7 +213,7 @@ export const logger: Logger = pino(
     },
     timestamp: pino.stdTimeFunctions.isoTime,
   },
-  transports.length &gt; 0 ? pino.multistream(transports.map((t) =&gt; ({ stream: t as any, level: t.level ?? 'info' }))) : <span class="branch-1 cbranch-no" title="branch not covered" >undefined</span>
+  transports.length &gt; 0 ? <span class="branch-0 cbranch-no" title="branch not covered" >pino.multistream(transports.<span class="fstat-no" title="function not covered" >map((t</span>) =&gt; (<span class="cstat-no" title="statement not covered" >{ stream: t as any, level: (t as { level?: string }).level ?? 'info' }))</span>) : u</span>ndefined
 );
 &nbsp;
 export const <span class="fstat-no" title="function not covered" >childLogger = (m</span>odule: string) =&gt; <span class="cstat-no" title="statement not covered" >logger.child({ module });</span>
@@ -223,7 +226,7 @@ export default logger;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-12T17:26:02.387Z
+                at 2026-11-14T12:10:52.389Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

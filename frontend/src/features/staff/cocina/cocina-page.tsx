@@ -18,6 +18,7 @@ const RETRASO_HISTORIAL_KEY = 'chifa.cocina.retraso-historial-segundos';
 const RETRASO_HISTORIAL_DEFAULT_SEGUNDOS = 10;
 const RETRASO_HISTORIAL_MIN_SEGUNDOS = 1;
 const RETRASO_HISTORIAL_MAX_SEGUNDOS = 600;
+const TAMANO_PAGINA_HISTORIAL = 10;
 type GrupoCocina = 'P' | 'L';
 
 const TONE: Record<string, string> = { P: '#f59e0b', L: '#22c55e', H: '#64748b', A: '#ef4444' };
@@ -88,6 +89,7 @@ export function StaffCocinaPage() {
   const [retrasoHistorialDraft, setRetrasoHistorialDraft] = useState(String(RETRASO_HISTORIAL_DEFAULT_SEGUNDOS));
   const [mostrarConfiguracion, setMostrarConfiguracion] = useState(false);
   const [errorConfiguracion, setErrorConfiguracion] = useState<string | null>(null);
+  const [paginaHistorial, setPaginaHistorial] = useState(1);
   const [ahora, setAhora] = useState(Date.now);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousTicketsRef = useRef<Ticket[] | null>(null);
@@ -231,6 +233,15 @@ export function StaffCocinaPage() {
         timestamp: timestampAtencion(detalle) ?? 0,
       })))
     .sort((a, b) => b.timestamp - a.timestamp), [tickets, ahora, retrasoHistorialMs]);
+  const totalPaginasHistorial = Math.max(1, Math.ceil(historialListos.length / TAMANO_PAGINA_HISTORIAL));
+  const historialListosPagina = useMemo(() => {
+    const inicio = (paginaHistorial - 1) * TAMANO_PAGINA_HISTORIAL;
+    return historialListos.slice(inicio, inicio + TAMANO_PAGINA_HISTORIAL);
+  }, [historialListos, paginaHistorial]);
+
+  useEffect(() => {
+    setPaginaHistorial((paginaActual) => Math.min(paginaActual, totalPaginasHistorial));
+  }, [totalPaginasHistorial]);
 
   const grupos: { clave: GrupoCocina; titulo: string }[] = [
     { clave: 'P', titulo: 'Pendientes' },
@@ -363,7 +374,7 @@ export function StaffCocinaPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {historialListos.map(({ ticket, detalle, timestamp }) => (
+                    {historialListosPagina.map(({ ticket, detalle, timestamp }) => (
                       <tr key={detalle.id}>
                         <td style={{ borderBottom: '1px solid var(--line2)', padding: 10, whiteSpace: 'nowrap' }}>
                           {new Date(timestamp).toLocaleString('es-PE', {
@@ -385,6 +396,29 @@ export function StaffCocinaPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {historialListos.length > 0 && (
+              <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                  Página {paginaHistorial} de {totalPaginasHistorial} — {historialListos.length} platos
+                </p>
+                <div style={{ display: 'flex', gap: 8 }} aria-label="Paginación del historial de cocina">
+                  <button
+                    className="btn btn-ghost"
+                    onClick={() => setPaginaHistorial((paginaActual) => Math.max(1, paginaActual - 1))}
+                    disabled={paginaHistorial === 1}
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    className="btn btn-ghost"
+                    onClick={() => setPaginaHistorial((paginaActual) => Math.min(totalPaginasHistorial, paginaActual + 1))}
+                    disabled={paginaHistorial === totalPaginasHistorial}
+                  >
+                    Siguiente
+                  </button>
+                </div>
               </div>
             )}
           </section>

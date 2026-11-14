@@ -52,11 +52,11 @@ export async function patchConfirmar(req: Request, res: Response): Promise<void>
 }
 
 export async function patchAtender(req: Request, res: Response): Promise<void> {
-  const parsed = reservaAtencionSchema.safeParse(req.body);
+  const parsed = reservaAtencionSchema.safeParse(req.body ?? {});
   if (!parsed.success) { res.status(400).json({ error: 'VALIDATION_ERROR', details: parsed.error.flatten() }); return; }
   const s = sesion(req);
   try {
-    res.json(await atenderService(Number(req.params['id']), parsed.data, s.logeo, s.pc));
+    res.json(await atenderService(Number(req.params['id']), s.logeo, s.pc));
   } catch (error) {
     if (!(error instanceof Error)) throw error;
     if (error.message.includes('RESERVA_NOT_FOUND') || error.message === 'NOT_FOUND') {

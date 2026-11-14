@@ -8,6 +8,7 @@ interface ProductoRow {
   n_producto: string;
   id_categoriaproducto: number;
   categoria_producto: { n_categoriaproducto: string } | null;
+  clasificacion: string | null;
   tipo_producto: string;
   precio: number;
   costo: number;
@@ -25,7 +26,7 @@ interface ProductoRow {
 }
 
 const SELECT =
-  'id_producto, n_producto, id_categoriaproducto, categoria_producto(n_categoriaproducto), tipo_producto, precio, costo, id_unidad, unidad_medida(n_unidad), stock_actual, stock_minimo, controla_stock, tiempo_preparacion, disponible, imagen, detalle, afecto_igv, estado';
+  'id_producto, n_producto, id_categoriaproducto, categoria_producto(n_categoriaproducto), clasificacion, tipo_producto, precio, costo, id_unidad, unidad_medida(n_unidad), stock_actual, stock_minimo, controla_stock, tiempo_preparacion, disponible, imagen, detalle, afecto_igv, estado';
 
 function mapRow(row: ProductoRow): Producto {
   return {
@@ -33,6 +34,7 @@ function mapRow(row: ProductoRow): Producto {
     nombre: row.n_producto,
     categoriaId: row.id_categoriaproducto,
     categoria: row.categoria_producto?.n_categoriaproducto ?? '',
+    clasificacion: row.clasificacion ?? null,
     tipo: (row.tipo_producto ?? 'P') as Producto['tipo'],
     precio: Number(row.precio ?? 0),
     costo: Number(row.costo ?? 0),
@@ -81,6 +83,10 @@ export async function listarProductos(q: ProductoQuery): Promise<ProductoLista> 
     query = query.eq('tipo_producto', q.tipo);
   }
 
+  if (q.clasificacion) {
+    query = query.eq('clasificacion', q.clasificacion);
+  }
+
   const { data, error, count } = await query;
   if (error) {
     throw new Error(`DB_LIST_FAIL: ${error.message}`);
@@ -125,6 +131,7 @@ export async function crearProducto(input: ProductoCreate, usucre: string, pc = 
       id_categoriaproducto: input.categoriaId,
       id_unidad: input.unidadId,
       tipo_producto: input.tipo,
+      clasificacion: input.clasificacion || null,
       precio: input.precio,
       costo: input.costo,
       stock_actual: input.stock,
@@ -164,6 +171,9 @@ export async function actualizarProducto(
   }
   if (input.tipo !== undefined) {
     patch['tipo_producto'] = input.tipo;
+  }
+  if (input.clasificacion !== undefined) {
+    patch['clasificacion'] = input.clasificacion ?? null;
   }
   if (input.precio !== undefined) {
     patch['precio'] = input.precio;

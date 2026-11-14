@@ -7,6 +7,7 @@ export interface Producto {
   nombre: string;
   categoriaId: number;
   categoria: string;
+  clasificacion: string | null;
   tipo: TipoProducto;
   precio: number;
   costo: number;

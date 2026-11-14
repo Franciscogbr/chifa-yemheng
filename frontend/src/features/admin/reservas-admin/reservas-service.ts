@@ -74,10 +74,10 @@ export function anularReserva(id: number): Promise<Reserva> {
   return fetch(`${BASE}/${id}/anular`, { method: 'PATCH', headers: headers() }).then(lanzar<Reserva>);
 }
 
-export function atenderReserva(id: number, canal: 'QR' | 'MOZO'): Promise<Reserva> {
+export function atenderReserva(id: number): Promise<Reserva> {
   return fetch(`${BASE}/${id}/atender`, {
     method: 'PATCH',
     headers: headers(),
-    body: JSON.stringify({ canal }),
+    body: JSON.stringify({}),
   }).then(lanzar<Reserva>);
 }

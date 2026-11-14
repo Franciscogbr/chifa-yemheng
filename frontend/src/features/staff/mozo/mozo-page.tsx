@@ -607,7 +607,7 @@ function ProductosPicker({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listarProductos({ page: 1, limit: 100, nombre: '', categoria: '', estado: 'A', disponible: 'S', tipo: '' })
+    listarProductos({ page: 1, limit: 100, nombre: '', categoria: '', clasificacion: '', estado: 'A', disponible: 'S', tipo: '' })
       .then((r) => setProductos(r.data))
       .catch((e) => {
         setError(describirError(e, 'No se pudieron cargar los productos.').description);

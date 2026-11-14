@@ -27,6 +27,7 @@ export interface FiltrosProductos {
   limit: number;
   nombre: string;
   categoria: number | '';
+  clasificacion: string;
   estado: '' | 'A' | 'I';
   disponible: '' | 'S' | 'N';
   tipo: TipoProducto | '';
@@ -39,6 +40,9 @@ export function listarProductos(f: FiltrosProductos): Promise<ProductoLista> {
   }
   if (f.categoria !== '') {
     q.set('categoria', String(f.categoria));
+  }
+  if (f.clasificacion) {
+    q.set('clasificacion', f.clasificacion);
   }
   if (f.estado) {
     q.set('estado', f.estado);

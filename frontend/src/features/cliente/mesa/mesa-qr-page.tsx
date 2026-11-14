@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCart } from '../../../contexts/CartContext';
 import { useClienteAuth } from '../auth/cliente-auth-context';
 import { guardarModoCliente, marcarQrValidado } from '../auth/cliente-mode';
@@ -17,18 +17,39 @@ interface MesaInfo {
   comensales?: number;
 }
 
+type EstadoAtencion =
+  | 'ESPERANDO_MOZO'
+  | 'PEDIDO_TOMADO'
+  | 'RESERVA_CANCELADA'
+  | 'ATENCION_NO_DISPONIBLE';
+
+interface RespuestaAtencion {
+  error?: string;
+  reservaId?: number | null;
+  canal?: 'QR' | 'MOZO';
+  mesaId?: number;
+  estado?: EstadoAtencion;
+  pedidoId?: number | null;
+}
+
 export default function MesaQrPage() {
   const { id } = useParams();
-  const { setMesaId } = useCart();
+  const { setMesaId, setReservaId } = useCart();
   const { cliente, token } = useClienteAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const reservaAtencionId = Number(searchParams.get('reserva'));
+  const reservaAtencionValida = Number.isSafeInteger(reservaAtencionId) && reservaAtencionId > 0;
   const [mesa, setMesa] = useState<MesaInfo | null>(null);
   const [err, setErr] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [mostrarDecision, setMostrarDecision] = useState(false);
   const [procesandoAtencion, setProcesandoAtencion] = useState(false);
-  const [mensajeAtencion, setMensajeAtencion] = useState<string | null>(null);
   const [errorAtencion, setErrorAtencion] = useState<string | null>(null);
+  const [estadoAtencion, setEstadoAtencion] = useState<EstadoAtencion>('ESPERANDO_MOZO');
+  const [mesaAtencionId, setMesaAtencionId] = useState<number | null>(null);
+  const [cargandoAtencion, setCargandoAtencion] = useState(false);
+  const [reintentoAtencion, setReintentoAtencion] = useState(0);
 
   useEffect(() => {
     if (!id) {
@@ -55,7 +76,9 @@ export default function MesaQrPage() {
         marcarQrValidado();
         guardarModoCliente('local');
 
-        if (data?.comensales > 0 && !cancelado) {
+        if (reservaAtencionValida) {
+          setMostrarDecision(false);
+        } else if (data?.comensales > 0 && !cancelado) {
           navigate('/cliente/mi-consumo?mesa=' + (data.qr ?? id ?? ''));
         } else {
           setMostrarDecision(true);
@@ -70,7 +93,68 @@ export default function MesaQrPage() {
     return () => {
       cancelado = true;
     };
-  }, [id, cliente, navigate, setMesaId]);
+  }, [id, cliente, navigate, reservaAtencionValida, setMesaId]);
+
+  useEffect(() => {
+    if (!reservaAtencionValida) return;
+    if (!cliente || !token) {
+      setErrorAtencion('Inicia sesión con la cuenta asociada a esta reserva para consultar la solicitud.');
+      return;
+    }
+
+    let cancelado = false;
+    let temporizador: number | undefined;
+
+    const consultar = async () => {
+      setCargandoAtencion(true);
+      try {
+        const response = await fetch(
+          `${API_URL}/cliente/pedidos/reserva/${reservaAtencionId}/atencion`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        const body = await response.json().catch(() => ({})) as RespuestaAtencion;
+        if (!response.ok) {
+          if (response.status < 500) {
+            if (!cancelado) {
+              setEstadoAtencion('ATENCION_NO_DISPONIBLE');
+              setErrorAtencion('No encontramos una solicitud activa para esta reserva.');
+            }
+            return;
+          }
+          throw new Error(body.error ?? 'No se pudo consultar la solicitud al mozo.');
+        }
+        if (cancelado) return;
+
+        setEstadoAtencion(body.estado ?? 'ATENCION_NO_DISPONIBLE');
+        setMesaAtencionId(body.mesaId ?? null);
+        setErrorAtencion(null);
+
+        if (body.estado === 'PEDIDO_TOMADO' && body.pedidoId) {
+          navigate(`/cliente/pedido/${body.pedidoId}`, { replace: true });
+          return;
+        }
+        if (body.estado !== 'ESPERANDO_MOZO') return;
+      } catch (error) {
+        if (!cancelado) {
+          setErrorAtencion(
+            error instanceof Error ? error.message : 'No se pudo consultar la solicitud al mozo.',
+          );
+        }
+      } finally {
+        if (!cancelado) setCargandoAtencion(false);
+      }
+
+      if (!cancelado) {
+        temporizador = window.setTimeout(() => void consultar(), 5000);
+      }
+    };
+
+    void consultar();
+    return () => {
+      cancelado = true;
+      if (temporizador !== undefined) window.clearTimeout(temporizador);
+    };
+  }, [cliente, navigate, reintentoAtencion, reservaAtencionId, reservaAtencionValida, token]);
 
   const elegirAtencion = async (canal: 'QR' | 'MOZO') => {
     if (!mesa) return;
@@ -82,7 +166,6 @@ export default function MesaQrPage() {
 
     setProcesandoAtencion(true);
     setErrorAtencion(null);
-    setMensajeAtencion(null);
     try {
       const response = await fetch(`${API_URL}/cliente/pedidos/reserva/atencion`, {
         method: 'POST',
@@ -92,8 +175,11 @@ export default function MesaQrPage() {
         },
         body: JSON.stringify({ mesaId: mesa.id, canal }),
       });
-      const body = await response.json().catch(() => ({})) as { error?: string };
+      const body = await response.json().catch(() => ({})) as RespuestaAtencion;
       if (!response.ok) {
+        if (body.error === 'RESERVA_NO_ATENDIDA') {
+          throw new Error('El personal debe registrar la llegada antes de continuar con esta reserva.');
+        }
         if (body.error === 'RESERVA_NO_ESPERA_MOZO') {
           throw new Error('No encontramos una reserva confirmada para esta mesa y tu cuenta. Pide ayuda al personal.');
         }
@@ -102,10 +188,17 @@ export default function MesaQrPage() {
 
       if (canal === 'QR') {
         setMesaId(String(mesa.id));
+        if (body.reservaId) setReservaId(body.reservaId);
         setMostrarDecision(false);
         navigate('/cliente/menu');
       } else {
-        setMensajeAtencion('Solicitud enviada. Un mozo atenderá tu mesa para tomar el pedido.');
+        if (!Number.isSafeInteger(body.reservaId) || !body.reservaId) {
+          throw new Error('No se pudo identificar la reserva para seguir la solicitud.');
+        }
+        setEstadoAtencion('ESPERANDO_MOZO');
+        setMesaAtencionId(mesa.id);
+        setMostrarDecision(false);
+        setSearchParams({ reserva: String(body.reservaId) }, { replace: true });
       }
     } catch (error) {
       setErrorAtencion(error instanceof Error ? error.message : 'No se pudo enviar la solicitud.');
@@ -118,6 +211,39 @@ export default function MesaQrPage() {
     return (
       <div style={{padding: 24, display: 'grid', placeItems: 'center', minHeight: '60vh'}}>
         <p>Identificando tu mesa…</p>
+      </div>
+    );
+  }
+  if (reservaAtencionValida) {
+    return (
+      <div style={{padding: '24px 16px 140px', maxWidth: 420, margin: '0 auto'}}>
+        <div role="status" style={{padding: 26, textAlign: 'center', background: 'var(--surface-lowest)'}}>
+          <h1 style={{fontSize: 28, margin: '0 0 12px'}}>Solicitud al mozo</h1>
+          <p style={{color: 'var(--muted)', fontSize: 14}}>
+            Mesa {mesa?.numero ?? mesaAtencionId ?? 'asignada a tu reserva'}
+          </p>
+          {estadoAtencion === 'ESPERANDO_MOZO' ? (
+            <p>Esperando que un mozo tome tu pedido. Esta pantalla se actualizará automáticamente.</p>
+          ) : estadoAtencion === 'RESERVA_CANCELADA' ? (
+            <p>La reserva fue cancelada. Contacta al personal para recibir ayuda.</p>
+          ) : (
+            <p>Ya no podemos continuar esta solicitud. Contacta al personal para recibir ayuda.</p>
+          )}
+          {cargandoAtencion && <p aria-live="polite">Actualizando solicitud…</p>}
+          {errorAtencion && <p role="alert" style={{color: '#b42318'}}>{errorAtencion}</p>}
+          {errorAtencion && (
+            <button
+              type="button"
+              onClick={() => setReintentoAtencion((value) => value + 1)}
+              className="mt-3 rounded-lg border px-4 py-2"
+            >
+              Volver a intentar
+            </button>
+          )}
+          <p style={{color: 'var(--muted)', fontSize: 12, marginTop: 16}}>
+            Cuando el mozo abra la comanda, te llevaremos al seguimiento del pedido.
+          </p>
+        </div>
       </div>
     );
   }
@@ -200,7 +326,6 @@ export default function MesaQrPage() {
             )}
           </div>
           {procesandoAtencion && <p role="status">Registrando tu opción…</p>}
-          {mensajeAtencion && <p role="status" style={{color: '#15803d'}}>{mensajeAtencion}</p>}
           {errorAtencion && <p role="alert" style={{color: '#b42318'}}>{errorAtencion}</p>}
           <p style={{color: 'var(--muted)', fontSize: 12, marginTop: 16}}>
             Para solicitar un mozo desde aquí, inicia sesión con la cuenta asociada a tu reserva. También puedes avisar directamente al personal.

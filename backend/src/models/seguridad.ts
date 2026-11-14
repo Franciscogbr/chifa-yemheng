@@ -62,6 +62,8 @@ export type SeguridadErrorCode =
   | 'NOT_FOUND'
   | 'YA_EXISTE'
   | 'TIPO_INVALIDO'
+  | 'ROL_TIPO_NO_ENCONTRADO'
+  | 'ROL_TIPO_EN_USO'
   | 'VALIDATION_ERROR'
   | 'FORBIDDEN'
   | 'AUTO_MODIFICACION_PROHIBIDA'

@@ -50,6 +50,7 @@ function lanzarErrorEscrituraSeguridad(
     'PRIVILEGE_ESCALATION',
     'MOTIVO_REQUERIDO',
     'TIPO_INVALIDO',
+    'ROL_TIPO_NO_ENCONTRADO',
     'FORBIDDEN',
   ] as const;
   const code = knownCodes.find((value) => error.message.includes(value));
@@ -297,6 +298,7 @@ export async function listarPermisos(): Promise<PermisoLista> {
   const { data, error } = await supabase
     .from('permiso')
     .select(PERMISO_SELECT)
+    .eq('estado', 'A')
     .order('id_modulo', { ascending: true })
     .order('clave', { ascending: true });
   if (error) throw new Error(`DB_LIST_FAIL: ${error.message}`);
@@ -329,8 +331,9 @@ export async function asignarPermisosRol(
 export async function listarPermisosDeRol(rolId: number): Promise<number[]> {
   const { data, error } = await supabase
     .from('rol_permiso')
-    .select('id_permiso')
+    .select('id_permiso, permiso!inner(estado)')
     .eq('id_rol', rolId)
+    .eq('permiso.estado', 'A')
     .eq('estado', 'A')
     .eq('concedido', 'S');
   if (error) throw new Error(`DB_LIST_FAIL: ${error.message}`);

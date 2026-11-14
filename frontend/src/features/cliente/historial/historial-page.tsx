@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, CalendarDays, ChevronRight, Receipt } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ChevronRight, FileText, Receipt } from 'lucide-react';
 import { Loading, Empty } from '../../../components/ui';
 import { fmtDate, fmtPEN } from '../../../lib/format';
 import { useClienteAuth } from '../auth/cliente-auth-context';
@@ -95,9 +95,17 @@ export function ClienteHistorialPage() {
                       {p.facturado === 'S' ? 'Facturado' : p.estado_comanda_derivado ?? p.estadoComandaDerivado ?? p.estado ?? 'Estado no disponible'}
                     </span>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
+                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <b style={{ fontFamily: 'var(--font-d)', fontSize: 15 }}>{p.total == null ? '—' : fmtPEN(p.total)}</b>
                     <ChevronRight size={14} style={{ color: 'var(--muted)', marginLeft: 6 }} />
+                    {p.facturado === 'S' && (
+                      <Link
+                        to={`/cliente/comprobante/${p.id_pedido ?? p.id}`}
+                        className="mt-2 inline-block text-xs text-brown-600 underline hover:text-brown-800"
+                      >
+                        <FileText size={12} className="mr-1" /> Ver comprobante
+                      </Link>
+                    )}
                   </div>
                 </Link>
               ))}

@@ -4,6 +4,11 @@ import { supabase } from '../config/supabase.js';
 import { env } from '../config/env.js';
 import type { Reserva } from '../models/reservas.js';
 import { getPc } from '../utils/auditoria.js';
+import {
+  cancelarReservaCliente,
+  ClienteReservaError,
+  obtenerContinuacionReservaCliente,
+} from '../repositories/cliente-reservas-repository.js';
 
 const AUTOSERVICIO_USUARIO_ID = 1;
 
@@ -123,8 +128,99 @@ export async function getMisReservasCli(req: Request, res: Response): Promise<vo
     .eq('estado', 'A')
     .order('f_reserva', { ascending: false });
   if (error) { res.status(500).json({ error: 'DB_LIST_FAIL', details: error.message }); return; }
-  res.json((data ?? []).map((reserva) => {
+  const reservas = data ?? [];
+  const reservaIds = reservas.map((reserva) => Number(reserva.id_reserva));
+  let pedidosPorReserva = new Map<number, number>();
+  if (reservaIds.length > 0) {
+    const { data: pedidos, error: pedidosError } = await supabase
+      .from('pedido')
+      .select('id_reserva, id_pedido')
+      .in('id_reserva', reservaIds)
+      .order('id_pedido', { ascending: false });
+    if (pedidosError) {
+      res.status(500).json({ error: 'DB_LIST_FAIL', details: pedidosError.message });
+      return;
+    }
+    for (const pedido of pedidos ?? []) {
+      const reservaId = Number(pedido.id_reserva);
+      if (!pedidosPorReserva.has(reservaId)) {
+        pedidosPorReserva.set(reservaId, Number(pedido.id_pedido));
+      }
+    }
+  }
+  res.json(reservas.map((reserva) => {
     const mesa = reserva.mesa as { numero?: string | null } | null;
-    return { ...reserva, mesa_numero: mesa?.numero ?? undefined };
+    return {
+      ...reserva,
+      mesa_numero: mesa?.numero ?? undefined,
+      pedido_id: pedidosPorReserva.get(Number(reserva.id_reserva)) ?? null,
+    };
   }));
+}
+
+function clienteIdDesdeRequest(req: Request): number | null {
+  return (req as Request & { user?: { sub: number } }).user?.sub ?? null;
+}
+
+function enviarErrorReservaCliente(res: Response, error: unknown): void {
+  if (error instanceof ClienteReservaError) {
+    const status = error.code === 'RESERVA_NOT_FOUND' ? 404 : 409;
+    res.status(status).json({ error: error.code });
+    return;
+  }
+  res.status(500).json({
+    error: 'DB_RESERVA_FAIL',
+    details: error instanceof Error ? error.message : 'Error inesperado',
+  });
+}
+
+export async function getContinuacionReservaCliente(req: Request, res: Response): Promise<void> {
+  const reservaId = Number(req.params['id']);
+  const clienteId = clienteIdDesdeRequest(req);
+  if (!Number.isSafeInteger(reservaId) || reservaId <= 0) {
+    res.status(400).json({ error: 'VALIDATION_ERROR' });
+    return;
+  }
+  if (clienteId == null) {
+    res.status(401).json({ error: 'CREDENCIALES_INVALIDAS' });
+    return;
+  }
+
+  try {
+    const continuacion = await obtenerContinuacionReservaCliente(reservaId, clienteId);
+    if (!continuacion) {
+      res.status(404).json({ error: 'RESERVA_NOT_FOUND' });
+      return;
+    }
+    res.json(continuacion);
+  } catch (error) {
+    enviarErrorReservaCliente(res, error);
+  }
+}
+
+export async function deleteClienteReserva(req: Request, res: Response): Promise<void> {
+  const reservaId = Number(req.params['id']);
+  const user = (req as Request & {
+    user?: { sub: number; email?: string };
+  }).user;
+  if (!Number.isSafeInteger(reservaId) || reservaId <= 0) {
+    res.status(400).json({ error: 'VALIDATION_ERROR' });
+    return;
+  }
+  if (!user) {
+    res.status(401).json({ error: 'CREDENCIALES_INVALIDAS' });
+    return;
+  }
+
+  try {
+    const reserva = await cancelarReservaCliente(
+      reservaId,
+      user.sub,
+      user.email || 'CLIENTE',
+      getPc(req),
+    );
+    res.json(reserva);
+  } catch (error) {
+    enviarErrorReservaCliente(res, error);
+  }
 }

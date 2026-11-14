@@ -3,13 +3,16 @@ import type { Producto } from '../types/db';
 
 const IGV_RATE = 0.18;
 const MESA_SESSION_KEY = 'chifa.cliente.mesa';
+const RESERVA_SESSION_KEY = 'chifa.cliente.reserva';
 const ITEMS_SESSION_KEY = 'chifa.cliente.items';
 
 export interface CartItem { producto: Producto; cantidad: number; nota: string; }
 interface CartState {
   items: CartItem[];
   mesaId: string;
+  reservaId: number | null;
   setMesaId: (v: string) => void;
+  setReservaId: (v: number | null) => void;
   add: (p: Producto, cantidad?: number, nota?: string) => void;
   remove: (id: number) => void;
   setQty: (id: number, q: number) => void;
@@ -33,11 +36,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   });
   const [mesaId, setMesaIdState] = useState(() => sessionStorage.getItem(MESA_SESSION_KEY) ?? '');
+  const [reservaId, setReservaIdState] = useState<number | null>(() => {
+    const raw = sessionStorage.getItem(RESERVA_SESSION_KEY);
+    const value = Number(raw);
+    return raw && Number.isSafeInteger(value) && value > 0 ? value : null;
+  });
   useEffect(() => {
     const limpiarSesion = () => {
       setItems([]);
       setMesaIdState('');
+      setReservaIdState(null);
       sessionStorage.removeItem(MESA_SESSION_KEY);
+      sessionStorage.removeItem(RESERVA_SESSION_KEY);
       sessionStorage.removeItem(ITEMS_SESSION_KEY);
     };
     window.addEventListener('cliente:limpiar-sesion', limpiarSesion);
@@ -50,10 +60,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const setMesaId = useCallback((value: string) => {
     const mesa = value.trim();
     setMesaIdState(mesa);
+    setReservaIdState(null);
+    sessionStorage.removeItem(RESERVA_SESSION_KEY);
     if (mesa) {
       sessionStorage.setItem(MESA_SESSION_KEY, mesa);
     } else {
       sessionStorage.removeItem(MESA_SESSION_KEY);
+    }
+  }, []);
+  const setReservaId = useCallback((value: number | null) => {
+    setReservaIdState(value);
+    if (value == null) {
+      sessionStorage.removeItem(RESERVA_SESSION_KEY);
+    } else {
+      sessionStorage.setItem(RESERVA_SESSION_KEY, String(value));
     }
   }, []);
   const add: CartState['add'] = useCallback((p, cantidad = 1, nota = '') => {
@@ -79,6 +99,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
   const clear = useCallback(() => {
     setItems([]);
+    setReservaIdState(null);
+    sessionStorage.removeItem(RESERVA_SESSION_KEY);
     sessionStorage.removeItem(ITEMS_SESSION_KEY);
   }, []);
   const { subtotal, igv, total, count } = useMemo(() => {
@@ -88,5 +110,5 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const count = items.reduce((s, x) => s + x.cantidad, 0);
     return { subtotal, igv, total, count };
   }, [items]);
-  return <Ctx.Provider value={{ items, mesaId, setMesaId, add, remove, setQty, setNota, clear, subtotal, igv, total, count }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ items, mesaId, reservaId, setMesaId, setReservaId, add, remove, setQty, setNota, clear, subtotal, igv, total, count }}>{children}</Ctx.Provider>;
 }

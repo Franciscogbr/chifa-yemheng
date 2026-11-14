@@ -1,5 +1,6 @@
 import { leerToken } from '../../auth/login/auth-service';
 import type { Cliente, ClienteForm, ClienteLista, TipoCliente } from './clientes-types';
+import type { UbigeoNombres } from '../../../services/maestros';
 
 import { API_URL } from '../../../lib/api-url';
 
@@ -13,11 +14,13 @@ export interface DatosDni {
   fNacimiento: string | null;
   genero: 'M' | 'F' | 'O' | null;
   direccion: string | null;
+  ubicacion: UbigeoNombres;
 }
 
 export interface DatosRuc {
   razonSocial: string;
   direccion: string | null;
+  ubicacion: UbigeoNombres;
 }
 
 function headers(): HeadersInit {

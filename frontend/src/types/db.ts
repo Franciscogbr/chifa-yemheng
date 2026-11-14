@@ -85,6 +85,7 @@ export interface Reserva {
   canal_atencion?: 'QR' | 'MOZO' | null;
   cliente_nombre?: string;
   mesa_numero?: string;
+  pedido_id?: number | null;
 }
 
 export interface Delivery {

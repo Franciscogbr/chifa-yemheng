@@ -37,6 +37,8 @@ function responderErrorSeguridad(res: Response, err: unknown): boolean {
     NOT_FOUND: 404,
     YA_EXISTE: 409,
     TIPO_INVALIDO: 422,
+    ROL_TIPO_NO_ENCONTRADO: 422,
+    ROL_TIPO_EN_USO: 409,
     VALIDATION_ERROR: 400,
     FORBIDDEN: 403,
     AUTO_MODIFICACION_PROHIBIDA: 403,

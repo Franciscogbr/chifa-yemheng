@@ -20,19 +20,34 @@ export async function listarTiposUsuarioService() {
   return listarTiposUsuario();
 }
 export async function crearUsuarioService(input: UsuarioCreate, actor: SeguridadActor, pc?: string) {
-  try {
-    return await crearUsuario(input, actor, pc);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('YA_EXISTE')) throw new SeguridadError('YA_EXISTE');
-    if (msg.includes('TIPO_INVALIDO')) throw new SeguridadError('TIPO_INVALIDO');
-    throw err;
-  }
+  try { return await crearUsuario(input, actor, pc); }
+  catch (err) { mapearErrorUsuario(err); }
 }
 export async function actualizarUsuarioService(id: number, input: UsuarioUpdate, actor: SeguridadActor, pc?: string) {
-  const result = await actualizarUsuario(id, input, actor, pc);
-  if (!result) throw new SeguridadError('NOT_FOUND');
-  return result;
+  try {
+    const result = await actualizarUsuario(id, input, actor, pc);
+    if (!result) throw new SeguridadError('NOT_FOUND');
+    return result;
+  } catch (err) {
+    mapearErrorUsuario(err);
+  }
+}
+
+function mapearErrorUsuario(err: unknown): never {
+  const message = err instanceof Error ? err.message : String(err);
+  const codes: SeguridadError['code'][] = [
+    'YA_EXISTE',
+    'TIPO_INVALIDO',
+    'ROL_TIPO_NO_ENCONTRADO',
+    'FORBIDDEN',
+    'AUTO_MODIFICACION_PROHIBIDA',
+    'EMPLEADO_INACTIVO',
+    'ULTIMO_ADMINISTRADOR',
+    'MOTIVO_REQUERIDO',
+  ];
+  const code = codes.find((candidate) => message.includes(candidate));
+  if (code) throw new SeguridadError(code);
+  throw err;
 }
 export async function listarRolesService(q: RolQuery) {
   return listarRoles(q);
@@ -44,6 +59,7 @@ export async function guardarRolService(id: number | null, input: RolCreate, act
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes('ROL_NO_ENCONTRADO')) throw new SeguridadError('NOT_FOUND');
     if (message.includes('PERMISO_INVALIDO')) throw new SeguridadError('PERMISO_INVALIDO');
+    if (message.includes('ROL_TIPO_EN_USO')) throw new SeguridadError('ROL_TIPO_EN_USO');
     if (message.includes('PRIVILEGE_ESCALATION')) throw new SeguridadError('PRIVILEGE_ESCALATION');
     if (message.includes('FORBIDDEN')) throw new SeguridadError('FORBIDDEN');
     if (message.includes('ULTIMO_ADMINISTRADOR')) throw new SeguridadError('ULTIMO_ADMINISTRADOR');
@@ -64,6 +80,7 @@ export async function asignarPermisosService(rolId: number, input: AsignarPermis
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes('ROL_NO_ENCONTRADO')) throw new SeguridadError('NOT_FOUND');
     if (message.includes('PERMISO_INVALIDO')) throw new SeguridadError('PERMISO_INVALIDO');
+    if (message.includes('ROL_TIPO_EN_USO')) throw new SeguridadError('ROL_TIPO_EN_USO');
     if (message.includes('PRIVILEGE_ESCALATION')) throw new SeguridadError('PRIVILEGE_ESCALATION');
     if (message.includes('FORBIDDEN')) throw new SeguridadError('FORBIDDEN');
     if (message.includes('ULTIMO_ADMINISTRADOR')) throw new SeguridadError('ULTIMO_ADMINISTRADOR');

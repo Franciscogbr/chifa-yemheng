@@ -197,7 +197,7 @@ export function CajaArqueo({ cajaId, aperturaId, cajaNombre, saldoTeorico, onHec
 
           <button
             className="y-btn primary"
-            style={{ width: '100%', marginTop: 14, minHeight: 42 }}
+            style={{ width: '100%', marginTop: 14, minHeight: 42, background: '#A61E22', borderColor: '#A61E22', color: '#fff' }}
             disabled={enviando}
             onClick={() => void enviar()}
           >

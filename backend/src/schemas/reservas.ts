@@ -35,9 +35,7 @@ export const reservaReprogramarSchema = z.object({
   observacion: z.string().max(200).optional(),
 });
 
-export const reservaAtencionSchema = z.object({
-  canal: z.enum(['QR', 'MOZO']),
-});
+export const reservaAtencionSchema = z.object({}).strict();
 
 export const disponibilidadQuerySchema = z.object({
   fecha: z.string().min(1),

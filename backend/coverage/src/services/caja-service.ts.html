@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/101</span>
+                <span class='fraction'>0/102</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/31</span>
+                <span class='fraction'>0/32</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/82</span>
+                <span class='fraction'>0/83</span>
             </div>
         
             
@@ -375,7 +375,15 @@
 <a name='L310'></a><a href='#L310'>310</a>
 <a name='L311'></a><a href='#L311'>311</a>
 <a name='L312'></a><a href='#L312'>312</a>
-<a name='L313'></a><a href='#L313'>313</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L313'></a><a href='#L313'>313</a>
+<a name='L314'></a><a href='#L314'>314</a>
+<a name='L315'></a><a href='#L315'>315</a>
+<a name='L316'></a><a href='#L316'>316</a>
+<a name='L317'></a><a href='#L317'>317</a>
+<a name='L318'></a><a href='#L318'>318</a>
+<a name='L319'></a><a href='#L319'>319</a>
+<a name='L320'></a><a href='#L320'>320</a>
+<a name='L321'></a><a href='#L321'>321</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -403,6 +411,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -449,6 +459,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -496,6 +507,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -647,6 +659,10 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -703,6 +719,7 @@ import {
   listarMetodosPago,
   listarConceptosCaja,
   registrarMovimientoCaja,
+  listarMovimientosTurno,
   solicitarCierreCaja,
   turnoAbiertoDeCaja,
   actaCierre, type ActaCierre,
@@ -712,6 +729,7 @@ import {
   getComprobante, type ComprobanteData,
   type CierrePendiente,
 } from '../repositories/caja-repository.js';
+export type { ComprobanteData };
 import { listarPedidosPorCobrar, obtenerPedido } from '../repositories/pedidos-repository.js';
 &nbsp;
 export async function <span class="fstat-no" title="function not covered" >maestrosCajaService(): Promise&lt;CajaResponse&gt; {</span>
@@ -751,6 +769,7 @@ export async function <span class="fstat-no" title="function not covered" >cobra
   cajaId: number;
   tipoDocumento: string;
   clienteId: number | null;
+  empresa?: { razonSocial: string; direccion: string; ruc: string };
   pagos: {
     metodoPagoId: number;
     monto: number;
@@ -813,6 +832,7 @@ export async function <span class="fstat-no" title="function not covered" >cobra
     aperturaId: apertura.id,
     tipoDocumento: args.tipoDocumento,
     clienteId: args.clienteId,
+    empresa: args.empresa,
     pagos: args.pagos,
     aportes: args.aportes,
   });
@@ -966,6 +986,10 @@ export async function <span class="fstat-no" title="function not covered" >regis
 <span class="cstat-no" title="statement not covered" >  return { movimientoId };</span>
 }
 &nbsp;
+export async function <span class="fstat-no" title="function not covered" >listarMovimientosTurnoService(a</span>perturaId: number) {
+<span class="cstat-no" title="statement not covered" >  return listarMovimientosTurno(aperturaId);</span>
+}
+&nbsp;
 export async function <span class="fstat-no" title="function not covered" >cierresPendientesService(): Promise&lt;CierrePendiente[]&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  return listarCierresPendientes();</span>
 }
@@ -1006,7 +1030,7 @@ export async function <span class="fstat-no" title="function not covered" >confi
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-11-12T17:26:02.387Z
+                at 2026-11-14T12:10:52.389Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

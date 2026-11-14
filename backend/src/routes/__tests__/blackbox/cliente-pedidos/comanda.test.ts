@@ -15,6 +15,20 @@ describe('Cliente - Pedidos comanda (caja negra)', () => {
     expect(res.status).toBe(401);
   });
 
+  it('GET /cliente/pedidos/reserva/:id/atencion sin token -> 401', async () => {
+    const res = await request(app).get('/api/v1/cliente/pedidos/reserva/17/atencion');
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /cliente/pedidos/reserva/:id/atencion rechaza un id inválido', async () => {
+    const token = makeTestToken({ rol: 'CLIENTE', tipo: 'CLIENTE' });
+    const res = await request(app)
+      .get('/api/v1/cliente/pedidos/reserva/no-valida/atencion')
+      .set(authHeader(token));
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('error', 'VALIDATION_ERROR');
+  });
+
   it('POST /cliente/pedidos/reserva/atencion valida el modo elegido', async () => {
     const token = makeTestToken({ rol: 'CLIENTE', tipo: 'CLIENTE' });
     const res = await request(app)

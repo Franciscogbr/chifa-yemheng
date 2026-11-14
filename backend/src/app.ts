@@ -12,6 +12,7 @@ import { factilizaRouter } from './routes/factiliza.js';
 import { authRouter } from './routes/auth.js';
 import { auditoriaRouter } from './routes/auditoria.js';
 import { clienteAuthRouter } from './routes/cliente-auth.js';
+import { clienteReservasRouter } from './routes/cliente-reservas.js';
 import { deliveryRouter } from './routes/delivery.js';
 import { seguimientoRouter } from './routes/delivery-seguimiento.js';
 import { clienteDeliveryRouter } from './routes/cliente-delivery.js';
@@ -69,6 +70,7 @@ export function createApp() {
   app.use('/api/v1/caja', cajaRouter);
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/factiliza', factilizaRouter);
+  app.use('/api/v1/cliente/reservas', clienteReservasRouter);
   app.use('/api/v1/cliente', clienteAuthRouter);
   app.use('/api/v1/cliente/pedidos', clientePedidosRouter);
   app.use('/api/v1/cliente/delivery', clienteDeliveryRouter);

@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase.js';
 import { PedidoError, type DetallePedido, type ModoPagoMesa, type ParticipantePedido, type Pedido, type PedidoLista } from '../models/pedido.js';
-import type { SolicitudMozo } from '../models/reservas.js';
+import type { AtencionReservaCliente, SolicitudMozo } from '../models/reservas.js';
 import type { PedidoQuery } from '../schemas/pedido.js';
 import { createAudit, updateAudit } from '../utils/auditoria.js';
 import { distribuirConsumoPedido } from '../utils/pedido-consumo.js';
@@ -98,6 +98,11 @@ function lanzarErrorComanda(error: { message: string }, fallback: string): never
     'NO_COMANDA_ACTIVA',
     'PRODUCTO_NO_DISPONIBLE',
     'MESA_OCUPADA',
+    'RESERVA_REQUIERE_ID',
+    'RESERVA_NOT_FOUND',
+    'RESERVA_MESA_NO_COINCIDE',
+    'RESERVA_CONTINUAR_NO_DISPONIBLE',
+    'RESERVA_CANAL_YA_ELEGIDO',
     'LA_MESA_NO_ADMITE_NUEVOS_PARTICIPANTES',
     'MODO_PAGO_BLOQUEADO',
   ] as const;
@@ -278,7 +283,7 @@ export async function abrirOUnirseComandaQR(args: {
   comensales: number;
   obs: string;
 }): Promise<{ id: number; numero: string; esNuevo: boolean }> {
-  const { data, error } = await supabase.rpc('fn_abrir_comanda_reserva_qr', {
+  const { data, error } = await supabase.rpc('fn_abrir_o_unirse_comanda_cliente_seguro', {
     p_tipo: args.tipo,
     p_usuario: args.usuario,
     p_mesa: args.mesa,
@@ -300,21 +305,148 @@ export async function abrirOUnirseComandaQR(args: {
   return { id: Number(row.id_pedido), numero: row.numero_pedido, esNuevo: row.es_nuevo === true };
 }
 
-export async function registrarLlegadaReservaCliente(
+export async function abrirComandaReservaCliente(args: {
+  reserva: number;
+  cliente: number;
+  tipo: number;
+  usuario: number;
+  obs: string;
+}): Promise<{ id: number; numero: string; esNuevo: boolean }> {
+  const { data, error } = await supabase.rpc('fn_abrir_comanda_reserva_cliente', {
+    p_reserva: args.reserva,
+    p_cliente: args.cliente,
+    p_tipo: args.tipo,
+    p_usuario: args.usuario,
+    p_obs: args.obs,
+  });
+  if (error) {
+    lanzarErrorComanda(error, 'DB_OPEN_FAIL');
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as {
+    id_pedido?: number;
+    numero_pedido?: string;
+    es_nuevo?: boolean;
+  } | null;
+  if (!row?.id_pedido || !row.numero_pedido) {
+    throw new Error('DB_OPEN_FAIL: sin retorno');
+  }
+  return { id: Number(row.id_pedido), numero: row.numero_pedido, esNuevo: row.es_nuevo === true };
+}
+
+function fechaActualLima(): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Lima',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values['year']}-${values['month']}-${values['day']}`;
+}
+
+export async function elegirCanalReservaClientePorMesa(
   mesaId: number,
   clienteId: number,
   canal: 'QR' | 'MOZO',
 ): Promise<number | null> {
-  const { data, error } = await supabase.rpc('fn_registrar_llegada_reserva_cliente', {
-    p_mesa: mesaId,
+  const fecha = fechaActualLima();
+  const { data: reserva, error } = await supabase
+    .from('reserva')
+    .select('id_reserva, situacion, f_llegada')
+    .eq('id_mesa', mesaId)
+    .eq('id_cliente', clienteId)
+    .eq('estado', 'A')
+    .in('situacion', ['C', 'A'])
+    .gte('f_reserva', `${fecha}T00:00:00`)
+    .lte('f_reserva', `${fecha}T23:59:59`)
+    .order('f_reserva', { ascending: false })
+    .order('id_reserva', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`DB_GET_FAIL: ${error.message}`);
+  }
+  if (!reserva) return null;
+  if (reserva.situacion !== 'A' || reserva.f_llegada == null) {
+    throw new PedidoError('RESERVA_NO_ATENDIDA');
+  }
+
+  const seleccion = await elegirCanalReservaCliente(
+    Number(reserva.id_reserva),
+    mesaId,
+    clienteId,
+    canal,
+  );
+  return seleccion.reservaId;
+}
+
+export async function elegirCanalReservaCliente(
+  reservaId: number,
+  mesaId: number,
+  clienteId: number,
+  canal: 'QR' | 'MOZO',
+): Promise<{ reservaId: number; mesaId: number }> {
+  const { data, error } = await supabase.rpc('fn_elegir_canal_reserva_cliente', {
+    p_reserva: reservaId,
     p_cliente: clienteId,
+    p_mesa: mesaId,
     p_canal: canal,
   });
   if (error) {
-    throw new Error(`DB_ARRIVAL_FAIL: ${error.message}`);
+    lanzarErrorComanda(error, 'DB_ARRIVAL_FAIL');
   }
-  const row = Array.isArray(data) ? data[0] : data;
-  return row && typeof row.id_reserva === 'number' ? row.id_reserva : null;
+  const row = (Array.isArray(data) ? data[0] : data) as {
+    id_reserva?: number;
+    id_mesa?: number;
+  } | null;
+  if (!row?.id_reserva || !row.id_mesa) {
+    throw new Error('DB_ARRIVAL_FAIL: sin retorno');
+  }
+  return { reservaId: Number(row.id_reserva), mesaId: Number(row.id_mesa) };
+}
+
+export async function obtenerAtencionReservaCliente(
+  reservaId: number,
+  clienteId: number,
+): Promise<AtencionReservaCliente | null> {
+  const { data: reserva, error: reservaError } = await supabase
+    .from('reserva')
+    .select('id_reserva, id_mesa, situacion, canal_atencion')
+    .eq('id_reserva', reservaId)
+    .eq('id_cliente', clienteId)
+    .maybeSingle();
+
+  if (reservaError) throw new Error(`DB_GET_FAIL: ${reservaError.message}`);
+  if (!reserva || reserva.id_mesa == null) return null;
+
+  const { data: pedido, error: pedidoError } = await supabase
+    .from('pedido')
+    .select('id_pedido')
+    .eq('id_reserva', reservaId)
+    .order('id_pedido', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (pedidoError) throw new Error(`DB_GET_FAIL: ${pedidoError.message}`);
+
+  let estado: AtencionReservaCliente['estado'];
+  if (pedido) {
+    estado = 'PEDIDO_TOMADO';
+  } else if (reserva.situacion === 'X') {
+    estado = 'RESERVA_CANCELADA';
+  } else if (reserva.situacion !== 'A' || reserva.canal_atencion !== 'MOZO') {
+    estado = 'ATENCION_NO_DISPONIBLE';
+  } else {
+    estado = 'ESPERANDO_MOZO';
+  }
+
+  return {
+    reservaId: Number(reserva.id_reserva),
+    mesaId: Number(reserva.id_mesa),
+    estado,
+    pedidoId: pedido ? Number(pedido.id_pedido) : null,
+  };
 }
 
 export async function listarReservasEsperandoMozo(): Promise<SolicitudMozo[]> {

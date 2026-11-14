@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { LayoutDashboard, LayoutGrid, ShoppingBag, Tag, Users, UserRound, BarChart3, Menu, X, LogOut, Flame, CalendarDays, Armchair, ShieldCheck, Wallet, Bike, Package } from 'lucide-react';
+import { LayoutDashboard, LayoutGrid, ShoppingBag, Tag, Users, UserRound, BarChart3, Menu, X, LogOut, Flame, CalendarDays, Armchair, ShieldCheck, Wallet, Bike, Package, List } from 'lucide-react';
 import { useAuth } from '../features/auth/login/auth-context';
 import { useTheme } from '../theme/theme-context';
 import DemoBadge from '../components/DemoBadge';
@@ -28,6 +28,7 @@ const SECTIONS: { title: string; links: L[] }[] = [
     { to: '/admin/unidades', label: 'Unidades', roles: ADMIN_ROLES.adminSupervisor, icon: ShoppingBag },
     { to: '/admin/mesas-admin', label: 'Mesas Admin', roles: ADMIN_ROLES.adminSupervisor, icon: Armchair },
     { to: '/admin/inventario', label: 'Inventario', roles: ADMIN_ROLES.inventory, icon: Package },
+    { to: '/admin/recetas', label: 'Recetas', roles: ADMIN_ROLES.inventory, icon: List },
    ] },
   { title: 'Gestión', links: [
     { to: '/admin/clientes', label: 'Clientes', roles: ADMIN_ROLES.customers, icon: Users },
@@ -37,7 +38,6 @@ const SECTIONS: { title: string; links: L[] }[] = [
   { title: 'Análisis', links: [
     { to: '/admin/reportes', label: 'Reportes', roles: ADMIN_ROLES.adminSupervisor, icon: BarChart3 },
     { to: '/admin/auditoria', label: 'Auditoría', roles: ADMIN_ROLES.admin, icon: ShieldCheck },
-    { to: '/admin/crud', label: 'CRUD Genérico', roles: ADMIN_ROLES.admin, icon: ShoppingBag },
   ] },
 ];
 

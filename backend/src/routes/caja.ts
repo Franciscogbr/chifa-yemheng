@@ -18,6 +18,7 @@ import {
   postCajaMovimiento,
   postCajaTurno,
   getCajaComprobante,
+  getCajaMovimientosTurno,
   getCajaMovimientosResumen,
 } from '../controllers/caja-controller.js';
 import { authGuard } from '../middlewares/auth-guard.js';
@@ -112,6 +113,11 @@ cajaRouter.get(
   '/comprobante/:id',
   requirePermisos('CAJ_VALIDAR_CIERRE', 'VEN_COBRAR', 'CAJ_APERTURAR', 'CAJA_APERTURA'),
   getCajaComprobante,
+);
+cajaRouter.get(
+  '/turno/:aperturaId/movimientos',
+  requirePermisos('CAJ_VALIDAR_CIERRE', 'VEN_COBRAR', 'CAJ_APERTURAR', 'CAJA_APERTURA'),
+  getCajaMovimientosTurno,
 );
 cajaRouter.get(
   '/turno/:aperturaId/movimientos-resumen',

@@ -28,6 +28,8 @@ export const recetaQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   productoId: z.coerce.number().int().positive().optional(),
+  texto: z.string().max(100).optional(),
+  estado: z.enum(['A', 'I']).optional(),
 });
 
 export const recetaCreateSchema = z.object({

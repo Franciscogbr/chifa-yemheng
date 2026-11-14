@@ -1,6 +1,6 @@
 import { leerToken } from '../../auth/login/auth-service';
 import type { Personal, PersonalForm, PersonalLista } from './personal-types';
-import type { Maestro } from '../../../services/maestros';
+import type { Maestro, UbigeoNombres } from '../../../services/maestros';
 
 export { listarDistritos } from '../../../services/maestros';
 
@@ -16,6 +16,7 @@ export interface DatosDni {
   fNacimiento: string | null;
   genero: 'M' | 'F' | 'O' | null;
   direccion: string | null;
+  ubicacion: UbigeoNombres;
 }
 
 function headers(): HeadersInit {

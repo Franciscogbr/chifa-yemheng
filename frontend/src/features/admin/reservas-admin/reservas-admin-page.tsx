@@ -252,15 +252,22 @@ export function AdminReservasPage() {
     setModalAtender({ id });
   };
 
-  const handleAtenderEjecutar = async (id: number, canal: 'QR' | 'MOZO') => {
+  const handleAtenderEjecutar = async (id: number) => {
     setGuardandoAtencion(true);
     setError(null);
     try {
-      await atenderReserva(id, canal);
+      await atenderReserva(id);
       setModalAtender(null);
       await cargar();
-    } catch {
-      setError('No se pudo registrar la llegada. Verifica que la reserva siga confirmada y tenga una mesa asignada.');
+    } catch (error) {
+      const codigo = error instanceof Error ? error.message : '';
+      const mensajes: Record<string, string> = {
+        RESERVA_ESTADO_INVALIDO: 'La reserva ya no está confirmada.',
+        RESERVA_SIN_MESA: 'Asigna una mesa antes de registrar la llegada.',
+        RESERVA_FECHA_INVALIDA: 'La llegada solo se puede registrar en la fecha de la reserva.',
+        RESERVA_NOT_FOUND: 'No encontramos la reserva.',
+      };
+      setError(mensajes[codigo] ?? `No se pudo registrar la llegada${codigo ? `: ${codigo}` : '.'}`);
     } finally {
       setGuardandoAtencion(false);
     }
@@ -832,7 +839,7 @@ export function AdminReservasPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             <h2 className="text-xl font-bold text-[#7F1518]">Registrar llegada · Reserva #{modalAtender.id}</h2>
-            <p className="mt-2 text-sm opacity-70">Elige cómo quiere hacer su pedido. Si elige mozo, aparecerá en la cola de atención.</p>
+            <p className="mt-2 text-sm opacity-70">Al registrar la llegada, el cliente podrá elegir cómo quiere hacer su pedido.</p>
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <button
                 type="button"
@@ -843,18 +850,11 @@ export function AdminReservasPage() {
                 Cancelar
               </button>
               <button
-                onClick={() => void handleAtenderEjecutar(modalAtender.id, 'QR')}
+                onClick={() => void handleAtenderEjecutar(modalAtender.id)}
                 disabled={guardandoAtencion}
                 className="rounded-xl bg-[#A61E22] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#7F1518] disabled:opacity-60"
               >
-                {guardandoAtencion ? 'Guardando…' : 'Pedir por QR'}
-              </button>
-              <button
-                onClick={() => void handleAtenderEjecutar(modalAtender.id, 'MOZO')}
-                disabled={guardandoAtencion}
-                className="rounded-xl border border-[#A61E22] px-5 py-2.5 text-sm font-semibold text-[#7F1518] disabled:opacity-60"
-              >
-                {guardandoAtencion ? 'Guardando…' : 'Pedir al mozo'}
+                {guardandoAtencion ? 'Guardando…' : 'Registrar llegada'}
               </button>
             </div>
           </div>

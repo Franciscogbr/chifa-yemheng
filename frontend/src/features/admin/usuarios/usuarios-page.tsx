@@ -65,7 +65,11 @@ async function api<T>(path: string, opts?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? 'NETWORK_ERROR');
+    const messages: Record<string, string> = {
+      ROL_TIPO_NO_ENCONTRADO: 'Este tipo de usuario no tiene un rol activo asignado.',
+      ROL_TIPO_EN_USO: 'No se puede desactivar un rol asignado a un tipo de usuario activo.',
+    };
+    throw new Error(messages[body.error ?? ''] ?? body.error ?? 'NETWORK_ERROR');
   }
   return (await res.json()) as T;
 }
@@ -257,6 +261,7 @@ export function AdminUsuariosPage() {
                 <option value="">Selecciona un tipo</option>
                 {tiposUsuario.map((tipo) => <option key={tipo} value={tipo}>{tipo}</option>)}
               </select>
+              <span className="text-xs text-[#333]/60">Se asignará automáticamente el rol del mismo nombre y sus permisos activos.</span>
             </label>
             <label className="grid gap-1 text-sm">Empleado
               <select className={inputClass} value={usuarioForm.empleadoId} required onChange={(e) => setUsuarioForm({ ...usuarioForm, empleadoId: Number(e.target.value) })}>

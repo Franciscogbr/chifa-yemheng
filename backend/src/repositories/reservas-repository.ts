@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase.js';
 import type { Reserva, ReservaLista, DisponibilidadMesa } from '../models/reservas.js';
-import type { ReservaCreate, ReservaQuery, ReservaConfirmar, ReservaReprogramar, ReservaAtencion, DisponibilidadQuery } from '../schemas/reservas.js';
+import type { ReservaCreate, ReservaQuery, ReservaConfirmar, ReservaReprogramar, DisponibilidadQuery } from '../schemas/reservas.js';
 import { createAudit, updateAudit } from '../utils/auditoria.js';
 
 interface ReservaRow {
@@ -207,13 +207,12 @@ export async function confirmarReserva(id: number, input: ReservaConfirmar, usum
 
 export async function atenderReserva(
   id: number,
-  atencion: ReservaAtencion,
   usumod: string,
   pc = '',
 ): Promise<Reserva> {
   const { data, error } = await supabase.rpc('fn_registrar_llegada_reserva', {
     p_reserva: id,
-    p_canal: atencion.canal,
+    p_canal: null,
     p_usuario: usumod,
     p_pc: pc,
   });

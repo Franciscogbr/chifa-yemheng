@@ -28,6 +28,7 @@ import {
   pendientesCajaService,
   solicitarCierreCajaService,
   registrarMovimientoCajaService,
+  listarMovimientosTurnoService,
 } from '../services/caja-service.js';
 import { getMovimientosResumenService } from '../services/caja-resumen-service.js';
 import type { AuthenticatedRequest } from '../middlewares/auth-guard.js';
@@ -226,6 +227,7 @@ export async function postCajaCobro(req: Request, res: Response): Promise<void> 
       cajaId: input.cajaId,
       tipoDocumento: input.tipoDocumento,
       clienteId: input.clienteId,
+      empresa: input.empresa,
       pagos: input.pagos,
       aportes: input.aportes,
     });
@@ -441,6 +443,20 @@ export async function postCajaMovimiento(req: Request, res: Response): Promise<v
     res.status(201).json(movimientoResult);
   } catch (err) {
     errorCaja(res, err);
+  }
+}
+
+export async function getCajaMovimientosTurno(req: Request, res: Response): Promise<void> {
+  const aperturaId = Number(req.params['aperturaId']);
+  if (!Number.isInteger(aperturaId) || aperturaId <= 0) {
+    res.status(400).json({ error: 'VALIDATION_ERROR' });
+    return;
+  }
+  try {
+    res.json(await listarMovimientosTurnoService(aperturaId));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'INTERNAL_ERROR', detalle: msg });
   }
 }
 

@@ -35,4 +35,5 @@ describe('Reservas - Atender (caja negra)', () => {
     expect([200, 400, 401, 404, 409, 503]).toContain(res.status);
     expect(res.status).not.toBe(403);
   });
+
 });

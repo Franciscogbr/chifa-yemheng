@@ -138,6 +138,25 @@ export function ComprobanteTicket({ ventaId, onClose }: ComprobanteTicketProps) 
             <div>{rucEmisor}</div>
             <div>Gracias por su compra</div>
           </div>
+
+          <div className="mt-3 flex justify-end gap-2">
+            <button
+              onClick={() => {
+                window.print();
+              }}
+              className="px-3 py-1 bg-brown-600 text-white rounded text-xs hover:bg-brown-700"
+            >
+              Imprimir
+            </button>
+            <button
+              onClick={() => {
+                window.print();
+              }}
+              className="px-3 py-1 bg-gray-900 text-white rounded text-xs hover:bg-gray-700"
+            >
+              PDF
+            </button>
+          </div>
         </div>
       </div>
       </>

@@ -50,10 +50,13 @@ export const detalleTandaSchema = z.object({
 });
 
 export const tandaSchema = z.object({
-  mesa: z.number().int().positive(),
+  mesa: z.number().int().positive().optional(),
+  reservaId: z.number().int().positive().optional(),
   comensales: z.number().int().min(1).max(99).optional().default(1),
   obs: z.string().max(200).optional().default(''),
   detalles: z.array(detalleTandaSchema).min(1, 'Debe incluir al menos un plato'),
+}).refine((value) => value.mesa != null || value.reservaId != null, {
+  message: 'Debe indicar una mesa o una reserva',
 });
 
 export const modoPagoMesaSchema = z.object({
@@ -62,6 +65,7 @@ export const modoPagoMesaSchema = z.object({
 
 export const reservaAtencionClienteSchema = z.object({
   mesaId: z.number().int().positive(),
+  reservaId: z.number().int().positive().optional(),
   canal: z.enum(['QR', 'MOZO']),
 });
 

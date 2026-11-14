@@ -14,6 +14,7 @@ import {
   listarMetodosPago,
   listarConceptosCaja,
   registrarMovimientoCaja,
+  listarMovimientosTurno,
   solicitarCierreCaja,
   turnoAbiertoDeCaja,
   actaCierre, type ActaCierre,
@@ -23,6 +24,7 @@ import {
   getComprobante, type ComprobanteData,
   type CierrePendiente,
 } from '../repositories/caja-repository.js';
+export type { ComprobanteData };
 import { listarPedidosPorCobrar, obtenerPedido } from '../repositories/pedidos-repository.js';
 
 export async function maestrosCajaService(): Promise<CajaResponse> {
@@ -62,6 +64,7 @@ export async function cobrarService(args: {
   cajaId: number;
   tipoDocumento: string;
   clienteId: number | null;
+  empresa?: { razonSocial: string; direccion: string; ruc: string };
   pagos: {
     metodoPagoId: number;
     monto: number;
@@ -124,6 +127,7 @@ export async function cobrarService(args: {
     aperturaId: apertura.id,
     tipoDocumento: args.tipoDocumento,
     clienteId: args.clienteId,
+    empresa: args.empresa,
     pagos: args.pagos,
     aportes: args.aportes,
   });
@@ -275,6 +279,10 @@ export async function registrarMovimientoCajaService(args: {
     aperturaId: turno.id,
   });
   return { movimientoId };
+}
+
+export async function listarMovimientosTurnoService(aperturaId: number) {
+  return listarMovimientosTurno(aperturaId);
 }
 
 export async function cierresPendientesService(): Promise<CierrePendiente[]> {

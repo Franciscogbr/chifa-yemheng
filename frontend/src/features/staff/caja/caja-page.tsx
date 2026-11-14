@@ -1,16 +1,15 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ErrorBox, Loading } from '../../../components/ui';
 import { Ico } from '../../../components/Icon';
 import { PageHero } from '../../../components/PageHero';
 import { fmtPEN } from '../../../lib/format';
 import { API_URL } from '../../../lib/api-url';
 import { useToast } from '../../../shared/ui/use-toast';
-import { leerPermisos, leerUsuario } from '../../auth/login/auth-service';
+import { leerPermisos, leerToken, leerUsuario } from '../../auth/login/auth-service';
 import { StaffFeedbackModal, type StaffFeedback } from '../staff-feedback-modal';
 import { CajaArqueo } from './CajaArqueo';
 import { CajaIncidencias } from './CajaIncidencias';
 import { CajaActa } from './CajaActa';
-import { ComprobanteBoleta } from './ComprobanteBoleta';
 import { ComprobanteFactura } from './ComprobanteFactura';
 import { ComprobanteTicket } from './ComprobanteTicket';
 
@@ -21,6 +20,7 @@ import {
   listarCierresPendientes,
   listarCajaMaestros,
   listarCajaPendientes,
+  listarMovimientosTurno,
   registrarCobro,
   registrarMovimientoCaja,
   historialCajaService,
@@ -29,6 +29,7 @@ import {
   type CierrePendiente,
   type ConceptoCajaInfo,
   type HistorialTurno,
+  type MovimientoCajaTurno,
   type MetodoPagoInfo,
   type Ticket,
 } from '../staff-service';
@@ -48,6 +49,7 @@ function mensajeCaja(codigo: string): string {
     VALIDADOR_DEBE_SER_DISTINTO: 'El cierre debe ser aprobado por otra persona.',
     RUC_INVALIDO: 'El RUC asociado al cliente no es válido.',
     FACTURA_REQUIERE_EMPRESA: 'Selecciona un cliente asociado a una empresa con RUC.',
+    FACTURA_CLIENTE_REQUERIDO: 'Busca y selecciona un cliente empresa registrado para emitir la factura.',
     MONTO_INVALIDO: 'Ingresa un monto válido.',
     APORTES_PENDIENTES: 'Asigna a cada participante pagos que cubran exactamente su consumo.',
     PAGOS_NO_CUBREN_TOTAL: 'La suma de los medios de pago debe cubrir exactamente la cuenta.',
@@ -67,6 +69,8 @@ function mensajeCaja(codigo: string): string {
 
 export function StaffCajaPage() {
   const [pendientes, setPendientes] = useState<Ticket[] | null>(null);
+  const [movimientosTurno, setMovimientosTurno] = useState<MovimientoCajaTurno[]>([]);
+  const [cargandoMovimientosTurno, setCargandoMovimientosTurno] = useState(false);
   const [maestros, setMaestros] = useState<CajaMaestros | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [seleccion, setSeleccion] = useState<Ticket | null>(null);
@@ -125,6 +129,44 @@ export function StaffCajaPage() {
   }, [cargar]);
 
   const cajaSel = maestros?.cajas.find((c) => c.id === cajaTurno) ?? null;
+  useEffect(() => {
+    const aperturaId = cajaSel?.turnoId;
+    if (!aperturaId) {
+      setMovimientosTurno([]);
+      setCargandoMovimientosTurno(false);
+      return;
+    }
+
+    let vigente = true;
+    setCargandoMovimientosTurno(true);
+    listarMovimientosTurno(aperturaId)
+      .then((items) => {
+        if (vigente) setMovimientosTurno(items);
+      })
+      .catch(() => {
+        if (vigente) setMovimientosTurno([]);
+      })
+      .finally(() => {
+        if (vigente) setCargandoMovimientosTurno(false);
+      });
+
+    const timer = window.setInterval(() => {
+      void listarMovimientosTurno(aperturaId)
+        .then((items) => {
+          if (vigente) setMovimientosTurno(items);
+        })
+        .catch(() => undefined);
+    }, 15000);
+
+    return () => {
+      vigente = false;
+      window.clearInterval(timer);
+    };
+  }, [cajaSel?.turnoId]);
+  const totalPendienteCobro = useMemo(
+    () => (pendientes ?? []).reduce((total, pedido) => total + Number(pedido.total ?? 0), 0),
+    [pendientes],
+  );
   const historialZOrdenado = useMemo(
     () => [...cierresCerrados].sort((a, b) => {
       const fechaB = Date.parse(b.fCierre ?? b.fApertura);
@@ -210,92 +252,86 @@ export function StaffCajaPage() {
       {pendientes === null && !error && <Loading text="Cargando caja..." />}
       {pendientes && maestros && !error && (
         <>
-          <section className="y-section" aria-label="Turno de caja">
+          <section className="y-section" aria-label="Control y resumen de caja">
             <div className="y-section-header">
-              <span className="y-section-eyebrow">Turno</span>
-              <h2 className="y-section-title">Turno de caja</h2>
+              <span className="y-section-eyebrow">Operación</span>
+              <h2 className="y-section-title">Control del turno</h2>
             </div>
             <div className="card" style={{ padding: 20, border: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 220 }}>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Seleccionar caja</label>
-                  <select className="select" value={cajaTurno} onChange={(e) => setCajaTurno(Number(e.target.value))} style={{ width: '100%', maxWidth: 320 }}>
+              <div style={{ display: 'flex', alignItems: 'end', gap: 14, flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 260px', minWidth: 220 }}>
+                  <label htmlFor="caja-turno-select" style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Caja seleccionada</label>
+                  <select id="caja-turno-select" className="select" value={cajaTurno} onChange={(e) => setCajaTurno(Number(e.target.value))} style={{ width: '100%' }}>
                     {maestros.cajas.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.nombre} · {c.aperturada === 'S' ? 'ABIERTA' : 'CERRADA'}
+                        {c.nombre} · {c.cierrePendiente ? 'CIERRE PENDIENTE' : c.aperturada === 'S' ? 'ABIERTA' : 'CERRADA'}
                       </option>
                     ))}
                   </select>
                 </div>
                 {!cajaSel ? (
-                  <span className="caja-muted" style={{ paddingTop: 26 }}>No hay cajas activas configuradas.</span>
-                ) : cajaSel.aperturada === 'N' ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <span className="ys-status" style={{ color: 'var(--text-muted)', background: '#f3f4f6' }}>
+                  <span className="caja-muted">No hay cajas activas configuradas.</span>
+                ) : cajaSel.cierrePendiente ? (
+                  <span className="ys-status" style={{ color: '#92400e', background: '#fef3c7', padding: '8px 12px', borderRadius: 8 }}>
+                    <i /> Cierre pendiente de validación
+                  </span>
+                ) : cajaSel.aperturada !== 'S' ? (
+                  <>
+                    <span className="ys-status" style={{ color: 'var(--text-muted)', background: '#f3f4f6', padding: '8px 12px', borderRadius: 8 }}>
                       <i /> Turno cerrado
                     </span>
-                    <button className="btn btn-gold" onClick={() => setAperturaAbierta(true)}>
-                      Aperturar turno
-                    </button>
-                  </div>
-                ) : cajaSel.cierrePendiente ? (
-                  <span className="ys-status" style={{ color: '#fbbf24', background: '#fbbf2422', padding: '6px 12px', borderRadius: 6, marginTop: 4 }}>
-                    <i /> Esperando validación de un supervisor para cerrar
-                  </span>
-                ) : (
-                  <div style={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <span className="ys-status" style={{ color: '#22c55e', background: '#22c55e22', padding: '6px 12px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <i style={{ fontSize: 12 }} /> Turno abierto · sistema {fmtPEN(cajaSel?.montoSistema ?? 0)}
-                    </span>
-                    {puedeCerrar && cajaSel?.turnoId && (
-                      <button
-                        className="btn btn-primary"
-                        onClick={() => setArqueoAbierto(true)}
-                        style={{ marginTop: 8, padding: '10px 20px', fontWeight: 600 }}
-                      >
-                        Arqueo y solicitar cierre
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-          <section className="y-section" aria-label="Caja">
-            <div className="y-section-header">
-              <span className="y-section-eyebrow">Caja</span>
-              <h2 className="y-section-title">Caja y movimientos</h2>
-            </div>
-            <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: 20, border: '1px solid var(--border)' }}>
-              <div>
-                <b style={{ fontSize: 16 }}>{cajaSel?.nombre ?? 'Selecciona una caja en Turno'}</b>
-                {cajaSel?.aperturada === 'S' ? (
-                  <>
-                    <p style={{ margin: '6px 0', color: 'var(--text-muted)', fontSize: 13 }}>
-                      Saldo del sistema: <b>{fmtPEN(cajaSel.montoSistema ?? cajaSel.montoBase)}</b>
-                    </p>
-                    {!!cajaSel.netoPorMedio.length && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        {cajaSel.netoPorMedio.map((saldo) => (
-                          <span key={saldo.medio} style={{ padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }}>
-                            {saldo.medio}: <b>{fmtPEN(saldo.total)}</b>
-                          </span>
-                        ))}
-                      </div>
+                    {permisos.some((permiso) => ['CAJ_APERTURAR', 'CAJA_APERTURA'].includes(permiso)) && (
+                      <button className="btn btn-gold" onClick={() => setAperturaAbierta(true)}>Aperturar turno</button>
                     )}
                   </>
                 ) : (
-                  <p style={{ margin: '6px 0 0', color: 'var(--text-muted)', fontSize: 13 }}>
-                    Abre un turno para registrar movimientos de caja.
-                  </p>
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <span className="ys-status" style={{ color: '#166534', background: '#dcfce7', padding: '8px 12px', borderRadius: 8 }}>
+                        <i /> Turno abierto
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {permisos.includes('CAJ_EGRESO') && (
+                        <button className="btn btn-ghost" onClick={() => setMovimientoAbierto(true)}>Registrar movimiento</button>
+                      )}
+                      {puedeCerrar && cajaSel.turnoId && (
+                        <button className="btn btn-primary" style={{ background: '#A61E22', borderColor: '#A61E22', color: '#fff' }} onClick={() => setArqueoAbierto(true)}>Arqueo y solicitar cierre</button>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
-              {cajaSel?.aperturada === 'S' && !cajaSel.cierrePendiente && permisos.includes('CAJ_EGRESO') && (
-                <button className="btn btn-gold" onClick={() => setMovimientoAbierto(true)}>
-                  Registrar movimiento
-                </button>
-              )}
             </div>
+
+            {cajaSel && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, marginTop: 14 }}>
+                <article className="card" style={{ padding: 16, border: '1px solid var(--border)' }}>
+                  <span className="y-section-eyebrow">Saldo teórico</span>
+                  <strong style={{ display: 'block', marginTop: 6, fontSize: 24 }}>{fmtPEN(cajaSel.montoSistema ?? cajaSel.montoBase)}</strong>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Importe que el sistema espera en esta caja</span>
+                </article>
+                <article className="card" style={{ padding: 16, border: '1px solid var(--border)' }}>
+                  <span className="y-section-eyebrow">Pendientes de cobro</span>
+                  <strong style={{ display: 'block', marginTop: 6, fontSize: 24 }}>{pendientes.length}</strong>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{fmtPEN(totalPendienteCobro)} por cobrar</span>
+                </article>
+                <article className="card" style={{ padding: 16, border: '1px solid var(--border)' }}>
+                  <span className="y-section-eyebrow">Saldo por medio de pago</span>
+                  {cajaSel.netoPorMedio.length ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                      {cajaSel.netoPorMedio.map((saldo) => (
+                        <span key={saldo.medio} style={{ padding: '4px 8px', background: 'var(--surface-subtle, #f5f5f5)', borderRadius: 6, fontSize: 12 }}>
+                          {saldo.medio}: <b>{fmtPEN(saldo.total)}</b>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span style={{ display: 'block', marginTop: 6, color: 'var(--text-muted)', fontSize: 12 }}>Sin movimientos por medio todavía</span>
+                  )}
+                </article>
+              </div>
+            )}
           </section>
           <section className="y-section" aria-label="Pedidos pendientes de cobro">
             <div className="y-section-header">
@@ -338,94 +374,72 @@ export function StaffCajaPage() {
               </div>
             )}
           </section>
-          <section className="y-section" aria-label="Arqueo de caja">
+          {cajaSel?.turnoId && (
+          <section className="y-section" aria-label="Movimientos registrados en el turno actual">
             <div className="y-section-header">
-              <span className="y-section-eyebrow">Arqueo</span>
-              <h2 className="y-section-title">Arqueo del turno</h2>
+              <span className="y-section-eyebrow">Turno actual</span>
+              <h2 className="y-section-title">Movimientos de caja</h2>
+              <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 13 }}>
+                Ventas, ingresos y egresos registrados durante este turno.
+              </p>
             </div>
-            <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: 20, border: '1px solid var(--border)' }}>
-              <div>
-                <b>{cajaSel?.nombre ?? 'Sin caja seleccionada'}</b>
-                <p style={{ margin: '6px 0 0', color: 'var(--text-muted)', fontSize: 13 }}>
-                  Saldo teórico: {fmtPEN(cajaSel?.montoSistema ?? cajaSel?.montoBase ?? 0)}
+            <div className="card" style={{ padding: 16, border: '1px solid var(--border)' }}>
+              {cargandoMovimientosTurno ? (
+                <Loading text="Cargando movimientos del turno…" />
+              ) : movimientosTurno.length === 0 ? (
+                <p style={{ margin: 0, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
+                  Todavía no hay movimientos registrados en este turno.
                 </p>
-              </div>
-              <button
-                className="btn btn-primary"
-                disabled={!cajaSel?.turnoId || cajaSel.cierrePendiente}
-                onClick={() => setArqueoAbierto(true)}
-              >
-                Abrir arqueo
-              </button>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table aria-label={`Movimientos del turno ${cajaSel.nombre}`} style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ textAlign: 'left', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
+                        {['Fecha y hora', 'Tipo', 'Concepto / detalle', 'Método', 'Referencia', 'Responsable', 'Monto'].map((columna) => (
+                          <th key={columna} scope="col" style={{ padding: 10, whiteSpace: 'nowrap' }}>{columna}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {movimientosTurno.map((movimiento) => {
+                        const esIngreso = movimiento.tipoMovimiento.toUpperCase().includes('INGRESO');
+                        return (
+                          <tr key={movimiento.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: 10, whiteSpace: 'nowrap' }}>{new Date(movimiento.fecha).toLocaleString('es-PE')}</td>
+                            <td style={{ padding: 10 }}>
+                              <span className="ys-status" style={{
+                                color: esIngreso ? '#166534' : '#991b1b',
+                                background: esIngreso ? '#dcfce7' : '#fee2e2',
+                                padding: '4px 8px',
+                                borderRadius: 999,
+                                whiteSpace: 'nowrap',
+                              }}>
+                                {movimiento.tipoMovimiento}
+                              </span>
+                            </td>
+                            <td style={{ padding: 10 }}>
+                              <b>{movimiento.concepto}</b>
+                              {movimiento.descripcion && <span style={{ display: 'block', color: 'var(--text-muted)', marginTop: 2 }}>{movimiento.descripcion}</span>}
+                            </td>
+                            <td style={{ padding: 10, whiteSpace: 'nowrap' }}>{movimiento.metodoPago}</td>
+                            <td style={{ padding: 10 }}>{movimiento.referencia ?? movimiento.documento ?? '—'}</td>
+                            <td style={{ padding: 10 }}>{movimiento.usuario}</td>
+                            <td style={{ padding: 10, textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 700, color: esIngreso ? '#166534' : '#991b1b' }}>
+                              {esIngreso ? '+' : '−'}{fmtPEN(movimiento.monto)}
+                              {!movimiento.afectaEfectivo && <small style={{ display: 'block', color: 'var(--text-muted)', fontWeight: 400 }}>No efectivo</small>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '10px 0 0' }}>
+                    {movimientosTurno.length} movimientos · Más recientes primero
+                  </p>
+                </div>
+              )}
             </div>
           </section>
-          {puedeValidarCierre && (
-            <section className="y-section" aria-label="Cierres pendientes de validación">
-              <div className="y-section-header">
-                <span className="y-section-eyebrow">Supervisión</span>
-                <h2 className="y-section-title">Arqueos por validar</h2>
-              </div>
-              <div className="card" style={{ padding: 20, border: '1px solid var(--border)' }}>
-                {cierres.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0', margin: 0 }}>No hay cierres pendientes de aprobación.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {cierres.map((cierre) => (
-                      <article key={cierre.id} style={{ padding: 16, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 10 }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <b style={{ color: 'var(--text)' }}>{cierre.cajaNombre}</b>
-                            <span style={{ color: 'var(--text-muted)', fontSize: 13, display: 'block', marginTop: 2 }}>
-                              Cajero: {cierre.cajero} · {new Date(cierre.fechaSolicitud).toLocaleString('es-PE')}
-                            </span>
-                            {cierre.observacion && (
-                              <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: 4 }}>{cierre.observacion}</small>
-                            )}
-                          </div>
-                          <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtPEN(cierre.diferencia)}</span>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sistema</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Declarado</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Diferencia</div>
-                          <div style={{ fontSize: 12, fontWeight: 600 }}>{fmtPEN(cierre.montoSistema)}</div>
-                          <div style={{ fontSize: 12, fontWeight: 600 }}>{fmtPEN(cierre.montoDeclarado)}</div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: cierre.diferencia >= 0 ? 'var(--success)' : '#dc2626' }}>{fmtPEN(cierre.diferencia)}</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                          <button
-                            className="btn btn-gold"
-                            disabled={validandoCierre !== null}
-                            onClick={() => void validarCierre(cierre)}
-                            style={{ flex: 1, padding: 10, fontWeight: 600 }}
-                          >
-                            {validandoCierre === cierre.id ? 'Validando…' : 'Validar y cerrar'}
-                          </button>
-                          <button className="btn btn-ghost" onClick={() => setActaAbierta(cierre.id)} style={{ padding: 10 }}>
-                            Ver acta Z
-                          </button>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
-          {puedeValidarCierre && (
-            <section className="y-section" aria-label="Incidencias de caja">
-              <div className="y-section-header">
-                <span className="y-section-eyebrow">Supervisión</span>
-                <h2 className="y-section-title">Incidencias de caja</h2>
-              </div>
-              <CajaIncidencias
-                puedeValidar={true}
-                onChanged={async (msg) => {
-                  setMensaje(msg);
-                  await cargar();
-                }}
-              />
-            </section>
           )}
           <section className="y-section" aria-label="Historial de actas Z">
               <div className="y-section-header">
@@ -498,6 +512,75 @@ export function StaffCajaPage() {
                 )}
               </div>
             </section>
+                    {puedeValidarCierre && (
+            <section className="y-section" aria-label="Cierres pendientes de validación">
+              <div className="y-section-header">
+                <span className="y-section-eyebrow">Supervisión</span>
+                <h2 className="y-section-title">Arqueos por validar</h2>
+              </div>
+              <div className="card" style={{ padding: 20, border: '1px solid var(--border)' }}>
+                {cierres.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0', margin: 0 }}>No hay cierres pendientes de aprobación.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {cierres.map((cierre) => (
+                      <article key={cierre.id} style={{ padding: 16, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 10 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <b style={{ color: 'var(--text)' }}>{cierre.cajaNombre}</b>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 13, display: 'block', marginTop: 2 }}>
+                              Cajero: {cierre.cajero} · {new Date(cierre.fechaSolicitud).toLocaleString('es-PE')}
+                            </span>
+                            {cierre.observacion && (
+                              <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: 4 }}>{cierre.observacion}</small>
+                            )}
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtPEN(cierre.diferencia)}</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sistema</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Declarado</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Diferencia</div>
+                          <div style={{ fontSize: 12, fontWeight: 600 }}>{fmtPEN(cierre.montoSistema)}</div>
+                          <div style={{ fontSize: 12, fontWeight: 600 }}>{fmtPEN(cierre.montoDeclarado)}</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: cierre.diferencia >= 0 ? 'var(--success)' : '#dc2626' }}>{fmtPEN(cierre.diferencia)}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                          <button
+                            className="btn btn-gold"
+                            disabled={validandoCierre !== null}
+                            onClick={() => void validarCierre(cierre)}
+                            style={{ flex: 1, padding: 10, fontWeight: 600 }}
+                          >
+                            {validandoCierre === cierre.id ? 'Validando…' : 'Validar y cerrar'}
+                          </button>
+                          <button className="btn btn-ghost" onClick={() => setActaAbierta(cierre.id)} style={{ padding: 10 }}>
+                            Ver acta Z
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+          {puedeValidarCierre && (
+            <section className="y-section" aria-label="Incidencias de caja">
+              <div className="y-section-header">
+                <span className="y-section-eyebrow">Supervisión</span>
+                <h2 className="y-section-title">Incidencias de caja</h2>
+              </div>
+              <CajaIncidencias
+                puedeValidar={true}
+                onChanged={async (msg) => {
+                  setMensaje(msg);
+                  await cargar();
+                }}
+              />
+            </section>
+          )}
+
         </>
       )}
 
@@ -675,10 +758,11 @@ export function StaffCajaPage() {
             </div>
             <button className="y-btn line y-btn sm" onClick={() => setComprobanteAbierto(null)}>Cerrar</button>
           </div>
-          {comprobanteAbierto.tipoDocumento === '01' ? (
+          {comprobanteAbierto.tipoDocumento === '01' && (
             <ComprobanteFactura ventaId={comprobanteAbierto.idVenta} onClose={() => setComprobanteAbierto(null)} />
-          ) : (
-            <ComprobanteBoleta ventaId={comprobanteAbierto.idVenta} onClose={() => setComprobanteAbierto(null)} />
+          )}
+          {comprobanteAbierto.tipoDocumento === '03' && (
+            <ComprobanteTicket ventaId={comprobanteAbierto.idVenta} onClose={() => setComprobanteAbierto(null)} />
           )}
           <button
             className="y-btn line y-btn sm"
@@ -735,6 +819,7 @@ function CobroModal({
     cajaId: number;
     tipoDocumento: string;
     clienteId: number | null;
+    empresa?: { razonSocial: string; direccion: string; ruc: string };
     pagos: {
       metodoPagoId: number;
       monto: number;
@@ -769,7 +854,7 @@ function CobroModal({
   const [clienteTexto, setClienteTexto] = useState('');
   const [factilizaLoading, setFactilizaLoading] = useState(false);
   const [factilizaError, setFactilizaError] = useState<string | null>(null);
-  const [datosRuc, setDatosRuc] = useState<{ razonSocial: string; direccion: string | null } | null>(null);
+  const [datosRuc, setDatosRuc] = useState<{ razonSocial: string; direccion: string | null; ruc: string } | null>(null);
   const [pagos, setPagos] = useState<Draft[]>(() => {
     const participantes = (ticket.participantes ?? []).filter((p) => p.consumoEstimado > 0);
     if (ticket.modoPagoMesa === 'POR_CONSUMO' && participantes.length > 0) {
@@ -813,7 +898,10 @@ function CobroModal({
     try {
       const res = await fetch(`${API_URL}/factiliza/ruc`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${leerToken() ?? ''}`,
+        },
         body: JSON.stringify({ ruc }),
       });
       if (!res.ok) {
@@ -822,7 +910,11 @@ function CobroModal({
         return;
       }
       const data = await res.json();
-      setDatosRuc({ razonSocial: data.razonSocial, direccion: data.direccion ?? null });
+      setDatosRuc({
+        razonSocial: data.razonSocial,
+        direccion: data.direccion ?? null,
+        ruc,
+      });
     } catch {
       setFactilizaError('No se pudo conectar con Factiliza');
     } finally {
@@ -837,6 +929,9 @@ function CobroModal({
       if (clienteTexto && !/^\d+$/.test(clienteTexto)) {
         throw new Error('ID_CLIENTE_INVALIDO');
       }
+      if (tipoDocumento === '01' && !clienteTexto && !datosRuc) {
+        throw new Error('FACTURA_CLIENTE_REQUERIDO');
+      }
       if (!pagosCubrenTotal) throw new Error('PAGOS_NO_CUBREN_TOTAL');
       if (lineaInvalida) throw new Error('PAGO_INCOMPLETO');
       if (faltanAportes) throw new Error('APORTES_PENDIENTES');
@@ -845,6 +940,11 @@ function CobroModal({
         cajaId,
         tipoDocumento,
         clienteId: clienteTexto ? Number(clienteTexto) : null,
+        empresa: tipoDocumento === '01' && datosRuc ? {
+          razonSocial: datosRuc.razonSocial,
+          direccion: datosRuc.direccion ?? '',
+          ruc: datosRuc.ruc,
+        } : undefined,
         pagos: pagos.map((pago) => {
           const metodo = metodos.find((item) => item.id === pago.metodoPagoId);
           return {
@@ -873,7 +973,7 @@ function CobroModal({
     } finally {
       setBusy(false);
     }
-  }, [onCobrar, ticket, cajaId, tipoDocumento, clienteTexto, pagos, metodos, pagosCubrenTotal, lineaInvalida, pagoPorConsumo, participantes, faltanAportes]);
+  }, [onCobrar, ticket, cajaId, tipoDocumento, clienteTexto, datosRuc, pagos, metodos, pagosCubrenTotal, lineaInvalida, pagoPorConsumo, participantes, faltanAportes]);
 
   useEffect(() => {
     const cerrarConEscape = (event: KeyboardEvent) => {
@@ -1093,6 +1193,7 @@ function CobroModal({
                   onChange={(e) => {
                     setClienteTexto(e.target.value);
                     setDatosRuc(null);
+                    setFactilizaError(null);
                   }}
                 />
                 <button

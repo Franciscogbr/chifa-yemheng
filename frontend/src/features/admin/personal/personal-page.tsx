@@ -6,16 +6,17 @@ import {
   crearEmpleado,
   listarCargos,
   listarContratos,
-  listarDistritos,
   listarPersonal,
   listarTiposIdentidad,
 } from './personal-service';
 import { GENERO_LABELS } from './personal-types';
 import type { Genero, Personal, PersonalForm } from './personal-types';
-import type { Maestro } from '../../../services/maestros';
-import { DistritoPicker } from '../../../components/distrito-picker';
+import type { Maestro, UbigeoNombres } from '../../../services/maestros';
+import { UbigeoPicker } from '../../../components/ubigeo-picker';
 
 const LIMITE = 20;
+const TURNOS = ['Mañana', 'Tarde', 'Noche'];
+const FONDOS_PENSION = ['ONP', 'AFP'];
 
 const VACIO: PersonalForm = {
   nombres: '',
@@ -80,7 +81,6 @@ export function PersonalPage() {
   const [total, setTotal] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [distritos, setDistritos] = useState<Maestro[]>([]);
   const [cargos, setCargos] = useState<Maestro[]>([]);
   const [contratos, setContratos] = useState<Maestro[]>([]);
   const [tiposDoc, setTiposDoc] = useState<Maestro[]>([]);
@@ -92,6 +92,7 @@ export function PersonalPage() {
   const [guardando, setGuardando] = useState(false);
   const [consultandoDni, setConsultandoDni] = useState(false);
   const [consultaDniFeedback, setConsultaDniFeedback] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
+  const [ubicacionSugerida, setUbicacionSugerida] = useState<UbigeoNombres | null>(null);
 
   const cargar = async () => {
     setCargando(true);
@@ -116,18 +117,16 @@ export function PersonalPage() {
     setCargandoMaestros(true);
     setErrorMaestros(null);
     try {
-      const [d, c, ct, t] = await Promise.all([
-        listarDistritos(),
+      const [c, ct, t] = await Promise.all([
         listarCargos(),
         listarContratos(),
         listarTiposIdentidad(),
       ]);
-      setDistritos(d);
       setCargos(c);
       setContratos(ct);
       setTiposDoc(t);
     } catch {
-      setErrorMaestros('No fue posible cargar las listas (distritos, cargos, contratos, documentos).');
+      setErrorMaestros('No fue posible cargar las listas (cargos, contratos y documentos).');
     } finally {
       setCargandoMaestros(false);
     }
@@ -146,6 +145,7 @@ export function PersonalPage() {
     setForm(VACIO);
     setFormError(null);
     setConsultaDniFeedback(null);
+    setUbicacionSugerida(null);
     setModal({ editando: null });
   };
 
@@ -175,6 +175,7 @@ export function PersonalPage() {
     });
     setFormError(null);
     setConsultaDniFeedback(null);
+    setUbicacionSugerida(null);
     setModal({ editando: p });
   };
 
@@ -197,6 +198,9 @@ export function PersonalPage() {
         genero: actual.genero || datos.genero || '',
         direccion: actual.direccion.trim() ? actual.direccion : datos.direccion ?? '',
       }));
+      setUbicacionSugerida(
+        datos.ubicacion && Object.values(datos.ubicacion).some(Boolean) ? datos.ubicacion : null,
+      );
       setConsultaDniFeedback({ tipo: 'ok', texto: 'Datos encontrados. Revísalos y edítalos si es necesario.' });
     } catch (error) {
       const codigo = error instanceof Error ? error.message : '';
@@ -631,35 +635,38 @@ export function PersonalPage() {
                       ))}
                     </select>
                   </label>
-                  <label className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-1.5">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">Número de documento *</span>
-                    <input
-                      value={form.documento}
-                      maxLength={15}
-                      disabled={!!modal.editando || consultandoDni}
-                      inputMode={form.tipoDoc === 'PASAPORTE' ? 'text' : 'numeric'}
-                      onChange={(e) => {
-                        setForm({ ...form, documento: e.target.value });
-                        setConsultaDniFeedback(null);
-                      }}
-                      className="rounded-lg bg-[#F5F5F5] px-3.5 py-2.5 font-mono text-sm outline-none focus:bg-white focus:ring-1 focus:ring-[#A61E22] disabled:opacity-60"
-                    />
-                  </label>
-                  {form.tipoDoc === 'DNI' && (
-                    <div className="md:col-span-2">
-                      <button
-                        type="button"
-                        onClick={() => void buscarDni()}
-                        disabled={!/^\d{8}$/.test(form.documento.trim()) || consultandoDni}
-                        className="rounded-lg border border-[#A61E22]/30 px-4 py-2 text-sm font-bold text-[#A61E22] disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {consultandoDni ? 'Buscando…' : 'Buscar DNI'}
-                      </button>
-                      {!/^\d{8}$/.test(form.documento.trim()) && (
-                        <span className="ml-3 text-xs text-[#333333]/60">Ingresa los 8 dígitos para habilitar la búsqueda.</span>
+                    <div className="flex gap-2">
+                      <input
+                        id="personal-documento"
+                        value={form.documento}
+                        maxLength={15}
+                        disabled={!!modal.editando || consultandoDni}
+                        inputMode={form.tipoDoc === 'PASAPORTE' ? 'text' : 'numeric'}
+                        onChange={(e) => {
+                          setForm({ ...form, documento: e.target.value });
+                          setConsultaDniFeedback(null);
+                        }}
+                        className="min-w-0 flex-1 rounded-lg bg-[#F5F5F5] px-3.5 py-2.5 font-mono text-sm outline-none focus:bg-white focus:ring-1 focus:ring-[#A61E22] disabled:opacity-60"
+                      />
+                      {form.tipoDoc === 'DNI' && (
+                        <button
+                          type="button"
+                          onClick={() => void buscarDni()}
+                          disabled={!/^\d{8}$/.test(form.documento.trim()) || consultandoDni}
+                          aria-label="Buscar DNI en Factiliza"
+                          title="Buscar DNI"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#A61E22]/30 text-[#A61E22] transition-colors hover:bg-[#A61E22]/5 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">search</span>
+                        </button>
                       )}
                     </div>
-                  )}
+                    {form.tipoDoc === 'DNI' && !/^\d{8}$/.test(form.documento.trim()) && (
+                      <span className="text-xs text-[#333333]/60">Ingresa los 8 dígitos para habilitar la búsqueda.</span>
+                    )}
+                  </div>
                   {consultaDniFeedback && (
                     <p
                       role={consultaDniFeedback.tipo === 'error' ? 'alert' : 'status'}
@@ -749,15 +756,11 @@ export function PersonalPage() {
                       className="rounded-lg bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none"
                     />
                   </label>
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">Distrito</span>
-                    <DistritoPicker
-                      value={form.distritoId}
-                      onChange={(id) => setForm({ ...form, distritoId: id })}
-                      distritos={distritos}
-                      cargando={cargandoMaestros}
-                      error={errorMaestros}
-                      onReintentar={() => void recargarMaestros()}
+                  <div className="md:col-span-2">
+                    <UbigeoPicker
+                      distritoId={form.distritoId}
+                      onDistritoChange={(id) => setForm((actual) => ({ ...actual, distritoId: id }))}
+                      sugerencia={ubicacionSugerida}
                     />
                   </div>
                 </div>
@@ -785,13 +788,17 @@ export function PersonalPage() {
                   </label>
                   <label className="flex flex-col gap-1.5">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">Turno</span>
-                    <input
+                    <select
                       value={form.turno}
-                      maxLength={18}
                       onChange={(e) => setForm({ ...form, turno: e.target.value })}
-                      placeholder="Ej. Mañana / Tarde / Noche"
-                      className="rounded-lg bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none"
-                    />
+                      className="cursor-pointer rounded-lg bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none"
+                    >
+                      <option value="">Seleccione…</option>
+                      {TURNOS.map((opcion) => <option key={opcion} value={opcion}>{opcion}</option>)}
+                      {form.turno && !TURNOS.includes(form.turno) && (
+                        <option value={form.turno}>{form.turno}</option>
+                      )}
+                    </select>
                   </label>
                   <label className="flex flex-col gap-1.5">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">F. Ingreso</span>
@@ -831,13 +838,17 @@ export function PersonalPage() {
                   </label>
                   <label className="flex flex-col gap-1.5">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">Fondo Pensión</span>
-                    <input
+                    <select
                       value={form.fondoPension}
-                      maxLength={3}
-                      onChange={(e) => setForm({ ...form, fondoPension: e.target.value.toUpperCase() })}
-                      placeholder="ONP / AFP"
-                      className="rounded-lg bg-[#F5F5F5] px-3.5 py-2.5 font-mono text-sm outline-none"
-                    />
+                      onChange={(e) => setForm({ ...form, fondoPension: e.target.value })}
+                      className="cursor-pointer rounded-lg bg-[#F5F5F5] px-3.5 py-2.5 font-mono text-sm outline-none"
+                    >
+                      <option value="">Seleccione…</option>
+                      {FONDOS_PENSION.map((opcion) => <option key={opcion} value={opcion}>{opcion}</option>)}
+                      {form.fondoPension && !FONDOS_PENSION.includes(form.fondoPension) && (
+                        <option value={form.fondoPension}>{form.fondoPension}</option>
+                      )}
+                    </select>
                   </label>
                   <label className="flex flex-col gap-1.5">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">N.º Hijos</span>

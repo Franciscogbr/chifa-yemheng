@@ -14,7 +14,6 @@ interface MiCuentaResponse {
     montoPagado: number;
   };
 }
-import { ComprobanteBoleta } from '../../staff/caja/ComprobanteBoleta';
 import { ComprobanteFactura } from '../../staff/caja/ComprobanteFactura';
 
 import { API_URL } from '../../../lib/api-url';
@@ -350,10 +349,8 @@ export function ClienteMiConsumoPage() {
                 </div>
                 <button className="y-btn line" onClick={() => setComprobanteAbierto(null)}>Cerrar</button>
               </div>
-              {comprobanteAbierto.tipoDocumento === '01' ? (
+              {comprobanteAbierto.tipoDocumento === '01' && (
                 <ComprobanteFactura ventaId={comprobanteAbierto.idVenta} onClose={() => setComprobanteAbierto(null)} />
-              ) : (
-                <ComprobanteBoleta ventaId={comprobanteAbierto.idVenta} onClose={() => setComprobanteAbierto(null)} />
               )}
             </div>
           </div>

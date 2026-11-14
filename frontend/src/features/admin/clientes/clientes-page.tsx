@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Maestro } from '../../../services/maestros';
-import { DistritoPicker } from '../../../components/distrito-picker';
+import type { UbigeoNombres } from '../../../services/maestros';
+import { UbigeoPicker } from '../../../components/ubigeo-picker';
 import {
   actualizarCliente,
   cambiarEstadoCliente,
@@ -8,7 +9,6 @@ import {
   consultarDni,
   consultarRuc,
   listarClientes,
-  listarDistritos,
   listarTiposIdentidad,
 } from './clientes-service';
 import type { Cliente, ClienteForm, Genero, TipoCliente, TipoDocPersona } from './clientes-types';
@@ -100,9 +100,9 @@ export function ClientesPage() {
   const [guardando, setGuardando] = useState(false);
   const [consultandoDocumento, setConsultandoDocumento] = useState<'dni' | 'ruc' | null>(null);
   const [consultaFeedback, setConsultaFeedback] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
-  const [distritos, setDistritos] = useState<Maestro[]>([]);
-  const [cargandoDistritos, setCargandoDistritos] = useState(true);
-  const [errorDistritos, setErrorDistritos] = useState<string | null>(null);
+  const [ubicacionSugerida, setUbicacionSugerida] = useState<UbigeoNombres | null>(null);
+  const [cargandoMaestros, setCargandoMaestros] = useState(true);
+  const [errorMaestros, setErrorMaestros] = useState<string | null>(null);
   const [tiposDoc, setTiposDoc] = useState<Maestro[]>([]);
 
   const cargar = async () => {
@@ -124,22 +124,20 @@ export function ClientesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, buscar, tab, estado, orden]);
 
-  const recargarDistritos = async () => {
-    setCargandoDistritos(true);
-    setErrorDistritos(null);
+  const recargarMaestros = async () => {
+    setCargandoMaestros(true);
+    setErrorMaestros(null);
     try {
-      const [d, t] = await Promise.all([listarDistritos(), listarTiposIdentidad()]);
-      setDistritos(d);
-      setTiposDoc(t);
+      setTiposDoc(await listarTiposIdentidad());
     } catch {
-      setErrorDistritos('No fue posible cargar los distritos.');
+      setErrorMaestros('No fue posible cargar los tipos de documento.');
     } finally {
-      setCargandoDistritos(false);
+      setCargandoMaestros(false);
     }
   };
 
   useEffect(() => {
-    void recargarDistritos();
+    void recargarMaestros();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -152,6 +150,7 @@ export function ClientesPage() {
     setForm(VACIO);
     setFormError(null);
     setConsultaFeedback(null);
+    setUbicacionSugerida(null);
     setModal({ editando: null });
   };
 
@@ -176,6 +175,7 @@ export function ClientesPage() {
     });
     setFormError(null);
     setConsultaFeedback(null);
+    setUbicacionSugerida(null);
     setModal({ editando: c });
   };
 
@@ -270,6 +270,9 @@ export function ClientesPage() {
         genero: actual.genero || datos.genero || '',
         direccion: actual.direccion.trim() ? actual.direccion : datos.direccion ?? '',
       }));
+      setUbicacionSugerida(
+        datos.ubicacion && Object.values(datos.ubicacion).some(Boolean) ? datos.ubicacion : null,
+      );
       setConsultaFeedback({ tipo: 'ok', texto: 'Datos encontrados. Revisa y completa los campos restantes.' });
     } catch (error) {
       setConsultaFeedback({
@@ -293,6 +296,9 @@ export function ClientesPage() {
         razonSocial: actual.razonSocial.trim() ? actual.razonSocial : datos.razonSocial,
         direccion: actual.direccion.trim() ? actual.direccion : datos.direccion ?? '',
       }));
+      setUbicacionSugerida(
+        datos.ubicacion && Object.values(datos.ubicacion).some(Boolean) ? datos.ubicacion : null,
+      );
       setConsultaFeedback({ tipo: 'ok', texto: 'Datos encontrados. Revisa y completa los campos restantes.' });
     } catch (error) {
       setConsultaFeedback({
@@ -618,6 +624,18 @@ export function ClientesPage() {
                   {formError}
                 </div>
               )}
+              {errorMaestros && (
+                <div role="alert" className="flex items-center justify-between gap-2 rounded-lg border border-[#D4A017]/40 bg-[#D4A017]/10 p-3 text-sm">
+                  <span>{errorMaestros}</span>
+                  <button
+                    type="button"
+                    onClick={() => void recargarMaestros()}
+                    className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-xs font-bold shadow-sm hover:bg-[#F5F5F5]"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              )}
               {!modal.editando && (
                 <div className="grid grid-cols-2 gap-2 rounded-xl bg-[#F5F5F5] p-1">
                   {(['N', 'J'] as const).map((t) => (
@@ -646,7 +664,7 @@ export function ClientesPage() {
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">Tipo Doc.</span>
                     <select
                       value={form.tipoDoc}
-                      disabled={!!modal.editando || cargandoDistritos || consultandoDocumento !== null}
+                      disabled={!!modal.editando || cargandoMaestros || consultandoDocumento !== null}
                       onChange={(e) => setForm({ ...form, tipoDoc: e.target.value as ClienteForm['tipoDoc'] })}
                       className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 text-sm outline-none disabled:opacity-60"
                     >
@@ -657,36 +675,41 @@ export function ClientesPage() {
                       ))}
                     </select>
                   </label>
-                  <label className="flex flex-col gap-1.5 md:col-span-4">
+                  <div className="flex flex-col gap-1.5 md:col-span-4">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">
                       {form.tipoDoc === 'DNI' ? 'DNI (8)' : form.tipoDoc === 'CE' ? 'CE (9)' : 'Pasaporte'} *
                     </span>
-                    <input
-                      value={form.dni}
-                      maxLength={15}
-                      inputMode={form.tipoDoc === 'PASAPORTE' ? 'text' : 'numeric'}
-                      disabled={!!modal.editando || consultandoDocumento !== null}
-                      onChange={(e) => {
-                        setForm({ ...form, dni: e.target.value });
-                        setConsultaFeedback(null);
-                      }}
-                      placeholder={form.tipoDoc === 'DNI' ? '48291049' : form.tipoDoc === 'CE' ? '001234567' : 'AB123456'}
-                      className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 font-mono text-sm outline-none focus:bg-white focus:ring-1 focus:ring-[#A61E22] disabled:opacity-60"
-                    />
-                    {!modal.editando && form.tipoDoc === 'DNI' && (
-                      <button
-                        type="button"
-                        onClick={() => void autocompletarDni()}
-                        disabled={!/^\d{8}$/.test(form.dni.trim()) || consultandoDocumento !== null}
-                        className="mt-2 rounded-lg border border-[#A61E22]/30 px-3 py-2 text-xs font-bold text-[#A61E22] disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {consultandoDocumento === 'dni' ? 'Buscando…' : 'Buscar DNI'}
-                      </button>
-                    )}
+                    <div className="flex gap-2">
+                      <input
+                        id="cliente-dni"
+                        value={form.dni}
+                        maxLength={15}
+                        inputMode={form.tipoDoc === 'PASAPORTE' ? 'text' : 'numeric'}
+                        disabled={!!modal.editando || consultandoDocumento !== null}
+                        onChange={(e) => {
+                          setForm({ ...form, dni: e.target.value });
+                          setConsultaFeedback(null);
+                        }}
+                        placeholder={form.tipoDoc === 'DNI' ? '48291049' : form.tipoDoc === 'CE' ? '001234567' : 'AB123456'}
+                        className="min-w-0 flex-1 rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 font-mono text-sm outline-none focus:bg-white focus:ring-1 focus:ring-[#A61E22] disabled:opacity-60"
+                      />
+                      {!modal.editando && form.tipoDoc === 'DNI' && (
+                        <button
+                          type="button"
+                          onClick={() => void autocompletarDni()}
+                          disabled={!/^\d{8}$/.test(form.dni.trim()) || consultandoDocumento !== null}
+                          aria-label="Buscar DNI en Factiliza"
+                          title="Buscar DNI"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#A61E22]/30 text-[#A61E22] transition-colors hover:bg-[#A61E22]/5 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">search</span>
+                        </button>
+                      )}
+                    </div>
                     {!modal.editando && form.tipoDoc === 'DNI' && !/^\d{8}$/.test(form.dni.trim()) && (
                       <span className="mt-1 text-xs text-[#333333]/60">Ingresa los 8 dígitos para habilitar la búsqueda.</span>
                     )}
-                  </label>
+                  </div>
                   <label className="flex flex-col gap-1.5 md:col-span-12">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">Nombres *</span>
                     <input
@@ -746,34 +769,39 @@ export function ClientesPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
-                  <label className="flex flex-col gap-1.5 md:col-span-5">
+                  <div className="flex flex-col gap-1.5 md:col-span-5">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">RUC (11) *</span>
-                    <input
-                      value={form.ruc}
-                      maxLength={11}
-                      inputMode="numeric"
-                      disabled={!!modal.editando || consultandoDocumento !== null}
-                      onChange={(e) => {
-                        setForm({ ...form, ruc: e.target.value });
-                        setConsultaFeedback(null);
-                      }}
-                      placeholder="20601928371"
-                      className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 font-mono text-sm outline-none focus:bg-white focus:ring-1 focus:ring-[#A61E22] disabled:opacity-60"
-                    />
-                    {!modal.editando && (
-                      <button
-                        type="button"
-                        onClick={() => void autocompletarRuc()}
-                        disabled={!/^\d{11}$/.test(form.ruc.trim()) || consultandoDocumento !== null}
-                        className="mt-2 rounded-lg border border-[#A61E22]/30 px-3 py-2 text-xs font-bold text-[#A61E22] disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {consultandoDocumento === 'ruc' ? 'Buscando…' : 'Buscar RUC'}
-                      </button>
-                    )}
+                    <div className="flex gap-2">
+                      <input
+                        id="cliente-ruc"
+                        value={form.ruc}
+                        maxLength={11}
+                        inputMode="numeric"
+                        disabled={!!modal.editando || consultandoDocumento !== null}
+                        onChange={(e) => {
+                          setForm({ ...form, ruc: e.target.value });
+                          setConsultaFeedback(null);
+                        }}
+                        placeholder="20601928371"
+                        className="min-w-0 flex-1 rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 font-mono text-sm outline-none focus:bg-white focus:ring-1 focus:ring-[#A61E22] disabled:opacity-60"
+                      />
+                      {!modal.editando && (
+                        <button
+                          type="button"
+                          onClick={() => void autocompletarRuc()}
+                          disabled={!/^\d{11}$/.test(form.ruc.trim()) || consultandoDocumento !== null}
+                          aria-label="Buscar RUC en Factiliza"
+                          title="Buscar RUC"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#A61E22]/30 text-[#A61E22] transition-colors hover:bg-[#A61E22]/5 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">search</span>
+                        </button>
+                      )}
+                    </div>
                     {!modal.editando && !/^\d{11}$/.test(form.ruc.trim()) && (
                       <span className="mt-1 text-xs text-[#333333]/60">Ingresa los 11 dígitos para habilitar la búsqueda.</span>
                     )}
-                  </label>
+                  </div>
                   <label className="flex flex-col gap-1.5 md:col-span-7">
                     <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">Razón Social *</span>
                     <input
@@ -849,15 +877,11 @@ export function ClientesPage() {
                     className="rounded-xl bg-[#F5F5F5] px-3.5 py-2.5 font-mono text-sm outline-none"
                   />
                 </label>
-                <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <span className="text-[11px] font-bold tracking-wider uppercase opacity-60">Distrito *</span>
-                  <DistritoPicker
-                    value={form.distritoId}
-                    onChange={(id) => setForm({ ...form, distritoId: id })}
-                    distritos={distritos}
-                    cargando={cargandoDistritos}
-                    error={errorDistritos}
-                    onReintentar={() => void recargarDistritos()}
+                <div className="md:col-span-2">
+                  <UbigeoPicker
+                    distritoId={form.distritoId}
+                    onDistritoChange={(id) => setForm((actual) => ({ ...actual, distritoId: id }))}
+                    sugerencia={ubicacionSugerida}
                   />
                 </div>
               </div>

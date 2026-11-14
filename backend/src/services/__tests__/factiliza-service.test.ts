@@ -22,6 +22,9 @@ describe('Factiliza lookups', () => {
             fecha_nacimiento: '1990-04-12',
             sexo: 'FEMENINO',
             direccion: 'JR. EJEMPLO 123',
+            departamento: 'ICA',
+            provincia: 'ICA',
+            distrito: 'ICA',
           },
         }),
         { status: 200 },
@@ -36,6 +39,7 @@ describe('Factiliza lookups', () => {
       fNacimiento: '1990-04-12',
       genero: 'F',
       direccion: 'JR. EJEMPLO 123',
+      ubicacion: { departamento: 'ICA', provincia: 'ICA', distrito: 'ICA' },
     });
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.factiliza.com/v1/dni/info/12345678',
@@ -52,7 +56,13 @@ describe('Factiliza lookups', () => {
         new Response(
           JSON.stringify({
             success: true,
-            data: { nombre_o_razon_social: 'EMPRESA EJEMPLO S.A.C.', direccion: 'AV. CENTRAL 100' },
+            data: {
+              nombre_o_razon_social: 'EMPRESA EJEMPLO S.A.C.',
+              direccion: 'AV. CENTRAL 100',
+              departamento: 'ICA',
+              provincia: 'ICA',
+              distrito: 'ICA',
+            },
           }),
           { status: 200 },
         ),
@@ -62,6 +72,7 @@ describe('Factiliza lookups', () => {
     await expect(consultarRuc('20123456789')).resolves.toEqual({
       razonSocial: 'EMPRESA EJEMPLO S.A.C.',
       direccion: 'AV. CENTRAL 100',
+      ubicacion: { departamento: 'ICA', provincia: 'ICA', distrito: 'ICA' },
     });
   });
 

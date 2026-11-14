@@ -1,12 +1,106 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { leerToken } from '../../auth/login/auth-service';
 import { exportarReportesExcel, exportarReportesPdf, type ReporteExportable } from './reportes-export';
+import { TablaReporte } from '@/shared/ui/TablaReporte';
 
 import { API_URL } from '../../../lib/api-url';
 
 const BASE = `${API_URL}/reportes`;
 
-type ReportTab = 'ventas' | 'productos' | 'categorias' | 'arqueo' | 'pagos' | 'comprobantes' | 'movimientos' | 'reservas' | 'delivery' | 'canales' | 'horarios' | 'ticket' | 'anulaciones' | 'notas-credito' | 'clientes' | 'mesas' | 'empleados' | 'fiscal' | 'ventas-anuladas' | 'sunat' | 'pagos-operacion' | 'reservas-estado' | 'tipo-cliente' | 'comparacion' | 'caja-resumen';
+type ReportTab =
+  | 'ventas'
+  | 'productos'
+  | 'categorias'
+  | 'arqueo'
+  | 'pagos'
+  | 'comprobantes'
+  | 'movimientos'
+  | 'reservas'
+  | 'delivery'
+  | 'canales'
+  | 'horarios'
+  | 'ticket'
+  | 'anulaciones'
+  | 'notas-credito'
+  | 'clientes'
+  | 'mesas'
+  | 'empleados'
+  | 'fiscal'
+  | 'ventas-anuladas'
+  | 'sunat'
+  | 'pagos-operacion'
+  | 'reservas-estado'
+  | 'tipo-cliente'
+  | 'comparacion'
+  | 'caja-resumen';
+
+const CATEGORIAS: Record<
+  string,
+  { label: string; tabs: ReportTab[] }
+> = {
+  ventas: {
+    label: 'Ventas y facturación',
+    tabs: ['ventas', 'comprobantes', 'ventas-anuladas', 'notas-credito', 'fiscal', 'comparacion'],
+  },
+  productos: {
+    label: 'Productos y catálogo',
+    tabs: ['productos', 'categorias', 'clientes', 'tipo-cliente'],
+  },
+  caja: {
+    label: 'Caja y pagos',
+    tabs: ['arqueo', 'pagos', 'pagos-operacion', 'movimientos', 'caja-resumen'],
+  },
+  delivery: {
+    label: 'Clientes y delivery',
+    tabs: ['reservas', 'delivery'],
+  },
+  analisis: {
+    label: 'Análisis comercial',
+    tabs: ['canales', 'horarios', 'ticket', 'mesas', 'empleados'],
+  },
+  fiscal: {
+    label: 'Fiscal y estado',
+    tabs: ['sunat', 'reservas-estado'],
+  },
+};
+
+const TAB_LABEL: Record<ReportTab, string> = {
+  ventas: 'Ventas',
+  productos: 'Productos más vendidos',
+  categorias: 'Ventas por categoría',
+  arqueo: 'Arqueos de caja',
+  pagos: 'Pagos por medio',
+  comprobantes: 'Comprobantes',
+  movimientos: 'Movimientos',
+  reservas: 'Reservas',
+  delivery: 'Delivery',
+  canales: 'Canales y pedidos',
+  horarios: 'Días y horarios',
+  ticket: 'Ticket promedio',
+  anulaciones: 'Pedidos anulados',
+  'notas-credito': 'Notas de crédito',
+  clientes: 'Clientes frecuentes',
+  mesas: 'Ventas por mesa',
+  empleados: 'Ventas por empleado',
+  fiscal: 'Desglose fiscal',
+  'ventas-anuladas': 'Ventas anuladas',
+  sunat: 'SUNAT registrado',
+  'pagos-operacion': 'Pagos por operación',
+  'reservas-estado': 'Reservas por estado',
+  'tipo-cliente': 'Tipo de cliente',
+  comparacion: 'Comparación de periodos',
+  'caja-resumen': 'Resumen de caja',
+};
+
+const CLASES_CATEGORIA: Record<string, { bg: string; text: string; border: string }> = {
+  ventas: { bg: 'bg-[#A61E22]', text: 'text-[#A61E22]', border: 'border-[#A61E22]' },
+  caja: { bg: 'bg-[#1D4ED8]', text: 'text-[#1D4ED8]', border: 'border-[#1D4ED8]' },
+  productos: { bg: 'bg-[#059669]', text: 'text-[#059669]', border: 'border-[#059669]' },
+  delivery: { bg: 'bg-[#B45309]', text: 'text-[#B45309]', border: 'border-[#B45309]' },
+  analisis: { bg: 'bg-[#7C3AED]', text: 'text-[#7C3AED]', border: 'border-[#7C3AED]' },
+  fiscal: { bg: 'bg-[#DC2626]', text: 'text-[#DC2626]', border: 'border-[#DC2626]' },
+};
+
 const filterLabel: CSSProperties = {
   display: 'grid',
   gap: 5,
@@ -60,43 +154,22 @@ function etiquetaEstadoReserva(estado: string): string {
           : estado;
 }
 
-function TablaReporte({
-  columnas,
-  filas,
-  mensajeVacio,
-  nota,
-}: {
-  columnas: string[];
-  filas: (string | number)[][];
-  mensajeVacio: string;
-  nota?: string;
-}) {
-  return (
-    <div className="overflow-x-auto">
-      {nota && <p className="mb-3 text-xs text-[#333]/60">{nota}</p>}
-      <table className="w-full text-sm">
-        <thead><tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-          {columnas.map((columna) => <th key={columna} className="px-3 py-2">{columna}</th>)}
-        </tr></thead>
-        <tbody className="divide-y divide-[#F5F5F5]">
-          {filas.map((fila, index) => <tr key={index} className="hover:bg-[#F5F5F5]">
-            {fila.map((celda, celdaIndex) => <td key={celdaIndex} className="px-3 py-2">{celda}</td>)}
-          </tr>)}
-        </tbody>
-      </table>
-      {filas.length === 0 && <p className="py-4 text-center text-sm text-[#333]/60">{mensajeVacio}</p>}
-    </div>
-  );
-}
+function tipoDocumento(tipo: string) { return tipo === '03' ? 'Boleta' : tipo === '01' ? 'Factura' : tipo; }
+function formatoFecha(fecha: string | null) { return fecha ? new Date(fecha).toLocaleString('es-PE') : '—'; }
+const fmt = (n: number) => `S/. ${n.toFixed(2)}`;
 
 async function fetchReporte<T>(path: string, params: Record<string, string>): Promise<T> {
   const q = new URLSearchParams(params);
-  const res = await fetch(`${BASE}/${path}?${q.toString()}`, { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${leerToken() ?? ''}` } });
+  const res = await fetch(`${BASE}/${path}?${q.toString()}`, {
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${leerToken() ?? ''}` },
+  });
   if (!res.ok) throw new Error('NETWORK_ERROR');
   return res.json();
 }
 
 export function AdminReportesPage() {
+  const [categoria, setCategoria] = useState<string>('ventas');
+  const [tab, setTab] = useState<ReportTab>('ventas');
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   const [tipoDocumentoFiltro, setTipoDocumentoFiltro] = useState('');
@@ -118,6 +191,7 @@ export function AdminReportesPage() {
   const [montoDesde, setMontoDesde] = useState('');
   const [montoHasta, setMontoHasta] = useState('');
   const [limiteProductos, setLimiteProductos] = useState('50');
+
   const [ventas, setVentas] = useState<VentaDiaria[]>([]);
   const [productos, setProductos] = useState<ProductoMasVendido[]>([]);
   const [arqueo, setArqueo] = useState<ArqueoCaja[]>([]);
@@ -148,7 +222,6 @@ export function AdminReportesPage() {
   const [cargando, setCargando] = useState(true);
   const [exportando, setExportando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<ReportTab>('ventas');
 
   const cargar = async () => {
     setCargando(true);
@@ -188,15 +261,11 @@ export function AdminReportesPage() {
 
   useEffect(() => { void cargar(); }, [desde, hasta]);
 
-  const fmt = (n: number) => `S/. ${n.toFixed(2)}`;
-  const formatoFecha = (fecha: string | null) => fecha
-    ? new Date(fecha).toLocaleString('es-PE')
-    : 'Sin cierre';
-  const tipoDocumento = (tipo: string) => tipo === '03' ? 'Boleta' : tipo === '01' ? 'Factura' : tipo;
   const periodo = desde || hasta
     ? `${desde || 'inicio'} / ${hasta || 'hoy'}`
     : 'Histórico completo';
   const termino = busqueda.trim().toLocaleLowerCase('es');
+
   const ventasFiltradas = ventas.filter((row) =>
     (!tipoDocumentoFiltro || row.tipodocumento === tipoDocumentoFiltro)
     && cumpleRango(row.total, montoDesde, montoHasta));
@@ -535,6 +604,7 @@ export function AdminReportesPage() {
   ];
 
   const reporteActivo = reportesExportables.find((reporte) => reporte.id === tab);
+
   const filtrosAplicados = [
     (tab === 'ventas' || tab === 'comprobantes') && tipoDocumentoFiltro
       ? `documento: ${tipoDocumento(tipoDocumentoFiltro)}` : '',
@@ -586,53 +656,62 @@ export function AdminReportesPage() {
 
   const tablasAdicionales: Partial<Record<ReportTab, {
     columnas: string[];
-    filas: (string | number)[][];
+    filas: React.ReactNode[][];
     mensajeVacio: string;
     nota?: string;
+    alinearDerecha?: number[];
   }>> = {
     mesas: {
       columnas: ['Ambiente', 'Mesa', 'Comprobantes', 'Total vendido'],
       filas: ventasPorMesaFiltradas.map((row) => [row.ambiente, row.mesa, row.comprobantes, fmt(row.total)]),
       mensajeVacio: 'No hay ventas asociadas a mesas en el periodo.',
+      alinearDerecha: [2, 3],
     },
     empleados: {
       columnas: ['Empleado asignado al pedido', 'Comprobantes', 'Total vendido'],
       filas: ventasPorEmpleadoFiltradas.map((row) => [row.empleado, row.comprobantes, fmt(row.total)]),
       mensajeVacio: 'No hay ventas con empleado asignado en el periodo.',
       nota: 'La atribución corresponde al empleado asociado al pedido; no identifica necesariamente quién realizó cada acción.',
+      alinearDerecha: [1, 2],
     },
     fiscal: {
       columnas: ['Fecha', 'Comprobantes', 'Subtotal', 'Descuento', 'Servicio', 'IGV', 'Total'],
       filas: desgloseFiscalFiltrado.map((row) => [row.fecha, row.comprobantes, fmt(row.subtotal), fmt(row.descuento), fmt(row.servicio), fmt(row.igv), fmt(row.total)]),
       mensajeVacio: 'No hay ventas para desglosar en el periodo.',
+      alinearDerecha: [1, 2, 3, 4, 5, 6],
     },
     'ventas-anuladas': {
       columnas: ['Venta', 'Fecha de venta', 'Documento', 'Responsable registrado', 'Total', 'Motivo'],
       filas: ventasAnuladasFiltradas.map((row) => [row.id, formatoFecha(row.fechaVenta), tipoDocumento(row.tipoDocumento), row.responsable, fmt(row.total), row.motivo ?? 'Sin motivo registrado']),
       mensajeVacio: 'No hay ventas anuladas en el periodo.',
       nota: 'La fecha corresponde a la venta; el sistema no registra una fecha independiente de anulación.',
+      alinearDerecha: [4],
     },
     sunat: {
       columnas: ['Venta', 'Documento', 'Fecha', 'Total', 'Estado SUNAT registrado'],
       filas: estadoSunatFiltrado.map((row) => [row.ventaId, `${row.tipoDocumento} ${row.serie}-${row.numero}`, formatoFecha(row.fecha), fmt(row.total), row.estadoRegistrado]),
       mensajeVacio: 'No hay comprobantes fiscales en el periodo.',
       nota: 'El estado mostrado es el valor guardado localmente; no es una consulta en tiempo real a SUNAT.',
+      alinearDerecha: [3],
     },
     'pagos-operacion': {
       columnas: ['Pago', 'Venta', 'Fecha de pago', 'Documento', 'Medio', 'Monto', 'Referencia'],
       filas: pagosPorOperacionFiltrados.map((row) => [row.id, row.ventaId, formatoFecha(row.fechaPago), tipoDocumento(row.tipoDocumento), row.metodoPago, fmt(row.monto), row.referencia ?? '—']),
       mensajeVacio: 'No hay operaciones de pago en el periodo.',
       nota: 'Cada fila es una operación individual; en pagos mixtos una venta puede aparecer en varias filas.',
+      alinearDerecha: [1, 5],
     },
     'reservas-estado': {
       columnas: ['Estado registrado', 'Cantidad'],
       filas: analisisComercial.reservasPorEstado.map((row) => [etiquetaEstadoReserva(row.estado), row.cantidad]),
       mensajeVacio: 'No hay reservas en el periodo.',
+      alinearDerecha: [1],
     },
     'tipo-cliente': {
       columnas: ['Tipo de cliente', 'Comprobantes', 'Total vendido'],
       filas: ventasPorTipoClienteFiltradas.map((row) => [row.tipo, row.comprobantes, fmt(row.total)]),
       mensajeVacio: 'No hay ventas por tipo de cliente en el periodo.',
+      alinearDerecha: [1, 2],
     },
     comparacion: {
       columnas: ['Periodo', 'Ventas'],
@@ -647,6 +726,7 @@ export function AdminReportesPage() {
           ]
         : [],
       mensajeVacio: 'Selecciona un rango completo válido para comparar con el periodo anterior.',
+      alinearDerecha: [1],
     },
     'caja-resumen': {
       columnas: ['Caja', 'Turno', 'Apertura', 'Cierre', 'Ventas registradas', 'Ingresos turno', 'Egresos turno', 'Sistema', 'Declarado', 'Diferencia'],
@@ -657,8 +737,15 @@ export function AdminReportesPage() {
       ]),
       mensajeVacio: 'No hay aperturas de caja para el periodo.',
       nota: 'Ventas registradas e ingresos del turno se muestran por separado. No sumar ambos: pueden representar los mismos cobros.',
+      alinearDerecha: [4, 5, 6, 7, 8, 9],
     },
   };
+
+  const tablaConfig = tablasAdicionales[tab as keyof typeof tablasAdicionales] ?? undefined;
+
+  const tabsCategoria = CATEGORIAS[categoria]?.tabs ?? CATEGORIAS.ventas.tabs;
+  const tabValido = tabsCategoria.includes(tab) ? tab : tabsCategoria[0];
+  const colorCat = CLASES_CATEGORIA[categoria] ?? CLASES_CATEGORIA.ventas;
 
   return (
     <div className="y-shell" style={{ padding: '24px 16px 140px', maxWidth: 1240, margin: '0 auto' }}>
@@ -668,30 +755,12 @@ export function AdminReportesPage() {
         </p>
         <h1 className="text-2xl font-bold" style={{ color: 'var(--fg)', margin: '0 0 6px' }}>Reportes del sistema</h1>
         <p style={{ color: 'var(--text-muted)', margin: 0 }}>
-          Elige el periodo y combina filtros para consultar el detalle que necesitas. Cada pestaña se puede exportar por separado.
+          Elige el periodo y combina filtros para consultar el detalle que necesitas. Cada reporte se puede exportar por separado.
         </p>
       </header>
 
-      <section className="y-panel" style={{ padding: 16, marginBottom: 16 }}>
-        <div className="flex flex-wrap items-end gap-3">
-          <label style={{ display: 'grid', gap: 5, fontSize: 12, color: 'var(--text-muted)' }}>
-            Desde
-            <input aria-label="Fecha desde" type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm" />
-          </label>
-          <label style={{ display: 'grid', gap: 5, fontSize: 12, color: 'var(--text-muted)' }}>
-            Hasta
-            <input aria-label="Fecha hasta" type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm" />
-          </label>
-        </div>
-        <p style={{ margin: '10px 0 0', color: 'var(--text-muted)', fontSize: 12 }}>
-          Periodo aplicado: <b>{periodo}</b>.
-        </p>
-      </section>
 
-      <section
-        aria-label="Resumen del periodo"
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}
-      >
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
         {[
           { label: 'Ventas del periodo', value: fmt(ventasFiltradas.reduce((total, row) => total + row.total, 0)) },
           { label: 'Comprobantes coincidentes', value: comprobantesFiltrados.length.toLocaleString('es-PE') },
@@ -704,12 +773,40 @@ export function AdminReportesPage() {
         ))}
       </section>
 
-      <div className="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="Secciones de reportes">
-          {(['ventas', 'productos', 'categorias', 'arqueo', 'pagos', 'comprobantes', 'movimientos', 'reservas', 'delivery', 'canales', 'horarios', 'ticket', 'anulaciones', 'notas-credito', 'clientes', 'mesas', 'empleados', 'fiscal', 'ventas-anuladas', 'sunat', 'pagos-operacion', 'reservas-estado', 'tipo-cliente', 'comparacion', 'caja-resumen'] as const).map((t) => (
-            <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${tab === t ? 'bg-[#A61E22] text-white' : 'bg-[#F5F5F5] hover:bg-[#D9D9D9]'}`}>
-              {t === 'ventas' ? 'Ventas' : t === 'productos' ? 'Productos más vendidos' : t === 'categorias' ? 'Ventas por categoría' : t === 'arqueo' ? 'Arqueos de caja' : t === 'pagos' ? 'Pagos por medio' : t === 'comprobantes' ? 'Comprobantes' : t === 'movimientos' ? 'Movimientos' : t === 'reservas' ? 'Reservas' : t === 'delivery' ? 'Delivery' : t === 'canales' ? 'Canales y pedidos' : t === 'horarios' ? 'Días y horarios' : t === 'ticket' ? 'Ticket promedio' : t === 'anulaciones' ? 'Pedidos anulados' : t === 'notas-credito' ? 'Notas de crédito' : t === 'clientes' ? 'Clientes frecuentes' : t === 'mesas' ? 'Ventas por mesa' : t === 'empleados' ? 'Ventas por empleado' : t === 'fiscal' ? 'Desglose fiscal' : t === 'ventas-anuladas' ? 'Ventas anuladas' : t === 'sunat' ? 'SUNAT registrado' : t === 'pagos-operacion' ? 'Pagos por operación' : t === 'reservas-estado' ? 'Reservas por estado' : t === 'tipo-cliente' ? 'Tipo de cliente' : t === 'comparacion' ? 'Comparación de periodos' : 'Resumen de caja'}
+      <div className="mb-3">
+        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 6 }}>Categoría</p>
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Categorías de reportes">
+          {Object.entries(CATEGORIAS).map(([key, cat]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={categoria === key}
+              onClick={() => { setCategoria(key); setTab(cat.tabs[0]); }}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors border ${categoria === key ? `${colorCat.bg} text-white ring-2 shadow-sm` : 'bg-[#F5F5F5] text-[#333] hover:bg-[#D9D9D9] border-transparent'}`}
+            >
+              {cat.label}
             </button>
           ))}
+        </div>
+      </div>
+
+      <div className="mb-6 border-t border-[#E5E5E5] pt-4">
+        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 6 }}>Reportes</p>
+        <div className="flex flex-wrap gap-1" role="tablist" aria-label="Reportes">
+        {tabsCategoria.map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tabValido === t}
+            onClick={() => setTab(t)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors border ${tabValido === t ? `${colorCat.bg} text-white ring-2 shadow-sm` : 'bg-[#F5F5F5] text-[#333] hover:bg-[#D9D9D9] border-transparent'}`}
+          >
+            {TAB_LABEL[t]}
+          </button>
+        ))}
+      </div>
       </div>
 
       <section className="y-panel" style={{ padding: 16, marginBottom: 16 }}>
@@ -721,16 +818,32 @@ export function AdminReportesPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="rounded-lg border border-[#A61E22] px-4 py-2 text-sm font-semibold text-[#A61E22] hover:bg-[#A61E22]/5 disabled:opacity-50" disabled={cargando || exportando} onClick={() => void exportar('pdf')}>
-              {exportando ? 'Preparando…' : `Descargar PDF de ${reporteActivo?.title}`}
+            <button type="button" className={`rounded-lg border ${colorCat.border} px-4 py-2 text-sm font-semibold ${colorCat.text} hover:bg-gray-50 disabled:opacity-50`} disabled={cargando || exportando} onClick={() => void exportar('pdf')} title="Descargar PDF">
+              {exportando ? '…' : 'PDF'}
             </button>
-            <button type="button" className="rounded-lg bg-[#A61E22] px-4 py-2 text-sm font-semibold text-white hover:bg-[#84171B] disabled:opacity-50" disabled={cargando || exportando} onClick={() => void exportar('excel')}>
-              {exportando ? 'Preparando…' : `Descargar Excel de ${reporteActivo?.title}`}
+            <button type="button" className={`rounded-lg ${colorCat.bg} px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50`} disabled={cargando || exportando} onClick={() => void exportar('excel')} title="Descargar Excel">
+              {exportando ? '…' : 'Excel'}
             </button>
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, marginTop: 16 }}>
+          <label style={filterLabel}>
+            Desde
+            <input aria-label="Fecha desde" type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm" />
+          </label>
+          <label style={filterLabel}>
+            Hasta
+            <input aria-label="Fecha hasta" type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="rounded-lg bg-[#F5F5F5] px-3 py-2 text-sm" />
+          </label>
+          <label style={filterLabel}>
+            Monto mínimo
+            <input className="input" type="number" min="0" step="0.01" value={montoDesde} onChange={(e) => setMontoDesde(e.target.value)} placeholder="S/ 0.00" />
+          </label>
+          <label style={filterLabel}>
+            Monto máximo
+            <input className="input" type="number" min="0" step="0.01" value={montoHasta} onChange={(e) => setMontoHasta(e.target.value)} placeholder="Sin límite" />
+          </label>
           {tab === 'ventas' && (
             <label style={filterLabel}>
               Tipo de comprobante
@@ -977,7 +1090,7 @@ export function AdminReportesPage() {
           <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
             Resultado: {reporteActivo?.rows.length.toLocaleString('es-PE')} registros{filtrosAplicados ? ` · ${filtrosAplicados}` : ''}
           </span>
-          <button type="button" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" onClick={() => {
+          <button type="button" className="rounded-lg border border-[#A61E22] px-4 py-2 text-sm font-semibold text-[#A61E22] hover:bg-[#A61E22]/5" onClick={() => {
             setTipoDocumentoFiltro('');
             setCategoriaFiltro('');
             setCajaFiltro('');
@@ -1008,283 +1121,74 @@ export function AdminReportesPage() {
       {error && <div className="mb-4 rounded-lg bg-red-100 p-3 text-sm text-red-700">{error}</div>}
 
       {cargando ? (
-        <div className="y-panel" style={{ padding: 24, textAlign: 'center' }}>Cargando...</div>
-      ) : tablasAdicionales[tab] ? (
-        <TablaReporte {...tablasAdicionales[tab]!} />
+        <div className="y-panel" style={{ padding: 24, textAlign: 'center' }}>Cargando…</div>
       ) : tab === 'ventas' ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-                <th className="px-3 py-2">Fecha</th>
-                <th className="px-3 py-2">Tipo doc</th>
-                <th className="px-3 py-2 text-right">Comprobantes</th>
-                <th className="px-3 py-2 text-right">Subtotal</th>
-                <th className="px-3 py-2 text-right">IGV</th>
-                <th className="px-3 py-2 text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F5F5F5]">
-              {ventasFiltradas.map((v, i) => (
-                <tr key={i} className="hover:bg-[#F5F5F5]">
-                  <td className="px-3 py-2">{v.fecha}</td>
-                  <td className="px-3 py-2">{tipoDocumento(v.tipodocumento)}</td>
-                  <td className="px-3 py-2 text-right">{v.comprobantes}</td>
-                  <td className="px-3 py-2 text-right">{fmt(v.subtotal)}</td>
-                  <td className="px-3 py-2 text-right">{fmt(v.igv)}</td>
-                  <td className="px-3 py-2 text-right font-bold">{fmt(v.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {ventasFiltradas.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay ventas que coincidan con los filtros.</p>}
-        </div>
+        <TablaReporte
+          columnas={['Fecha', 'Tipo doc', 'Comprobantes', 'Subtotal', 'IGV', 'Total']}
+          filas={ventasFiltradas.map((v) => [v.fecha, tipoDocumento(v.tipodocumento), v.comprobantes, fmt(v.subtotal), fmt(v.igv), fmt(v.total)])}
+          mensajeVacio="No hay ventas que coincidan con los filtros."
+          alinearDerecha={[2, 3, 4, 5]}
+        />
       ) : tab === 'productos' ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-                <th className="px-3 py-2">Producto</th>
-                <th className="px-3 py-2">Categoría</th>
-                <th className="px-3 py-2 text-right">Cantidad</th>
-                <th className="px-3 py-2 text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F5F5F5]">
-              {productosFiltrados.map((p, i) => (
-                <tr key={i} className="hover:bg-[#F5F5F5]">
-                  <td className="px-3 py-2">{p.producto}</td>
-                  <td className="px-3 py-2">{p.categoria}</td>
-                  <td className="px-3 py-2 text-right">{p.cantidad}</td>
-                  <td className="px-3 py-2 text-right font-bold">{fmt(p.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {productosFiltrados.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay productos que coincidan con los filtros.</p>}
-        </div>
+        <TablaReporte
+          columnas={['Producto', 'Categoría', 'Cantidad', 'Total']}
+          filas={productosFiltrados.map((p) => [p.producto, p.categoria, p.cantidad, fmt(p.total)])}
+          mensajeVacio="No hay productos que coincidan con los filtros."
+          alinearDerecha={[2, 3]}
+        />
       ) : tab === 'categorias' ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-              <th className="px-3 py-2">Categoría</th><th className="px-3 py-2 text-right">Productos</th>
-              <th className="px-3 py-2 text-right">Unidades vendidas</th><th className="px-3 py-2 text-right">Importe vendido</th>
-            </tr></thead>
-            <tbody className="divide-y divide-[#F5F5F5]">{ventasCategoriaFiltradas.map((row) => <tr key={row.categoriaId ?? 'sin-categoria'}>
-              <td className="px-3 py-2">{row.categoria}</td><td className="px-3 py-2 text-right">{row.cantidadProductos}</td>
-              <td className="px-3 py-2 text-right">{row.unidades}</td><td className="px-3 py-2 text-right font-bold">{fmt(row.total)}</td>
-            </tr>)}</tbody>
-          </table>
-          {ventasCategoriaFiltradas.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay ventas por categoría en el periodo seleccionado.</p>}
-        </div>
+        <TablaReporte
+          columnas={['Categoría', 'Productos', 'Unidades vendidas', 'Importe vendido']}
+          filas={ventasCategoriaFiltradas.map((row) => [row.categoria, row.cantidadProductos, row.unidades, fmt(row.total)])}
+          mensajeVacio="No hay ventas por categoría en el periodo seleccionado."
+          alinearDerecha={[1, 2, 3]}
+        />
       ) : tab === 'pagos' ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-              <th className="px-3 py-2">Fecha</th><th className="px-3 py-2">Medio</th><th className="px-3 py-2">Responsable</th>
-              <th className="px-3 py-2 text-right">Comprobantes</th><th className="px-3 py-2 text-right">Operaciones</th>
-              <th className="px-3 py-2 text-right">Total cobrado</th><th className="px-3 py-2">Efectivo físico</th>
-            </tr></thead>
-            <tbody className="divide-y divide-[#F5F5F5]">{pagosFiltrados.map((p, i) => <tr key={`${p.fecha}-${p.metodoPagoId}-${p.usuarioId}-${i}`}>
-              <td className="px-3 py-2">{p.fecha}</td><td className="px-3 py-2">{p.metodoPago}</td><td className="px-3 py-2">{p.usuario}</td>
-              <td className="px-3 py-2 text-right">{p.comprobantes}</td><td className="px-3 py-2 text-right">{p.operaciones}</td>
-              <td className="px-3 py-2 text-right font-bold">{fmt(p.total)}</td><td className="px-3 py-2">{p.efectivoFisico ? 'Sí' : 'No'}</td>
-            </tr>)}</tbody>
-          </table>
-          {pagosFiltrados.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay pagos que coincidan con los filtros.</p>}
-        </div>
+        <TablaReporte
+          columnas={['Fecha', 'Medio', 'Responsable', 'Comprobantes', 'Operaciones', 'Total cobrado', 'Efectivo físico']}
+          filas={pagosFiltrados.map((p) => [p.fecha, p.metodoPago, p.usuario, p.comprobantes, p.operaciones, fmt(p.total), p.efectivoFisico ? 'Sí' : 'No'])}
+          mensajeVacio="No hay pagos que coincidan con los filtros."
+          alinearDerecha={[3, 4, 5]}
+        />
       ) : tab === 'comprobantes' ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-              <th className="px-3 py-2">Fecha</th><th className="px-3 py-2">Comprobante</th><th className="px-3 py-2">Caja / turno</th>
-              <th className="px-3 py-2">Responsable</th><th className="px-3 py-2 text-right">Total</th>
-            </tr></thead>
-            <tbody className="divide-y divide-[#F5F5F5]">{comprobantesFiltrados.map((c) => <tr key={c.ventaId}>
-              <td className="px-3 py-2">{new Date(c.fecha).toLocaleString('es-PE')}</td>
-              <td className="px-3 py-2">{tipoDocumento(c.tipoDocumento)} {c.serie}-{c.numero}</td>
-              <td className="px-3 py-2">{c.caja} / {c.turno}</td><td className="px-3 py-2">{c.usuario}</td>
-              <td className="px-3 py-2 text-right font-bold">{fmt(c.total)}</td>
-            </tr>)}</tbody>
-          </table>
-          {comprobantesFiltrados.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay comprobantes que coincidan con los filtros.</p>}
-        </div>
+        <TablaReporte
+          columnas={['Fecha', 'Comprobante', 'Caja / turno', 'Responsable', 'Total']}
+          filas={comprobantesFiltrados.map((c) => [new Date(c.fecha).toLocaleString('es-PE'), `${tipoDocumento(c.tipoDocumento)} ${c.serie}-${c.numero}`, `${c.caja} / ${c.turno}`, c.usuario, fmt(c.total)])}
+          mensajeVacio="No hay comprobantes que coincidan con los filtros."
+          alinearDerecha={[4]}
+        />
       ) : tab === 'movimientos' ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-              <th className="px-3 py-2">Fecha</th><th className="px-3 py-2">Caja / turno</th><th className="px-3 py-2">Tipo / concepto</th>
-              <th className="px-3 py-2">Medio</th><th className="px-3 py-2">Detalle</th><th className="px-3 py-2">Responsable</th>
-              <th className="px-3 py-2 text-right">Monto</th>
-            </tr></thead>
-            <tbody className="divide-y divide-[#F5F5F5]">{movimientosFiltrados.map((m) => <tr key={m.id}>
-              <td className="px-3 py-2">{new Date(m.fecha).toLocaleString('es-PE')}</td><td className="px-3 py-2">{m.caja} / {m.turno}</td>
-              <td className="px-3 py-2">{m.tipoMovimiento} · {m.concepto}</td><td className="px-3 py-2">{m.metodoPago}</td>
-              <td className="px-3 py-2">{m.descripcion ?? ''}{m.banco ? ` · ${m.banco}` : ''}{m.referencia ? ` · ${m.referencia}` : ''}</td>
-              <td className="px-3 py-2">{m.usuario}</td><td className="px-3 py-2 text-right font-bold">{fmt(m.monto)}</td>
-            </tr>)}</tbody>
-          </table>
-          {movimientosFiltrados.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay movimientos que coincidan con los filtros.</p>}
-        </div>
+        <TablaReporte
+          columnas={['Fecha', 'Caja / turno', 'Tipo / concepto', 'Medio', 'Detalle', 'Responsable', 'Monto']}
+          filas={movimientosFiltrados.map((m) => [new Date(m.fecha).toLocaleString('es-PE'), `${m.caja} / ${m.turno}`, `${m.tipoMovimiento} · ${m.concepto}`, m.metodoPago, `${m.descripcion ?? ''}${m.banco ? ` · ${m.banco}` : ''}${m.referencia ? ` · ${m.referencia}` : ''}`, m.usuario, fmt(m.monto)])}
+          mensajeVacio="No hay movimientos que coincidan con los filtros."
+          alinearDerecha={[6]}
+        />
       ) : tab === 'reservas' ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-              <th className="px-3 py-2">Fecha y hora</th><th className="px-3 py-2">Cliente</th><th className="px-3 py-2">Mesa</th>
-              <th className="px-3 py-2 text-right">Personas</th><th className="px-3 py-2 text-right">Adelanto</th>
-              <th className="px-3 py-2">Estado</th><th className="px-3 py-2">Responsable</th><th className="px-3 py-2">Observación</th>
-            </tr></thead>
-            <tbody className="divide-y divide-[#F5F5F5]">{reservasFiltradas.map((row) => <tr key={row.id}>
-              <td className="px-3 py-2">{new Date(row.fecha).toLocaleString('es-PE')}</td><td className="px-3 py-2">{row.cliente}</td>
-              <td className="px-3 py-2">{row.mesa}</td><td className="px-3 py-2 text-right">{row.personas}</td>
-              <td className="px-3 py-2 text-right font-bold">{fmt(row.adelanto)}</td>
-              <td className="px-3 py-2">{etiquetaEstadoReserva(row.estado)}</td>
-              <td className="px-3 py-2">{row.responsable}</td><td className="px-3 py-2">{row.observacion ?? '—'}</td>
-            </tr>)}</tbody>
-          </table>
-          {reservasFiltradas.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay reservas que coincidan con los filtros.</p>}
-        </div>
+        <TablaReporte
+          columnas={['Fecha y hora', 'Cliente', 'Mesa', 'Personas', 'Adelanto', 'Estado', 'Responsable', 'Observación']}
+          filas={reservasFiltradas.map((row) => [new Date(row.fecha).toLocaleString('es-PE'), row.cliente, row.mesa, row.personas, fmt(row.adelanto), etiquetaEstadoReserva(row.estado), row.responsable, row.observacion ?? '—'])}
+          mensajeVacio="No hay reservas que coincidan con los filtros."
+          alinearDerecha={[3, 4]}
+        />
       ) : tab === 'delivery' ? (
-        <div className="overflow-x-auto">
-          <p className="mb-3 text-xs text-[#333]/60">Los estados y marcas de tiempo se muestran tal como están registrados; no se calcula una duración de entrega.</p>
-          <table className="w-full text-sm">
-            <thead><tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-              <th className="px-3 py-2">Pedido</th><th className="px-3 py-2">Distrito</th><th className="px-3 py-2">Repartidor</th>
-              <th className="px-3 py-2">Estado (código)</th><th className="px-3 py-2 text-right">Costo envío</th>
-              <th className="px-3 py-2">Creado</th><th className="px-3 py-2">Salida registrada</th><th className="px-3 py-2">Entrega registrada</th>
-            </tr></thead>
-            <tbody className="divide-y divide-[#F5F5F5]">{deliveryFiltrado.map((row) => <tr key={row.id}>
-              <td className="px-3 py-2">{row.pedido}</td><td className="px-3 py-2">{row.distrito}</td><td className="px-3 py-2">{row.repartidor}</td>
-              <td className="px-3 py-2">{row.estado}</td><td className="px-3 py-2 text-right">{fmt(row.costoEnvio)}</td>
-              <td className="px-3 py-2">{formatoFecha(row.fechaCreacion)}</td><td className="px-3 py-2">{formatoFecha(row.fechaSalida)}</td>
-              <td className="px-3 py-2">{formatoFecha(row.fechaEntrega)}</td>
-            </tr>)}</tbody>
-          </table>
-          {deliveryFiltrado.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay deliveries que coincidan con los filtros.</p>}
-        </div>
-      ) : tab === 'canales' ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm"><thead><tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-            <th className="px-3 py-2">Canal</th><th className="px-3 py-2">Tipo de pedido</th>
-            <th className="px-3 py-2 text-right">Comprobantes</th><th className="px-3 py-2 text-right">Total vendido</th>
-          </tr></thead><tbody className="divide-y divide-[#F5F5F5]">{ventasCanalFiltradas.map((row) => <tr key={`${row.canal}-${row.tipoPedido}`}>
-            <td className="px-3 py-2">{row.canal}</td><td className="px-3 py-2">{row.tipoPedido}</td>
-            <td className="px-3 py-2 text-right">{row.comprobantes}</td><td className="px-3 py-2 text-right font-bold">{fmt(row.total)}</td>
-          </tr>)}</tbody></table>
-          {ventasCanalFiltradas.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay ventas para este periodo.</p>}
-        </div>
-      ) : tab === 'horarios' ? (
-        <div className="overflow-x-auto">
-          <p className="mb-3 text-xs text-[#333]/60">Agrupa ventas registradas por día de semana y hora. No es una proyección de demanda.</p>
-          <table className="w-full text-sm"><thead><tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-            <th className="px-3 py-2">Día</th><th className="px-3 py-2">Hora</th>
-            <th className="px-3 py-2 text-right">Comprobantes</th><th className="px-3 py-2 text-right">Total vendido</th>
-          </tr></thead><tbody className="divide-y divide-[#F5F5F5]">{ventasHorarioFiltradas.map((row) => <tr key={`${row.diaSemana}-${row.hora}`}>
-            <td className="px-3 py-2 capitalize">{row.diaSemana}</td><td className="px-3 py-2">{row.hora}</td>
-            <td className="px-3 py-2 text-right">{row.comprobantes}</td><td className="px-3 py-2 text-right font-bold">{fmt(row.total)}</td>
-          </tr>)}</tbody></table>
-          {ventasHorarioFiltradas.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay ventas para este periodo.</p>}
-        </div>
-      ) : tab === 'ticket' ? (
-        <div className="overflow-x-auto">
-          <p className="mb-3 text-xs text-[#333]/60">El promedio por comensal usa el número de comensales guardado en cada pedido; puede diferir si no se registró correctamente.</p>
-          <table className="w-full text-sm"><thead><tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-            <th className="px-3 py-2">Fecha</th><th className="px-3 py-2 text-right">Comprobantes</th>
-            <th className="px-3 py-2 text-right">Comensales</th><th className="px-3 py-2 text-right">Total vendido</th>
-            <th className="px-3 py-2 text-right">Ticket promedio</th><th className="px-3 py-2 text-right">Venta por comensal</th>
-          </tr></thead><tbody className="divide-y divide-[#F5F5F5]">{ticketsFiltrados.map((row) => <tr key={row.fecha}>
-            <td className="px-3 py-2">{row.fecha}</td><td className="px-3 py-2 text-right">{row.comprobantes}</td>
-            <td className="px-3 py-2 text-right">{row.comensales}</td><td className="px-3 py-2 text-right">{fmt(row.total)}</td>
-            <td className="px-3 py-2 text-right font-bold">{fmt(row.ticketPromedio)}</td>
-            <td className="px-3 py-2 text-right">{row.ticketPorComensal === null ? '—' : fmt(row.ticketPorComensal)}</td>
-          </tr>)}</tbody></table>
-          {ticketsFiltrados.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay ventas para este periodo.</p>}
-        </div>
-      ) : tab === 'anulaciones' ? (
-        <div className="overflow-x-auto">
-          <p className="mb-3 text-xs text-[#333]/60">Lista pedidos marcados como anulados. El motivo se muestra únicamente cuando fue registrado.</p>
-          <table className="w-full text-sm"><thead><tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-            <th className="px-3 py-2">Pedido</th><th className="px-3 py-2">Fecha del pedido</th><th className="px-3 py-2">Tipo</th>
-            <th className="px-3 py-2">Responsable</th><th className="px-3 py-2 text-right">Comensales</th>
-            <th className="px-3 py-2 text-right">Total</th><th className="px-3 py-2">Motivo registrado</th>
-          </tr></thead><tbody className="divide-y divide-[#F5F5F5]">{pedidosAnuladosFiltrados.map((row) => <tr key={row.id}>
-            <td className="px-3 py-2">{row.numero}</td><td className="px-3 py-2">{formatoFecha(row.fechaPedido)}</td>
-            <td className="px-3 py-2">{row.tipo}</td><td className="px-3 py-2">{row.responsable}</td>
-            <td className="px-3 py-2 text-right">{row.comensales}</td><td className="px-3 py-2 text-right">{fmt(row.total)}</td>
-            <td className="px-3 py-2">{row.motivo ?? 'Sin motivo registrado'}</td>
-          </tr>)}</tbody></table>
-          {pedidosAnuladosFiltrados.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay pedidos anulados para este periodo.</p>}
-        </div>
-      ) : tab === 'notas-credito' ? (
-        <div className="overflow-x-auto">
-          <p className="mb-3 text-xs text-[#333]/60">El estado SUNAT es el valor registrado en el sistema; no se consulta SUNAT en tiempo real.</p>
-          <table className="w-full text-sm"><thead><tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-            <th className="px-3 py-2">Fecha</th><th className="px-3 py-2">Nota</th><th className="px-3 py-2">Comprobante referenciado</th>
-            <th className="px-3 py-2">Motivo</th><th className="px-3 py-2 text-right">Monto</th><th className="px-3 py-2">SUNAT registrado</th>
-          </tr></thead><tbody className="divide-y divide-[#F5F5F5]">{notasCreditoFiltradas.map((row) => <tr key={row.id}>
-            <td className="px-3 py-2">{formatoFecha(row.fecha)}</td><td className="px-3 py-2">{row.serie}-{row.numero}</td>
-            <td className="px-3 py-2">{tipoDocumento(row.tipoDocumentoReferencia)} {row.serieReferencia}-{row.numeroReferencia}</td>
-            <td className="px-3 py-2">{row.motivo}</td><td className="px-3 py-2 text-right font-bold">{fmt(row.monto)}</td>
-            <td className="px-3 py-2">{row.estadoSunat ?? 'Sin estado registrado'}</td>
-          </tr>)}</tbody></table>
-          {notasCreditoFiltradas.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay notas de crédito para este periodo.</p>}
-        </div>
-      ) : tab === 'clientes' ? (
-        <div className="overflow-x-auto">
-          <p className="mb-3 text-xs text-[#333]/60">Incluye ventas asociadas a un cliente identificado y muestra hasta los 100 con mayor importe.</p>
-          <table className="w-full text-sm"><thead><tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-            <th className="px-3 py-2">Cliente</th><th className="px-3 py-2 text-right">Compras</th>
-            <th className="px-3 py-2 text-right">Total comprado</th><th className="px-3 py-2 text-right">Ticket promedio</th><th className="px-3 py-2">Última compra</th>
-          </tr></thead><tbody className="divide-y divide-[#F5F5F5]">{clientesFrecuentesFiltrados.map((row) => <tr key={row.clienteId}>
-            <td className="px-3 py-2">{row.nombre}</td><td className="px-3 py-2 text-right">{row.compras}</td>
-            <td className="px-3 py-2 text-right font-bold">{fmt(row.total)}</td><td className="px-3 py-2 text-right">{fmt(row.ticketPromedio)}</td>
-            <td className="px-3 py-2">{formatoFecha(row.ultimaCompra)}</td>
-          </tr>)}</tbody></table>
-          {clientesFrecuentesFiltrados.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay clientes con ventas registradas en este periodo.</p>}
-        </div>
+        <TablaReporte
+          columnas={['Pedido', 'Distrito', 'Repartidor', 'Estado', 'Costo envío', 'Creado', 'Salida', 'Entrega']}
+          filas={deliveryFiltrado.map((row) => [row.pedido, row.distrito, row.repartidor, row.estado, fmt(row.costoEnvio), formatoFecha(row.fechaCreacion), formatoFecha(row.fechaSalida), formatoFecha(row.fechaEntrega)])}
+          mensajeVacio="No hay deliveries que coincidan con los filtros."
+          alinearDerecha={[4]}
+        />
+      ) : tablaConfig ? (
+        <TablaReporte {...tablaConfig} />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-[#F5F5F5] text-left text-xs uppercase tracking-wider text-[#333]/60">
-                <th className="px-3 py-2">Caja</th>
-                <th className="px-3 py-2">Turno</th>
-                <th className="px-3 py-2">Apertura</th>
-                <th className="px-3 py-2">Cierre</th>
-                <th className="px-3 py-2 text-right">Inicial</th>
-                <th className="px-3 py-2 text-right">Ingresos</th>
-                <th className="px-3 py-2 text-right">Egresos</th>
-                <th className="px-3 py-2 text-right">Sistema</th>
-                <th className="px-3 py-2 text-right">Declarado</th>
-                <th className="px-3 py-2 text-right">Diferencia</th>
-                <th className="px-3 py-2">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F5F5F5]">
-              {arqueoFiltrado.map((a, i) => (
-                <tr key={i} className="hover:bg-[#F5F5F5]">
-                  <td className="px-3 py-2">{a.caja}</td>
-                  <td className="px-3 py-2">{a.numeroTurno}</td>
-                  <td className="px-3 py-2">{new Date(a.fechaApertura).toLocaleString()}</td>
-                  <td className="px-3 py-2">{a.fechaCierre ? new Date(a.fechaCierre).toLocaleString() : '—'}</td>
-                  <td className="px-3 py-2 text-right">{fmt(a.montoInicial)}</td>
-                  <td className="px-3 py-2 text-right">{fmt(a.totalIngresos)}</td>
-                  <td className="px-3 py-2 text-right">{fmt(a.totalEgresos)}</td>
-                  <td className="px-3 py-2 text-right font-bold">{fmt(a.montoSistema)}</td>
-                  <td className="px-3 py-2 text-right">{fmt(a.montoDeclarado)}</td>
-                  <td className="px-3 py-2 text-right">{fmt(a.diferencia)}</td>
-                  <td className="px-3 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${a.situacion === 'C' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {a.situacion === 'C' ? 'Cerrado' : a.situacion === 'P' ? 'Pendiente' : 'Abierto'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {arqueoFiltrado.length === 0 && <p className="text-center py-4 text-sm text-[#333]/60">No hay arqueos que coincidan con los filtros.</p>}
-        </div>
+        <TablaReporte
+          columnas={['Caja', 'Turno', 'Apertura', 'Cierre', 'Inicial', 'Ingresos', 'Egresos', 'Sistema', 'Declarado', 'Diferencia', 'Estado']}
+          filas={arqueoFiltrado.map((a) => [a.caja, a.numeroTurno, new Date(a.fechaApertura).toLocaleString(), a.fechaCierre ? new Date(a.fechaCierre).toLocaleString() : '—', fmt(a.montoInicial), fmt(a.totalIngresos), fmt(a.totalEgresos), fmt(a.montoSistema), fmt(a.montoDeclarado), fmt(a.diferencia), a.situacion === 'C' ? 'Cerrado' : 'Abierto'])}
+          mensajeVacio="No hay arqueos que coincidan con los filtros."
+          alinearDerecha={[4, 5, 6, 7, 8, 9]}
+        />
       )}
+
     </div>
   );
 }

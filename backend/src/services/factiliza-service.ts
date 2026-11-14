@@ -20,11 +20,19 @@ export interface DatosDni {
   fNacimiento: string | null;
   genero: 'M' | 'F' | 'O' | null;
   direccion: string | null;
+  ubicacion: UbigeoNombres;
 }
 
 export interface DatosRuc {
   razonSocial: string;
   direccion: string | null;
+  ubicacion: UbigeoNombres;
+}
+
+export interface UbigeoNombres {
+  departamento: string | null;
+  provincia: string | null;
+  distrito: string | null;
 }
 
 function isRecord(value: unknown): value is Registro {
@@ -33,6 +41,31 @@ function isRecord(value: unknown): value is Registro {
 
 function texto(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function nombreUbigeo(data: Registro, clave: string): string | null {
+  const campos = isRecord(data['ubigeo']) ? data['ubigeo'] : {};
+  const candidatos = [
+    data[clave],
+    data[`nombre_${clave}`],
+    data[`d_${clave}`],
+    campos[clave],
+    campos[`nombre_${clave}`],
+  ];
+  for (const candidato of candidatos) {
+    const nombre = texto(candidato)
+      ?? (isRecord(candidato) ? texto(candidato['nombre']) ?? texto(candidato['name']) : null);
+    if (nombre) return nombre;
+  }
+  return null;
+}
+
+function ubicacion(data: Registro): UbigeoNombres {
+  return {
+    departamento: nombreUbigeo(data, 'departamento'),
+    provincia: nombreUbigeo(data, 'provincia'),
+    distrito: nombreUbigeo(data, 'distrito'),
+  };
 }
 
 async function consultarFactiliza(tipo: Documento, numero: string): Promise<Registro> {
@@ -113,6 +146,7 @@ export async function consultarDni(numero: string): Promise<DatosDni> {
     fNacimiento: fechaIso(data['fecha_nacimiento']),
     genero: generoPersona(data['sexo']),
     direccion: texto(data['direccion']),
+    ubicacion: ubicacion(data),
   };
 }
 
@@ -122,5 +156,5 @@ export async function consultarRuc(numero: string): Promise<DatosRuc> {
   if (!razonSocial) {
     throw new FactilizaError(502, 'FACTILIZA_INVALID_RESPONSE');
   }
-  return { razonSocial, direccion: texto(data['direccion']) };
+  return { razonSocial, direccion: texto(data['direccion']), ubicacion: ubicacion(data) };
 }

@@ -29,7 +29,8 @@ import { AdminReportesPage } from '../features/admin/reportes/reportes-page';
 import { AdminAuditoriaPage } from '../features/admin/auditoria/auditoria-page';
 import { AdminUsuariosPage } from '../features/admin/usuarios/usuarios-page';
 import { AdminInventarioPage } from '../features/admin/inventario/inventario-page';
-import { AdminCrudPage } from '../features/admin/crud/crud-page';
+import { KardexPage } from '../features/admin/inventario/kardex-page';
+import { RecetasPage } from '../features/admin/recetas/recetas-page';
 import { AdminReservasPage } from '../features/admin/reservas-admin/reservas-admin-page';
 import { ParametrosDeliveryPage } from '../features/admin/parametros-delivery/parametros-delivery-page';
 import { PedidosDeliveryPage } from '../features/admin/pedidos-delivery/PedidosDeliveryPage';
@@ -57,6 +58,7 @@ import { ClienteReservasPage } from '../features/cliente/reservas/reservas-page'
 import { ClienteReservaNuevaPage } from '../features/cliente/reservas/reserva-nueva-page';
 import { ClienteDeliveryPage } from '../features/cliente/delivery/delivery-page';
 import { ClientePedidoTrackingPage } from '../features/cliente/pedido/pedido-tracking-page';
+import { ClienteComprobantePage } from '../features/cliente/comprobante/cliente-comprobante-page';
 import { ClienteMiConsumoPage } from '../features/cliente/consumo/mi-consumo-page';
 import { ClienteResetClavePage } from '../features/cliente/reset/reset-clave-page';
 import MesaQrPage from '../features/cliente/mesa/mesa-qr-page';
@@ -156,6 +158,10 @@ export const router = createBrowserRouter([
         element: <ClienteAuthGuard><ClienteFlowGuard modoPermitido="cualquiera"><ClientePedidoTrackingPage /></ClienteFlowGuard></ClienteAuthGuard>,
       },
       {
+        path: 'cliente/comprobante/:id',
+        element: <ClienteAuthGuard><ClienteComprobantePage /></ClienteAuthGuard>,
+      },
+      {
         path: 'cliente/restablecer',
         element: <ClientePublicGuard><ClienteResetClavePage /></ClientePublicGuard>,
       },
@@ -242,8 +248,12 @@ export const router = createBrowserRouter([
         element: <RoleGuard roles={ADMIN_ROLES.inventory}><AdminInventarioPage /></RoleGuard>,
       },
       {
-        path: 'crud',
-        element: <RoleGuard roles={ADMIN_ROLES.admin}><AdminCrudPage /></RoleGuard>,
+        path: 'recetas',
+        element: <RoleGuard roles={ADMIN_ROLES.inventory}><RecetasPage /></RoleGuard>,
+      },
+      {
+        path: 'kardex',
+        element: <RoleGuard roles={ADMIN_ROLES.inventory}><KardexPage /></RoleGuard>,
       },
       {
         path: 'reservas-admin',

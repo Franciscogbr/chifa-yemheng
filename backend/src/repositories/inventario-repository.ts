@@ -30,6 +30,7 @@ interface StockRow {
   n_producto: string;
   tipo_producto: string;
   id_categoriaproducto: number | null;
+  clasificacion: string | null;
   stock_actual: number;
   stock_minimo: number;
   id_unidad: number | null;
@@ -140,6 +141,8 @@ export async function listarRecetas(q: RecetaQuery): Promise<{ data: Receta[]; p
     .range(desde, hasta);
 
   if (q.productoId) query = query.eq('id_producto', q.productoId);
+  if (q.texto) query = query.or(`producto.n_producto.ilike.%${q.texto}%,insumo.n_producto.ilike.%${q.texto}%`);
+  if (q.estado) query = query.eq('estado', q.estado);
 
   const { data, error, count } = await query;
   if (error) throw new Error(`DB_LIST_FAIL: ${error.message}`);
@@ -249,7 +252,7 @@ export async function actualizarReceta(
 export async function getStockInsumos(q: StockQuery): Promise<StockInsumo[]> {
   let query = supabase
     .from('producto')
-    .select('id_producto, n_producto, tipo_producto, id_categoriaproducto, stock_actual, stock_minimo, id_unidad, categoria_producto(n_categoriaproducto), unidad_medida(n_unidad)')
+    .select('id_producto, n_producto, tipo_producto, id_categoriaproducto, clasificacion, stock_actual, stock_minimo, id_unidad, categoria_producto(n_categoriaproducto), unidad_medida(n_unidad)')
     .eq('estado', 'A')
     .eq('tipo_producto', 'I');
 
@@ -311,6 +314,7 @@ export async function getStockInsumos(q: StockQuery): Promise<StockInsumo[]> {
       categoriaId: row.id_categoriaproducto,
       stockActual,
       stockMinimo,
+      clasificacion: row.clasificacion ?? null,
       unidadId: row.id_unidad,
       unidadMedida: row.unidad_medida?.n_unidad ?? null,
       categoria: row.categoria_producto?.n_categoriaproducto ?? null,
